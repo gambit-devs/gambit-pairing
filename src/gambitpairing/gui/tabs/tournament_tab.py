@@ -710,6 +710,18 @@ class TournamentTab(QtWidgets.QWidget):
         self.table_pairings.resizeColumnsToContents()
         self.table_pairings.resizeRowsToContents()
 
+        # Restore original column resize modes after resizing to contents
+        # This ensures columns stretch to fill available space rather than staying condensed
+        self.table_pairings.horizontalHeader().setSectionResizeMode(
+            0, QtWidgets.QHeaderView.ResizeMode.Stretch
+        )
+        self.table_pairings.horizontalHeader().setSectionResizeMode(
+            1, QtWidgets.QHeaderView.ResizeMode.Stretch
+        )
+        self.table_pairings.horizontalHeader().setSectionResizeMode(
+            2, QtWidgets.QHeaderView.ResizeMode.Fixed
+        )
+
     def clear_pairings_display(self):
         """Clears the pairings table and bye player label."""
         self.table_pairings.setRowCount(0)
