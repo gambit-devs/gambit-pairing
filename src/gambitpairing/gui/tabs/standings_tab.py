@@ -105,7 +105,7 @@ class StandingsTab(QtWidgets.QWidget):
 
     def _get_current_round_info(self):
         """Get current round information for display in titles/headers."""
-        from gambitpairing.print_utils import TournamentPrintUtils
+        from gambitpairing.utils.print import TournamentPrintUtils
 
         # Use unified round information retrieval
         if hasattr(self.parent_window, "tournament_tab"):
@@ -349,7 +349,7 @@ class StandingsTab(QtWidgets.QWidget):
 
     def print_standings(self):
         """Print the current standings table in a clean, ink-friendly, professional format with a polished legend."""
-        from gambitpairing.print_utils import (
+        from gambitpairing.utils.print import (
             PrintOptionsDialog,
             TournamentPrintUtils,
         )

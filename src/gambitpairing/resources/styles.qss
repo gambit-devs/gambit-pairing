@@ -6,6 +6,7 @@ QWidget {
     font-family: 'Segoe UI', 'Inter', 'DejaVu Sans', Arial, sans-serif;
     font-size: 11pt;
     border: none;
+    outline: none;
 }
 
 /* GroupBox */
@@ -16,6 +17,7 @@ QGroupBox {
     background: #fff;
     padding: 18px 18px 12px 18px;
     font-weight: 600;
+    outline: none;
 }
 QGroupBox::title {
     subcontrol-origin: margin;
@@ -30,6 +32,7 @@ QGroupBox::title {
     border-radius: 6px;
     border: none;
     letter-spacing: 0.01em;
+    outline: none;
 }
 
 /* TabWidget */
@@ -263,16 +266,19 @@ QPushButton:hover, QPushButton:focus {
     background: #f5e9da;
     color: #111;
     border: 2px solid #111;
+    outline: none;
 }
 QPushButton:pressed {
     background: #111;
     color: #fff;
     border: 2px solid #111;
+    outline: none;
 }
 QPushButton:disabled {
     background: #e5e7eb;
     color: #a1a7b3;
     border: none;
+    outline: none;
 }
 
 /* Quick Action Buttons (Secondary Buttons) */
@@ -811,6 +817,7 @@ QCalendarWidget QTableView, QCalendarWidget QAbstractItemView {
 QPrintPreviewDialog QLabel, QPrintDialog QLabel,
 QPrintPreviewDialog QComboBox, QPrintDialog QComboBox {
     font-size: 6pt; /* Slightly smaller to prevent text cutoff */
+    outline: none;
 }
 
 /* --- Print Dialog Toolbar Buttons: Make Smaller --- */
@@ -820,4 +827,93 @@ QPrintPreviewDialog QToolButton, QPrintDialog QToolButton {
     padding: 2px 4px;
     icon-size: 16px 16px;
     font-size: 9pt;
+    outline: none;
+}
+
+/* ========================================
+   Focus Rectangle and Outline Removal
+   Removes gray backgrounds and focus rectangles
+   ======================================== */
+
+/* Remove focus rectangles from all widgets */
+QWidget:focus {
+    outline: none;
+}
+
+/* Label - prevent background outline */
+QLabel {
+    outline: none;
+    background: transparent;
+    border: none;
+}
+QLabel:focus {
+    outline: none;
+}
+
+/* Frame - remove outlines */
+QFrame {
+    outline: none;
+    border: none;
+}
+QFrame:focus {
+    outline: none;
+}
+
+/* Tab bar and widget focus removal */
+QTabBar:focus, QTabWidget:focus {
+    outline: none;
+}
+QTabBar::tab:focus, QTabBar::tab:selected:focus {
+    outline: none;
+}
+
+/* List and table focus removal */
+QListWidget:focus, QListView:focus {
+    outline: none;
+}
+QTableWidget:focus, QTableView:focus {
+    outline: none;
+}
+
+/* Input field focus border styling (keep border but no gray background) */
+QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus,
+QComboBox:focus, QDateEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {
+    outline: none;
+}
+
+/* Combo box dropdown item focus */
+QComboBox QAbstractItemView:focus,
+QComboBox QAbstractItemView::item:focus {
+    outline: none;
+}
+
+/* Menu and toolbar focus */
+QMenu:focus, QMenuBar:focus, QToolBar:focus {
+    outline: none;
+}
+QMenu::item:focus, QMenuBar::item:focus {
+    outline: none;
+}
+
+/* Checkbox and radio button focus */
+QCheckBox:focus, QRadioButton:focus {
+    outline: none;
+}
+QCheckBox::indicator:focus, QRadioButton::indicator:focus {
+    outline: none;
+}
+
+/* Splitter handle focus */
+QSplitter::handle:focus {
+    outline: none;
+}
+
+/* Dialog focus */
+QDialog:focus {
+    outline: none;
+}
+
+/* Calendar widget focus */
+QCalendarWidget:focus, QCalendarWidget QAbstractItemView:focus {
+    outline: none;
 }

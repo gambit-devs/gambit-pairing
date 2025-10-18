@@ -1,7 +1,7 @@
-"""Tournament module - main entry point.
+"""Tournament management system for Gambit Pairing.
 
-This module provides backwards compatibility by re-exporting the Tournament class
-from the new tournament package structure.
+This package provides a professionally designed tournament management system
+with clean separation of concerns and well-defined responsibilities.
 """
 
 # Gambit Pairing
@@ -20,6 +20,18 @@ from the new tournament package structure.
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from gambitpairing.tournament.models import MatchResult, RoundData, TournamentConfig
+from gambitpairing.tournament.result_recorder import ResultRecorder
+from gambitpairing.tournament.round_manager import RoundManager
+from gambitpairing.tournament.tiebreak_calculator import TiebreakCalculator
 from gambitpairing.tournament.tournament import Tournament
 
-__all__ = ["Tournament"]
+__all__ = [
+    "Tournament",
+    "TournamentConfig",
+    "RoundData",
+    "MatchResult",
+    "RoundManager",
+    "ResultRecorder",
+    "TiebreakCalculator",
+]

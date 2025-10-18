@@ -22,7 +22,6 @@ from typing import Any, Dict, Optional
 
 from gambitpairing.club import Club
 from gambitpairing.player.base_player import Player
-from gambitpairing.type_hints import B
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)
@@ -34,25 +33,31 @@ class FidePlayer(Player):
     def __init__(
         self,
         name: str,
+        rating: Optional[int] = None,
         phone: Optional[str] = None,
         email: Optional[str] = None,
         club: Optional[Club] = None,
         gender: Optional[str] = None,
         date_of_birth: Optional[date] = None,
+        federation: Optional[str] = None,
         fide_id: Optional[int] = None,
         fide_title: Optional[str] = None,
         fide_standard: Optional[int] = None,
         fide_rapid: Optional[int] = None,
         fide_blitz: Optional[int] = None,
+        **kwargs  # Accept additional arguments for flexibility
     ) -> None:
         # initialize all the Player base class attributes
         super().__init__(
             name=name,
+            rating=rating or fide_standard or fide_rapid or 0,  # Use FIDE standard as default rating
             phone=phone,
             email=email,
             club=club,
             gender=gender,
             date_of_birth=date_of_birth,
+            federation=federation,
+            **kwargs
         )
         # FIDE Related data
         self.fide_id: Optional[int] = fide_id
@@ -60,9 +65,7 @@ class FidePlayer(Player):
         self.fide_standard: Optional[int] = fide_standard
         self.fide_rapid: Optional[int] = fide_rapid
         self.fide_blitz: Optional[int] = fide_blitz
-        self.birth_year: Optional[int] = date_of_birth.year
-        self.score: float = 0.0
-        self.is_active: bool = True  # Used for withdrawals
+        self.birth_year: Optional[int] = date_of_birth.year if date_of_birth else None
 
     @classmethod
     def from_dict(cls, player_data: Dict[str, Any]) -> "FidePlayer":
@@ -80,13 +83,28 @@ class FidePlayer(Player):
         # Handle backward compatibility for sex/gender field consolidation
         gender = player_data.get("gender") or player_data.get("sex")
 
+        # Parse date_of_birth if it's a string
+        dob_value = player_data.get("dob") or player_data.get("date_of_birth")
+        date_of_birth = None
+        if dob_value:
+            if isinstance(dob_value, str):
+                try:
+                    # Try parsing ISO format: YYYY-MM-DD
+                    date_of_birth = date.fromisoformat(dob_value)
+                except (ValueError, AttributeError):
+                    date_of_birth = None
+            elif isinstance(dob_value, date):
+                date_of_birth = dob_value
+
         player = cls(
             name=player_data["name"],
+            rating=player_data.get("rating"),
             phone=player_data.get("phone"),
             email=player_data.get("email"),
             club=player_data.get("club"),
             gender=gender,
-            date_of_birth=player_data.get("dob"),
+            date_of_birth=date_of_birth,
+            federation=player_data.get("federation"),
             fide_id=player_data.get("fide_id"),
             fide_title=player_data.get("fide_title"),
             fide_standard=player_data.get("fide_standard"),
@@ -112,7 +130,7 @@ class FidePlayer(Player):
             )
         if not hasattr(player, "num_black_games"):  # For older save files
             player.num_black_games = (
-                player.color_history.count(B) if player.color_history else 0
+                player.color_history.count("Black") if player.color_history else 0
             )
 
         return player

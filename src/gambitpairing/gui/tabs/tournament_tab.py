@@ -32,6 +32,9 @@ from gambitpairing.constants import (
 from gambitpairing.gui.dialogs import ManualPairingDialog
 from gambitpairing.gui.notournament_placeholder import NoTournamentPlaceholder
 from gambitpairing.player import Player
+from gambitpairing.utils import setup_logger
+
+logger = setup_logger(__name__)
 
 
 def get_icon(icon_name: str, fallback_theme_name: str = None) -> QtGui.QIcon:
@@ -1008,7 +1011,7 @@ class TournamentTab(QtWidgets.QWidget):
         from PyQt6.QtCore import QDateTime
         from PyQt6.QtGui import QTextDocument
 
-        from gambitpairing.print_utils import (
+        from gambitpairing.utils.print import (
             PrintOptionsDialog,
             TournamentPrintUtils,
         )
@@ -1354,14 +1357,14 @@ class TournamentTab(QtWidgets.QWidget):
         total_rounds = self.tournament.num_rounds if tournament_exists else 0
         tournament_started = tournament_exists and pairings_generated > 0
 
-        print(
-            f"[DEBUG] update_ui_state: tournament_exists={tournament_exists}, pairings_generated={pairings_generated}, results_recorded={results_recorded}, total_rounds={total_rounds}, tournament_started={tournament_started}"
+        # Debug logging (can be enabled via logger level configuration)
+        logger.debug(
+            f"update_ui_state: tournament_exists={tournament_exists}, "
+            f"pairings_generated={pairings_generated}, results_recorded={results_recorded}, "
+            f"total_rounds={total_rounds}, tournament_started={tournament_started}"
         )
-        print(f"[DEBUG] self.tournament={self.tournament}")
-        if tournament_exists:
-            print(
-                f"[DEBUG] self.tournament.rounds_pairings_ids={self.tournament.rounds_pairings_ids}"
-            )
+        if tournament_exists and logger.isEnabledFor(logging.DEBUG):
+            logger.debug(f"rounds_pairings_ids={self.tournament.rounds_pairings_ids}")
 
         can_start = tournament_exists and not tournament_started
         can_prepare = (
@@ -1377,8 +1380,9 @@ class TournamentTab(QtWidgets.QWidget):
         )
         can_undo = tournament_exists and results_recorded > 0
 
-        print(
-            f"[DEBUG] can_start={can_start}, can_prepare={can_prepare}, can_record={can_record}, can_undo={can_undo}"
+        logger.debug(
+            f"can_start={can_start}, can_prepare={can_prepare}, "
+            f"can_record={can_record}, can_undo={can_undo}"
         )
 
         # Show/hide edit pairings button for all tournaments with pairings

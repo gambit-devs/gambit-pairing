@@ -3,7 +3,7 @@ from PyQt6.QtCore import QDateTime
 from PyQt6.QtPrintSupport import QPrinter, QPrintPreviewDialog
 
 from gambitpairing.constants import TIEBREAK_NAMES
-from gambitpairing.print_utils import PrintOptionsDialog, TournamentPrintUtils
+from gambitpairing.utils.print import PrintOptionsDialog, TournamentPrintUtils
 
 
 def print_pairings(self):

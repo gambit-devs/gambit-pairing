@@ -6,11 +6,15 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import QObject, Qt, QThread, pyqtSignal
 
 from gambitpairing.gui.notification import show_notification
-from gambitpairing.player import Player
+from gambitpairing.player import Player, create_player_from_dict
 from gambitpairing.utils.api import (
     get_cfc_player_info,
     get_fide_player_info,
     search_fide_players,
+)
+from gambitpairing.utils.api_adapters import (
+    fide_api_to_player_dict,
+    cfc_api_to_player_dict,
 )
 
 # FIDE columns with better minimum widths
@@ -94,6 +98,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         self._selected_player_data = None
         self._player_data_changed = False  # Track if data has been changed/imported
         self._cleaning_up = False  # Track if we're in cleanup mode
+        self._editing_player_id = None  # Track which player is being edited (if any)
 
         self.setWindowTitle("Player Management")
         self.setModal(True)
@@ -794,33 +799,56 @@ class PlayerManagementDialog(QtWidgets.QDialog):
             return
 
         try:
-            # Map CFC data to player form fields
-            # Adjust field mappings based on your actual form structure
+            # Convert CFC API data to standardized player dict using adapter
+            from gambitpairing.utils.api_adapters import cfc_api_to_player_dict
+            standardized_data = cfc_api_to_player_dict(player_data)
 
             # Switch to Player Details tab
-            self.tab_widget.setCurrentIndex(0)  # Assuming Player Details is first tab
+            self.tab_widget.setCurrentIndex(0)
 
-            # Populate form fields - adjust these based on your actual field names
-            if hasattr(self, "name_edit"):
-                self.name_edit.setText(player_data.get("name", ""))
+            # Populate form fields with standardized data
+            self.name_edit.setText(standardized_data.get("name", ""))
+            self.rating_spin.setValue(standardized_data.get("rating", 1000))
 
-            if hasattr(self, "cfc_id_edit"):
-                self.cfc_id_edit.setText(str(player_data.get("cfc_id", "")))
+            # Set gender
+            gender = standardized_data.get("gender")
+            if gender:
+                gender_text = "Male" if gender == "M" else "Female" if gender == "F" else ""
+                if gender_text:
+                    idx = self.gender_combo.findText(gender_text)
+                    if idx >= 0:
+                        self.gender_combo.setCurrentIndex(idx)
 
-            if hasattr(self, "rating_edit"):
-                self.rating_edit.setText(str(player_data.get("rating", "")))
+            # Set date of birth if available
+            dob = standardized_data.get("date_of_birth")
+            if dob:
+                birth_date = QtCore.QDate(dob.year, dob.month, dob.day)
+                if birth_date.isValid():
+                    self.dob_edit.setDate(birth_date)
 
-            if hasattr(self, "province_edit"):
-                self.province_edit.setText(player_data.get("province", ""))
+            # Set province/federation
+            self.federation_edit.setText(standardized_data.get("federation", ""))
 
-            if hasattr(self, "city_edit"):
-                self.city_edit.setText(player_data.get("city", ""))
+            # Clear fields not available from CFC
+            self.phone_edit.setText("")
+            self.email_edit.setText("")
+            self.club_edit.setText("")
 
-            # Show success message
-            QtWidgets.QMessageBox.information(
+            # Set CFC ID if the field exists
+            cfc_id = standardized_data.get("cfc_id")
+            if hasattr(self, "cfc_id_edit") and cfc_id:
+                self.cfc_id_edit.setText(str(cfc_id))
+
+            # Store the standardized player data for later use
+            self._selected_player_data = standardized_data
+            self._player_data_changed = True  # Mark that we have new data to save
+
+            # Show success message using notification
+            show_notification(
                 self,
-                "Import Successful",
-                f"Successfully imported CFC player: {player_data.get('name', 'Unknown')}",
+                f"Successfully imported: {standardized_data.get('name', 'Unknown')}",
+                2500,
+                "success",
             )
 
         except Exception as e:
@@ -1434,23 +1462,16 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         if not player_data:
             return
 
-        # Update details form
-        self.name_edit.setText(player_data.get("name", ""))
+        # Convert FIDE API data to standardized player dict using adapter
+        from gambitpairing.utils.api_adapters import fide_api_to_player_dict
+        standardized_data = fide_api_to_player_dict(player_data)
 
-        # Use standard rating as main rating, fallback to rapid, then blitz
-        rating = (
-            player_data.get("standard_rating")
-            or player_data.get("rapid_rating")
-            or player_data.get("blitz_rating")
-            or 1000
-        )
-        self.rating_spin.setValue(rating)
+        # Update details form with standardized data
+        self.name_edit.setText(standardized_data.get("name", ""))
+        self.rating_spin.setValue(standardized_data.get("rating", 1000))
 
         # Set gender
-        gender = player_data.get("gender")
-        if not gender and str(player_data.get("title") or "").upper().startswith("W"):
-            gender = "F"
-
+        gender = standardized_data.get("gender")
         if gender:
             gender_text = "Male" if gender == "M" else "Female" if gender == "F" else ""
             if gender_text:
@@ -1458,35 +1479,31 @@ class PlayerManagementDialog(QtWidgets.QDialog):
                 if idx >= 0:
                     self.gender_combo.setCurrentIndex(idx)
 
-        self.federation_edit.setText(player_data.get("federation", ""))
+        self.federation_edit.setText(standardized_data.get("federation", ""))
 
-        # Set date of birth from birth year if available
-        birth_year = player_data.get("birth_year")
-        if birth_year:
-            try:
-                # Set date to January 1st of the birth year
-                birth_date = QtCore.QDate(int(birth_year), 1, 1)
-                if birth_date.isValid():
-                    self.dob_edit.setDate(birth_date)
-            except (ValueError, TypeError):
-                pass  # Invalid birth year, skip setting DOB
+        # Set date of birth if available
+        dob = standardized_data.get("date_of_birth")
+        if dob:
+            birth_date = QtCore.QDate(dob.year, dob.month, dob.day)
+            if birth_date.isValid():
+                self.dob_edit.setDate(birth_date)
 
         # Clear other fields that might not be available from FIDE
         self.phone_edit.setText("")
         self.email_edit.setText("")
         self.club_edit.setText("")
 
-        # Show FIDE info (now editable) - Fix the FIDE ID field loading
-        self.fide_id_edit.setText(str(player_data.get("fide_id", "") or ""))
-        self.fide_title_edit.setText(str(player_data.get("title", "") or ""))
-        self.fide_std_edit.setText(str(player_data.get("standard_rating", "") or ""))
-        self.fide_rapid_edit.setText(str(player_data.get("rapid_rating", "") or ""))
-        self.fide_blitz_edit.setText(str(player_data.get("blitz_rating", "") or ""))
+        # Show FIDE info (now editable)
+        self.fide_id_edit.setText(str(standardized_data.get("fide_id", "") or ""))
+        self.fide_title_edit.setText(str(standardized_data.get("fide_title", "") or ""))
+        self.fide_std_edit.setText(str(standardized_data.get("fide_standard", "") or ""))
+        self.fide_rapid_edit.setText(str(standardized_data.get("fide_rapid", "") or ""))
+        self.fide_blitz_edit.setText(str(standardized_data.get("fide_blitz", "") or ""))
 
         self.fide_group.setVisible(True)
 
-        # Store the selected player data for later use
-        self._selected_player_data = player_data
+        # Store the standardized player data for later use
+        self._selected_player_data = standardized_data
         self._player_data_changed = True  # Mark that we have new data to save
 
         # Switch to details tab
@@ -1495,7 +1512,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         # Show brief success feedback using notification
         show_notification(
             self,
-            f"Successfully imported: {player_data.get('name', 'Unknown')}",
+            f"Successfully imported: {standardized_data.get('name', 'Unknown')}",
             2500,
             "success",
         )
@@ -1515,6 +1532,9 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         player = self.tournament.players.get(player_id)
         if not player:
             return
+
+        # Store the player ID so we know we're editing this player
+        self._editing_player_id = player_id
 
         # Load player data into details form
         self.player_data = {
@@ -1767,6 +1787,14 @@ class PlayerManagementDialog(QtWidgets.QDialog):
                 "club": self.club_edit.text().strip(),
                 "federation": self.federation_edit.text().strip(),
             }
+
+    def get_editing_player_id(self) -> Optional[str]:
+        """Get the ID of the player being edited, if any.
+        
+        Returns:
+            Player ID if editing an existing player, None if adding a new player
+        """
+        return self._editing_player_id
 
     def _abort_current_job(self) -> None:
         """Cooperatively cancel and cleanup the current background job."""

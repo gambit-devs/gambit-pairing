@@ -18,6 +18,7 @@
 import csv
 import logging
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 from PyQt6 import QtCore, QtGui, QtWidgets
@@ -29,7 +30,7 @@ from gambitpairing.gui.notournament_placeholder import (
     NoTournamentPlaceholder,
     PlayerPlaceholder,
 )
-from gambitpairing.player import Player
+from gambitpairing.player import Player, create_player, create_player_from_dict
 
 
 class NumericTableWidgetItem(QtWidgets.QTableWidgetItem):
@@ -147,25 +148,6 @@ class PlayersTab(QtWidgets.QWidget):
         self.main_layout.addWidget(self.no_tournament_placeholder)
         self.main_layout.addWidget(self.no_players_placeholder)
 
-    def _calculate_age(self, dob_str: Optional[str]) -> Optional[int]:
-        """Calculates age from a date of birth string (YYYY-MM-DD)."""
-        if not dob_str:
-            return None
-        try:
-            # Assuming dob_str is in a format that fromisoformat can handle, like YYYY-MM-DD
-            dob_date = datetime.fromisoformat(
-                dob_str.split(" ")[0]
-            )  # Handle potential time part
-            today = datetime.today()
-            age = (
-                today.year
-                - dob_date.year
-                - ((today.month, today.day) < (dob_date.month, dob_date.day))
-            )
-            return age
-        except (ValueError, TypeError):
-            return None  # Return None if format is wrong
-
     def on_player_context_menu(self, point: QtCore.QPoint) -> None:
         row = self.table_players.rowAt(point.y())
         if row < 0 or not self.tournament:
@@ -217,22 +199,8 @@ class PlayersTab(QtWidgets.QWidget):
                     )
                     return
 
-                player.name = data["name"]
-                player.rating = data["rating"]
-                player.gender = data.get("gender")
-                player.dob = data.get("dob")
-                player.phone = data.get("phone")
-                player.email = data.get("email")
-                player.club = data.get("club")
-                player.federation = data.get("federation")
-                # Update FIDE data if provided
-                if data.get("fide_id"):
-                    player.fide_id = data.get("fide_id")
-                    player.fide_title = data.get("fide_title")
-                    player.fide_standard = data.get("fide_standard")
-                    player.fide_rapid = data.get("fide_rapid")
-                    player.fide_blitz = data.get("fide_blitz")
-                    player.birth_year = data.get("birth_year")
+                # Update player attributes using intelligent update method
+                self._update_player_from_data(player, data)
 
                 self.update_player_table_row(player)
                 self.history_message.emit(f"Player '{player.name}' details updated.")
@@ -293,35 +261,85 @@ class PlayersTab(QtWidgets.QWidget):
                     self, "Validation Error", "Player name cannot be empty."
                 )
                 return
-            if any(p.name == data["name"] for p in self.tournament.players.values()):
-                QtWidgets.QMessageBox.warning(
-                    self, "Duplicate Player", f"Player '{data['name']}' already exists."
+            
+            # Check if we're editing an existing player
+            editing_player_id = dialog.get_editing_player_id()
+            
+            if editing_player_id:
+                # Editing mode - update the existing player
+                player = self.tournament.players.get(editing_player_id)
+                if not player:
+                    QtWidgets.QMessageBox.warning(
+                        self, "Error", "Player not found in tournament."
+                    )
+                    return
+                
+                # Check for duplicate name only if the name has changed
+                if data["name"] != player.name and any(
+                    p.name == data["name"] for p in self.tournament.players.values()
+                ):
+                    QtWidgets.QMessageBox.warning(
+                        self, "Duplicate Player", f"Player '{data['name']}' already exists."
+                    )
+                    return
+                
+                # Update player attributes
+                self._update_player_from_data(player, data)
+                self.update_player_table_row(player)
+                self.history_message.emit(f"Player '{player.name}' details updated.")
+                self.dirty.emit()
+            else:
+                # Add mode - create new player
+                if any(p.name == data["name"] for p in self.tournament.players.values()):
+                    QtWidgets.QMessageBox.warning(
+                        self, "Duplicate Player", f"Player '{data['name']}' already exists."
+                    )
+                    return
+                
+                # Use factory to create player (automatically detects FidePlayer)
+                new_player = create_player_from_dict(data)
+                
+                self.tournament.players[new_player.id] = new_player
+                self.add_player_to_table(new_player)
+                self.status_message.emit(f"Added player: {new_player.name}")
+                self.history_message.emit(
+                    f"Player '{new_player.name}' ({new_player.rating}) added."
                 )
-                return
-            new_player = Player(
-                name=data["name"],
-                rating=data["rating"],
-                phone=data["phone"],
-                email=data["email"],
-                club=data["club"],
-                federation=data["federation"],
-                gender=data.get("gender"),
-                dob=data.get("dob"),
-                fide_id=data.get("fide_id"),
-                fide_title=data.get("fide_title"),
-                fide_standard=data.get("fide_standard"),
-                fide_rapid=data.get("fide_rapid"),
-                fide_blitz=data.get("fide_blitz"),
-                birth_year=data.get("birth_year"),
-            )
-            self.tournament.players[new_player.id] = new_player
-            self.add_player_to_table(new_player)
-            self.status_message.emit(f"Added player: {new_player.name}")
-            self.history_message.emit(
-                f"Player '{new_player.name}' ({new_player.rating}) added."
-            )
-            self.dirty.emit()
+                self.dirty.emit()
+            
             self.update_ui_state()
+
+    def _update_player_from_data(self, player: Player, data: dict) -> None:
+        """
+        Intelligently update a player object from dictionary data.
+        
+        This method handles the complexity of updating player attributes,
+        including FIDE-specific data for FidePlayer instances. It uses
+        reflection to avoid hardcoding attribute names.
+        
+        Parameters
+        ----------
+        player : Player
+            The player object to update
+        data : dict
+            Dictionary containing updated player data
+        """
+        from gambitpairing.player import FidePlayer
+        
+        # Core attributes that all players have
+        core_attrs = ['name', 'rating', 'phone', 'email', 'club', 'gender', 'dob', 'federation']
+        
+        # Update core attributes
+        for attr in core_attrs:
+            if attr in data:
+                setattr(player, attr, data[attr])
+        
+        # Update FIDE-specific attributes if this is a FidePlayer
+        if isinstance(player, FidePlayer):
+            fide_attrs = ['fide_id', 'fide_title', 'fide_standard', 'fide_rapid', 'fide_blitz', 'birth_year']
+            for attr in fide_attrs:
+                if attr in data and data.get(attr) is not None:
+                    setattr(player, attr, data[attr])
 
     def update_player_table_row(self, player: Player):
         """Finds and updates the QTableWidget row for a given player."""
@@ -335,9 +353,9 @@ class PlayersTab(QtWidgets.QWidget):
                 rating_item = self.table_players.item(i, 1)
                 rating_item.setText(str(player.rating or ""))
 
-                # Update Age
+                # Update Age - use player's age property directly
                 age_item = self.table_players.item(i, 2)
-                age = self._calculate_age(player.dob)
+                age = player.age
                 age_item.setText(str(age) if age is not None else "")
 
                 # Update Status
@@ -371,8 +389,8 @@ class PlayersTab(QtWidgets.QWidget):
         # Rating Item
         rating_item = NumericTableWidgetItem(str(player.rating or ""))
 
-        # Age Item
-        age = self._calculate_age(player.dob)
+        # Age Item - use the player's age property directly
+        age = player.age
         age_item = NumericTableWidgetItem(str(age) if age is not None else "")
 
         # Status Item
@@ -467,16 +485,19 @@ class PlayersTab(QtWidgets.QWidget):
                     rating = (
                         int(rating_str) if rating_str and rating_str.isdigit() else None
                     )
-                    player = Player(
+                    
+                    # Use factory to create player
+                    player = create_player(
                         name=name,
                         rating=rating,
                         gender=row.get("Gender"),
-                        dob=row.get("Date of Birth"),
+                        date_of_birth=row.get("Date of Birth"),
                         phone=row.get("Phone"),
                         email=row.get("Email"),
                         club=row.get("Club"),
                         federation=row.get("Federation"),
                     )
+                    
                     self.tournament.players[player.id] = player
                     added_count += 1
             if added_count > 0:
