@@ -34,7 +34,7 @@ logger = setup_logger(__name__)
 
 class RoundManager:
     """Manages round progression and pairing generation for tournaments.
-    
+
     This class is responsible for:
     - Generating pairings based on the tournament's pairing system
     - Tracking round history
@@ -49,7 +49,7 @@ class RoundManager:
         pairing_history: PairingHistory,
     ):
         """Initialize the round manager.
-        
+
         Args:
             pairing_system: The pairing system to use ('dutch_swiss', 'round_robin', 'manual')
             num_rounds: Total number of rounds in the tournament
@@ -64,7 +64,7 @@ class RoundManager:
     @property
     def current_round_number(self) -> int:
         """Get the current round number (1-indexed).
-        
+
         Returns:
             The current round number, or 0 if no rounds have been created.
         """
@@ -73,7 +73,7 @@ class RoundManager:
     @property
     def completed_rounds_count(self) -> int:
         """Get the number of completed rounds.
-        
+
         Returns:
             Count of rounds that have had results recorded.
         """
@@ -81,10 +81,10 @@ class RoundManager:
 
     def get_round(self, round_number: int) -> Optional[RoundData]:
         """Get data for a specific round.
-        
+
         Args:
             round_number: The round number (1-indexed)
-            
+
         Returns:
             RoundData for the specified round, or None if invalid round number
         """
@@ -99,16 +99,16 @@ class RoundManager:
         repeat_pairing_callback: Optional[Callable] = None,
     ) -> Tuple[List[Tuple[Player, Player]], Optional[Player]]:
         """Generate pairings for the next round.
-        
+
         Args:
             players: Dictionary of all tournament players (id -> Player)
             bye_callback: Optional callback to determine bye player
             repeat_pairing_callback: Optional callback for handling repeat pairings
-            
+
         Returns:
             Tuple of (pairings list, bye player)
             pairings is a list of (white_player, black_player) tuples
-            
+
         Raises:
             ValueError: If all rounds have already been created
             NotImplementedError: If pairing system is not supported
@@ -205,12 +205,12 @@ class RoundManager:
         bye_player: Optional[Player],
     ) -> bool:
         """Set manual pairings for a specific round.
-        
+
         Args:
             round_number: The round number (1-indexed)
             pairings: List of (white_player, black_player) tuples
             bye_player: Player receiving bye, or None
-            
+
         Returns:
             True if successful, False otherwise
         """
@@ -240,10 +240,10 @@ class RoundManager:
 
     def mark_round_completed(self, round_number: int) -> bool:
         """Mark a round as completed.
-        
+
         Args:
             round_number: The round number (1-indexed)
-            
+
         Returns:
             True if successful, False if round doesn't exist
         """
@@ -258,7 +258,7 @@ class RoundManager:
 
     def undo_last_round(self) -> bool:
         """Remove the last round if it hasn't been completed.
-        
+
         Returns:
             True if successful, False if no rounds or last round is completed
         """
@@ -284,11 +284,11 @@ class RoundManager:
         self, round_number: int, players: Dict[str, Player]
     ) -> Tuple[List[Tuple[Player, Player]], Optional[Player]]:
         """Get pairings for a round with Player objects for display.
-        
+
         Args:
             round_number: The round number (1-indexed)
             players: Dictionary of all players (id -> Player)
-            
+
         Returns:
             Tuple of (pairings list, bye player) with Player objects
         """

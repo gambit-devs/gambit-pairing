@@ -41,12 +41,12 @@ logger = setup_logger(__name__)
 
 class Tournament:
     """Main tournament management class.
-    
+
     This class coordinates all tournament operations through specialized managers:
     - RoundManager: handles round creation and pairing
     - ResultRecorder: manages result entry and validation
     - TiebreakCalculator: computes tiebreak scores
-    
+
     The Tournament class maintains the overall state and provides a clean API
     for tournament operations.
     """
@@ -60,7 +60,7 @@ class Tournament:
         pairing_system: str = "dutch_swiss",
     ) -> None:
         """Initialize a new tournament.
-        
+
         Args:
             name: Tournament name
             players: List of participating players
@@ -134,10 +134,10 @@ class Tournament:
 
     def get_player_list(self, active_only: bool = False) -> List[Player]:
         """Get list of tournament players.
-        
+
         Args:
             active_only: If True, only return active players
-            
+
         Returns:
             List of Player objects
         """
@@ -148,7 +148,7 @@ class Tournament:
 
     def add_player(self, player: Player) -> None:
         """Add a player to the tournament.
-        
+
         Args:
             player: Player to add
         """
@@ -157,10 +157,10 @@ class Tournament:
 
     def remove_player(self, player_id: str) -> bool:
         """Remove a player from the tournament.
-        
+
         Args:
             player_id: ID of player to remove
-            
+
         Returns:
             True if removed, False if not found
         """
@@ -172,11 +172,11 @@ class Tournament:
 
     def set_player_active(self, player_id: str, is_active: bool) -> bool:
         """Set a player's active status.
-        
+
         Args:
             player_id: ID of player
             is_active: New active status
-            
+
         Returns:
             True if updated, False if player not found
         """
@@ -190,14 +190,16 @@ class Tournament:
     # ========== Round Management ==========
 
     def create_pairings(
-        self, current_round: int, allow_repeat_pairing_callback: Optional[Callable] = None
+        self,
+        current_round: int,
+        allow_repeat_pairing_callback: Optional[Callable] = None,
     ) -> Pairings:
         """Generate pairings for the next round.
-        
+
         Args:
             current_round: The round number being created (1-indexed)
             allow_repeat_pairing_callback: Optional callback for repeat pairing handling
-            
+
         Returns:
             Tuple of (pairings list, bye player)
         """
@@ -216,10 +218,10 @@ class Tournament:
 
     def get_pairings_for_round(self, round_index: int) -> Pairings:
         """Get pairings for a specific round.
-        
+
         Args:
             round_index: Round index (0-indexed)
-            
+
         Returns:
             Tuple of (pairings list, bye player)
         """
@@ -233,12 +235,12 @@ class Tournament:
         bye_player: Optional[Player],
     ) -> bool:
         """Set manual pairings for a round.
-        
+
         Args:
             round_index: Round index (0-indexed)
             pairings: List of (white, black) player pairs
             bye_player: Player receiving bye
-            
+
         Returns:
             True if successful
         """
@@ -253,11 +255,11 @@ class Tournament:
         self, round_index: int, results_data: List[Tuple[str, str, float]]
     ) -> bool:
         """Record results for a round.
-        
+
         Args:
             round_index: Round index (0-indexed)
             results_data: List of (white_id, black_id, white_score) tuples
-            
+
         Returns:
             True if all results recorded successfully
         """
@@ -286,7 +288,7 @@ class Tournament:
 
     def get_standings(self) -> List[Player]:
         """Get current tournament standings.
-        
+
         Returns:
             List of players sorted by rank (best to worst)
         """
@@ -309,7 +311,7 @@ class Tournament:
 
     def _compare_players(self, p1: Player, p2: Player) -> int:
         """Compare two players for standings order.
-        
+
         Returns:
             1 if p1 ranks higher, -1 if p2 ranks higher, 0 if equal
         """
@@ -346,7 +348,7 @@ class Tournament:
 
     def get_completed_rounds(self) -> int:
         """Get number of completed rounds.
-        
+
         Returns:
             Count of completed rounds
         """
@@ -356,15 +358,15 @@ class Tournament:
         self, potential_bye_players: List[Player]
     ) -> Optional[Player]:
         """Determine the bye player according to Swiss rules.
-        
+
         Priority:
         1. Active player who hasn't received a bye
         2. Lowest score, then lowest rating
         3. If all have had bye, assign second bye to lowest score/rating
-        
+
         Args:
             potential_bye_players: List of players who could receive bye
-            
+
         Returns:
             The player who should receive the bye
         """
@@ -417,7 +419,7 @@ class Tournament:
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize tournament to dictionary.
-        
+
         Returns:
             Dictionary containing all tournament data
         """
@@ -431,10 +433,10 @@ class Tournament:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Tournament":
         """Deserialize tournament from dictionary.
-        
+
         Args:
             data: Dictionary containing tournament data
-            
+
         Returns:
             Reconstructed Tournament object
         """

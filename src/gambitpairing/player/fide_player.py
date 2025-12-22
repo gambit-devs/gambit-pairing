@@ -45,19 +45,22 @@ class FidePlayer(Player):
         fide_standard: Optional[int] = None,
         fide_rapid: Optional[int] = None,
         fide_blitz: Optional[int] = None,
-        **kwargs  # Accept additional arguments for flexibility
+        **kwargs,  # Accept additional arguments for flexibility
     ) -> None:
         # initialize all the Player base class attributes
         super().__init__(
             name=name,
-            rating=rating or fide_standard or fide_rapid or 0,  # Use FIDE standard as default rating
+            rating=rating
+            or fide_standard
+            or fide_rapid
+            or 0,  # Use FIDE standard as default rating
             phone=phone,
             email=email,
             club=club,
             gender=gender,
             date_of_birth=date_of_birth,
             federation=federation,
-            **kwargs
+            **kwargs,
         )
         # FIDE Related data
         self.fide_id: Optional[int] = fide_id

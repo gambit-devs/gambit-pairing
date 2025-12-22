@@ -31,16 +31,31 @@ from gambitpairing.constants import (
     TIEBREAK_NAMES,
 )
 from gambitpairing.gui.notournament_placeholder import NoTournamentPlaceholder
+from gambitpairing.gui.widgets.header import TabHeader
+from gambitpairing.utils.print import create_print_button
 
 
-class StandingsTab(QtWidgets.QWidget):
+class StandingsView(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.tournament = None
         self.parent_window = parent  # Store reference to main window
         self.main_layout = QtWidgets.QVBoxLayout(self)
-        self.standings_group = QtWidgets.QGroupBox("Standings")
+
+        # ===== STANDINGS HEADER =====
+        self.header = TabHeader("Standings")
+        self.btn_print_standings = self.header.add_action_button(
+            "print.svg", "Print Standings", self.open_print_dialog
+        )
+        self.main_layout.addWidget(self.header)
+
+        # ===== STANDINGS TABLE =====
+        self.standings_group = QtWidgets.QGroupBox()
+        self.standings_group.setStyleSheet(
+            "QGroupBox { border: none; margin-top: 0px; }"
+        )
         standings_layout = QtWidgets.QVBoxLayout(self.standings_group)
+        standings_layout.setContentsMargins(0, 0, 0, 0)
 
         # Add round info label
         self.lbl_round_info = QtWidgets.QLabel("")
@@ -68,11 +83,8 @@ class StandingsTab(QtWidgets.QWidget):
         )
         self.table_standings.setAlternatingRowColors(True)
         standings_layout.addWidget(self.table_standings)
-        self.btn_print_standings = QtWidgets.QPushButton("Print Standings")
-        self.btn_print_standings.setToolTip("Print the current standings table")
-        standings_layout.addWidget(self.btn_print_standings)
+
         self.main_layout.addWidget(self.standings_group)
-        self.btn_print_standings.clicked.connect(self.print_standings)
 
         # Add no tournament placeholder
         self.no_tournament_placeholder = NoTournamentPlaceholder(self, "Standings")
@@ -87,20 +99,22 @@ class StandingsTab(QtWidgets.QWidget):
 
     def set_tournament(self, tournament):
         self.tournament = tournament
-        # Update the group box title with tournament name
+        # Update the header title with tournament name
         if tournament and tournament.name:
-            self.standings_group.setTitle(f"Standings - {tournament.name}")
+            self.header.set_title(f"Standings - {tournament.name}")
         else:
-            self.standings_group.setTitle("Standings")
+            self.header.set_title("Standings")
         self._update_visibility()
 
     def _update_visibility(self):
         """Show/hide content based on tournament existence."""
         if not self.tournament:
             self.no_tournament_placeholder.show()
+            self.header.hide()
             self.standings_group.hide()
         else:
             self.no_tournament_placeholder.hide()
+            self.header.show()
             self.standings_group.show()
 
     def _get_current_round_info(self):
@@ -108,10 +122,8 @@ class StandingsTab(QtWidgets.QWidget):
         from gambitpairing.utils.print import TournamentPrintUtils
 
         # Use unified round information retrieval
-        if hasattr(self.parent_window, "tournament_tab"):
-            return TournamentPrintUtils.get_round_info(
-                self.parent_window.tournament_tab
-            )
+        if hasattr(self.parent_window, "rounds_tab"):
+            return TournamentPrintUtils.get_round_info(self.parent_window.rounds_tab)
         return ""
 
     def update_standings_table_headers(self):
@@ -347,12 +359,17 @@ class StandingsTab(QtWidgets.QWidget):
             if self.parent() and hasattr(self.parent(), "statusBar"):
                 self.parent().statusBar().showMessage("Error exporting standings.")
 
-    def print_standings(self):
-        """Print the current standings table in a clean, ink-friendly, professional format with a polished legend."""
-        from gambitpairing.utils.print import (
-            PrintOptionsDialog,
-            TournamentPrintUtils,
-        )
+    def open_print_dialog(self):
+        """Open the print options dialog via the Tournament tab."""
+        if hasattr(self.parent_window, "rounds_tab"):
+            # Delegate to TournamentView's print dialog, defaulting to Standings only
+            self.parent_window.rounds_tab.open_print_dialog(
+                default_pairings=False, default_standings=True
+            )
+
+    def print_standings_only(self):
+        """Print the current standings table in a clean, ink-friendly, professional format with an enhanced legend."""
+        from gambitpairing.utils.print import TournamentPrintUtils
 
         if self.table_standings.rowCount() == 0:
             QtWidgets.QMessageBox.information(
@@ -386,6 +403,15 @@ class StandingsTab(QtWidgets.QWidget):
                 short = f"TB{i+1}"
                 tb_keys.append(short)
                 tb_legend.append((short, TIEBREAK_NAMES.get(tb_key, tb_key.title())))
+            # Determine table width based on number of players
+            num_players = self.table_standings.rowCount()
+            if num_players <= 8:
+                table_width = "70%"  # Small tournaments - more centered
+            elif num_players <= 16:
+                table_width = "85%"  # Medium tournaments
+            else:
+                table_width = "95%"  # Large tournaments
+
             html = f"""
             <html>
             <head>
@@ -411,46 +437,77 @@ class StandingsTab(QtWidgets.QWidget):
                     }}
                     table.standings {{
                         border-collapse: collapse;
-                        width: 100%;
+                        width: {table_width};
                         margin: 0 auto 1.5em auto;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                     }}
                     table.standings th, table.standings td {{
                         border: 1px solid #222;
-                        padding: 6px 10px;
+                        padding: 8px 10px;
                         text-align: center;
                         font-size: 11pt;
                         white-space: nowrap;
                     }}
                     table.standings th {{
                         font-weight: bold;
-                        background: none;
+                        background: #f8f8f8;
+                        border-bottom: 2px solid #222;
+                    }}
+                    .rank-column {{
+                        width: 8%;
+                        font-weight: bold;
+                    }}
+                    .player-column {{
+                        width: 35%;
+                        text-align: left;
+                    }}
+                    .score-column {{
+                        width: 12%;
+                        font-weight: bold;
+                    }}
+                    .tiebreak-column {{
+                        width: 7%;
                     }}
                     .legend {{
-                        width: 100%;
+                        width: {table_width};
                         margin: 0 auto 1.5em auto;
                         font-size: 10.5pt;
                         color: #222;
-                        border: 1px solid #bbb;
-                        background: none;
-                        padding: 8px 12px;
+                        border: 2px solid #666;
+                        border-radius: 5px;
+                        background: #f9f9f9;
+                        padding: 12px 15px;
                         text-align: left;
+                        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
                     }}
                     .legend-title {{
                         font-weight: bold;
-                        font-size: 11pt;
-                        margin-bottom: 0.3em;
+                        font-size: 1.1em;
+                        margin-bottom: 0.8em;
                         display: block;
                         letter-spacing: 0.02em;
+                        color: #333;
+                        border-bottom: 1px solid #ccc;
+                        padding-bottom: 0.3em;
                     }}
                     .legend-table {{
                         border-collapse: collapse;
                         margin-top: 0.2em;
+                        width: 100%;
                     }}
                     .legend-table td {{
                         border: none;
-                        padding: 2px 10px 2px 0;
-                        font-size: 10pt;
+                        padding: 3px 12px 3px 0;
+                        font-size: 10.5pt;
                         vertical-align: top;
+                    }}
+                    .legend-table td:first-child {{
+                        font-weight: bold;
+                        color: #444;
+                        width: 15%;
+                    }}
+                    .legend-table td:last-child {{
+                        color: #555;
                     }}
                     .footer {{
                         text-align: center;
@@ -465,22 +522,22 @@ class StandingsTab(QtWidgets.QWidget):
                 <h2>{main_title}</h2>
                 <div class="subtitle">{round_subtitle}</div>
                 <div class="legend">
-                    <span class="legend-title">Tiebreaker Legend</span>
+                    <span class="legend-title">Tiebreaker Explanations</span>
                     <table class="legend-table">
             """
             for short, name in tb_legend:
-                html += f"<tr><td><b>{short}</b></td><td>{name}</td></tr>"
+                html += f"<tr><td>{short}:</td><td>{name}</td></tr>"
             html += """
                     </table>
                 </div>
                 <table class="standings">
                     <tr>
-                        <th style="width:6%;">#</th>
-                        <th style="width:32%;">Player</th>
-                        <th style="width:10%;">Score</th>
+                        <th class="rank-column">#</th>
+                        <th class="player-column">Player</th>
+                        <th class="score-column">Score</th>
             """
             for short in tb_keys:
-                html += f'<th style="width:7%;">{short}</th>'
+                html += f'<th class="tiebreak-column">{short}</th>'
             html += "</tr>"
             # --- Table Rows ---
             for row in range(self.table_standings.rowCount()):
@@ -531,3 +588,46 @@ class StandingsTab(QtWidgets.QWidget):
                 parent.load_tournament()
                 return
             parent = parent.parent()
+
+    def get_standings_html(self) -> str:
+        """Generate HTML for the standings table."""
+        if self.table_standings.rowCount() == 0:
+            return ""
+
+        html = """
+        <table class="standings">
+            <tr>
+                <th>Rank</th>
+                <th>Player</th>
+                <th>Score</th>
+        """
+
+        # Add tiebreak columns
+        if self.tournament and hasattr(self.tournament, "tiebreak_order"):
+            for i, tb_key in enumerate(self.tournament.tiebreak_order):
+                html += f"<th>TB{i+1}</th>"
+
+        html += "</tr>"
+
+        for row in range(self.table_standings.rowCount()):
+            html += "<tr>"
+            for col in range(self.table_standings.columnCount()):
+                item = self.table_standings.item(row, col)
+                value = item.text() if item else ""
+                html += f"<td>{value}</td>"
+            html += "</tr>"
+
+        html += "</table>"
+
+        # Add tiebreak legend
+        if self.tournament and hasattr(self.tournament, "tiebreak_order"):
+            html += '<div class="legend"><strong>Tiebreakers:</strong> '
+            legend_items = []
+            for i, tb_key in enumerate(self.tournament.tiebreak_order):
+                legend_items.append(
+                    f"TB{i+1} = {TIEBREAK_NAMES.get(tb_key, tb_key.title())}"
+                )
+            html += ", ".join(legend_items)
+            html += "</div>"
+
+        return html

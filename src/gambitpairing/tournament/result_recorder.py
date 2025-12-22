@@ -32,7 +32,7 @@ logger = setup_logger(__name__)
 
 class ResultRecorder:
     """Handles recording and validating match results.
-    
+
     This class is responsible for:
     - Recording match results with proper validation
     - Updating player statistics
@@ -47,12 +47,12 @@ class ResultRecorder:
         players: Dict[str, Player],
     ) -> bool:
         """Record results for all matches in a round.
-        
+
         Args:
             round_data: The round data to record results for
             results_data: List of (white_id, black_id, white_score) tuples
             players: Dictionary of all players (id -> Player)
-            
+
         Returns:
             True if all results recorded successfully, False if any errors occurred
         """
@@ -110,7 +110,7 @@ class ResultRecorder:
         players: Dict[str, Player],
     ) -> bool:
         """Validate a result entry before recording.
-        
+
         Returns:
             True if valid, False otherwise
         """
@@ -153,7 +153,7 @@ class ResultRecorder:
         players: Dict[str, Player],
     ) -> bool:
         """Record the result of a single game.
-        
+
         Returns:
             True if successful, False otherwise
         """
@@ -180,7 +180,7 @@ class ResultRecorder:
         self, bye_player_id: str, round_number: int, players: Dict[str, Player]
     ) -> bool:
         """Record a bye result for a player.
-        
+
         Returns:
             True if successful, False otherwise
         """
@@ -211,11 +211,11 @@ class ResultRecorder:
         self, round_data: RoundData, players: Dict[str, Player]
     ) -> bool:
         """Undo results for a round by removing them from player records.
-        
+
         Args:
             round_data: The round data to undo
             players: Dictionary of all players
-            
+
         Returns:
             True if successful, False otherwise
         """
@@ -255,7 +255,7 @@ class ResultRecorder:
 
     def _undo_player_result(self, player: Player, round_number: int) -> bool:
         """Undo a single player's result for a round.
-        
+
         Returns:
             True if successful, False otherwise
         """

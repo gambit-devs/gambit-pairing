@@ -20,15 +20,26 @@ from PyQt6.QtCore import Qt
 
 from gambitpairing.constants import DRAW_SCORE, LOSS_SCORE, WIN_SCORE
 from gambitpairing.gui.notournament_placeholder import NoTournamentPlaceholder
+from gambitpairing.gui.widgets.header import TabHeader
 
 
-class CrosstableTab(QtWidgets.QWidget):
+class CrosstableView(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.tournament = None
         self.main_layout = QtWidgets.QVBoxLayout(self)
-        self.crosstable_group = QtWidgets.QGroupBox("Cross-Table")
+
+        # Header
+        self.header = TabHeader("Crosstable")
+        self.main_layout.addWidget(self.header)
+
+        self.crosstable_group = QtWidgets.QGroupBox()
+        self.crosstable_group.setStyleSheet(
+            "QGroupBox { border: none; margin-top: 0px; }"
+        )
         crosstable_layout = QtWidgets.QVBoxLayout(self.crosstable_group)
+        crosstable_layout.setContentsMargins(0, 0, 0, 0)
+
         self.table_crosstable = QtWidgets.QTableWidget(0, 0)
         self.table_crosstable.setToolTip("Grid showing results between players.")
         self.table_crosstable.setEditTriggers(

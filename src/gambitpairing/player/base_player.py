@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from dateutil.relativedelta import relativedelta
 
 from gambitpairing.club import Club
-from gambitpairing.type_hints import BLACK, Colour, WHITE
+from gambitpairing.type_hints import BLACK, WHITE, Colour
 from gambitpairing.utils import generate_id, setup_logger
 from gambitpairing.utils.validation import validate_email, validate_phone
 
@@ -32,11 +32,11 @@ logger = setup_logger(__name__)
 
 class Player:
     """Represents a player in the tournament.
-    
+
     This class provides the core functionality for managing player data
     in chess tournaments, including history tracking, color balance,
     and tiebreak calculations.
-    
+
     Attributes:
         id: Unique identifier for the player
         name: Player's full name
@@ -70,7 +70,7 @@ class Player:
         gender: Optional[str] = None,
         date_of_birth: Optional[date] = None,
         federation: Optional[str] = None,
-        **kwargs  # Accept additional arguments for flexibility
+        **kwargs,  # Accept additional arguments for flexibility
     ) -> None:
         # Generate unique ID for internal use
         self.id: str = generate_id(self.__class__.__name__)
@@ -111,17 +111,17 @@ class Player:
 
     def _validate_and_set_phone(self, phone: Optional[str]) -> Optional[str]:
         """Validate and set phone number using validation utility.
-        
+
         Args:
             phone: Phone number to validate
-            
+
         Returns:
             Sanitized phone number or None
         """
         if phone is None:
             logger.debug("No phone given for: %s", self.name)
             return None
-        
+
         result = validate_phone(phone)
         if result.is_valid:
             return result.sanitized_value
@@ -130,32 +130,29 @@ class Player:
                 "Invalid phone number for %s: %s - %s",
                 self.name,
                 phone,
-                result.error_message
+                result.error_message,
             )
             return None
 
     def _validate_and_set_email(self, email: Optional[str]) -> Optional[str]:
         """Validate and set email address using validation utility.
-        
+
         Args:
             email: Email address to validate
-            
+
         Returns:
             Sanitized email or None
         """
         if email is None:
             logger.debug("No email given for: %s", self.name)
             return None
-        
+
         result = validate_email(email)
         if result.is_valid:
             return result.sanitized_value
         else:
             logger.warning(
-                "Invalid email for %s: %s - %s",
-                self.name,
-                email,
-                result.error_message
+                "Invalid email for %s: %s - %s", self.name, email, result.error_message
             )
             return None
 
@@ -177,11 +174,11 @@ class Player:
                 except (ValueError, AttributeError):
                     logger.warning("Invalid date format for %s: %s", self.name, dob)
                     return None
-            
+
             today = date.today()
             age = relativedelta(today, dob)
             return age.years
-        
+
         logger.debug("%s has no date of birth set", self.name)
         return None
 
@@ -207,7 +204,7 @@ class Player:
         self, players_dict: Dict[str, "Player"]
     ) -> List[Optional["Player"]]:
         """Resolve opponent IDs to Player objects using cached lookup.
-        
+
         Uses an internal cache to avoid repeated lookups for performance.
 
         Args:
@@ -225,7 +222,7 @@ class Player:
 
     def get_last_two_colors(self) -> Tuple[Optional[Colour], Optional[Colour]]:
         """Get the colors of the last two non-bye games played.
-        
+
         Returns:
             Tuple of (last_color, second_last_color), with None if not enough games
         """
@@ -240,7 +237,7 @@ class Player:
 
     def get_color_preference(self) -> Colour | None:
         """Determine color preference based on FIDE/US-CF pairing rules.
-        
+
         Rules:
         1. Absolute: If last two games had same color, MUST get the opposite
         2. Preference: If colors are unbalanced, prefer the color for balance
@@ -273,15 +270,15 @@ class Player:
         self, opponent: Optional["Player"], result: float, color: Optional[str]
     ) -> None:
         """Record the outcome of a round for this player.
-        
+
         This method updates both players' histories when a game is played,
         including scores, colors, and match details.
-        
+
         Args:
             opponent: Opponent player object (None for bye)
             result: Game result (1.0=win, 0.5=draw, 0.0=loss, 1.0 for bye)
             color: Color played ("White", "Black", or None for bye)
-            
+
         Side Effects:
             - Updates score, results, and history for both players
             - Invalidates opponent cache
@@ -302,7 +299,7 @@ class Player:
                 "opponent_score": opponent_score_before,
             }
         )
-        
+
         if opponent:
             opponent.match_history.append(
                 {
@@ -315,27 +312,27 @@ class Player:
         # Update scores
         self.score += result
         self.running_scores.append(self.score)
-        
+
         # Track colors
         self.color_history.append(color)  # type: ignore | color can be None for bye
         if color == "Black":
             self.num_black_games += 1
-        
+
         # Handle bye
         if opponent is None:
             self.has_received_bye = True
             logger.debug("Player %s received a bye in this round", self.name)
-        
+
         # Invalidate cache
         self._opponents_played_cache = []
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize player data to dictionary format.
-        
+
         Converts all public attributes to a dictionary suitable for JSON
         serialization or database storage. Date objects are converted to
         ISO format strings.
-        
+
         Returns:
             Dictionary containing all player data (excludes private attributes)
         """
@@ -352,7 +349,7 @@ class Player:
     @classmethod
     def from_dict(cls, player_data: Dict[str, Any]) -> "Player":
         """Create a Player instance from serialized dictionary data.
-        
+
         This method handles backward compatibility and automatically creates
         FidePlayer instances when FIDE-specific data is present.
 
@@ -361,7 +358,7 @@ class Player:
 
         Returns:
             Player or FidePlayer instance with restored state
-            
+
         Note:
             Handles backward compatibility for older save formats including:
             - sex/gender field consolidation
@@ -371,6 +368,7 @@ class Player:
         # Auto-detect and create FidePlayer if FIDE data present
         if cls.__name__ == "Player" and player_data.get("fide_id") is not None:
             from gambitpairing.player.fide_player import FidePlayer
+
             return FidePlayer.from_dict(player_data)
 
         # Handle backward compatibility for sex/gender field
@@ -408,20 +406,20 @@ class Player:
 
         # Ensure essential list attributes exist (backward compatibility)
         cls._ensure_list_attributes(player)
-        
+
         # Ensure boolean flags exist (backward compatibility)
         cls._ensure_boolean_attributes(player)
-        
+
         # Ensure tiebreakers dict exists
         if not hasattr(player, "tiebreakers") or player.tiebreakers is None:
             player.tiebreakers = {}
 
         return player
-    
+
     @staticmethod
     def _ensure_list_attributes(player: "Player") -> None:
         """Ensure all list attributes exist for backward compatibility.
-        
+
         Args:
             player: Player instance to update
         """
@@ -433,15 +431,15 @@ class Player:
             "float_history",
             "match_history",
         ]
-        
+
         for attr_name in list_attributes:
             if not hasattr(player, attr_name) or getattr(player, attr_name) is None:
                 setattr(player, attr_name, [])
-    
+
     @staticmethod
     def _ensure_boolean_attributes(player: "Player") -> None:
         """Ensure all boolean attributes exist for backward compatibility.
-        
+
         Args:
             player: Player instance to update
         """
@@ -457,18 +455,18 @@ class Player:
 
         if not hasattr(player, "is_active"):
             player.is_active = True
-    
+
     def __repr__(self) -> str:
         """Return string representation for debugging.
-        
+
         Returns:
             String representation showing name and rating
         """
         return f"Player(name='{self.name}', rating={self.rating}, id='{self.id}')"
-    
+
     def __str__(self) -> str:
         """Return human-readable string representation.
-        
+
         Returns:
             Player name and rating
         """

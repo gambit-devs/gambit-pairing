@@ -28,7 +28,7 @@ from gambitpairing.constants import DEFAULT_TIEBREAK_SORT_ORDER
 @dataclass
 class TournamentConfig:
     """Configuration settings for a tournament.
-    
+
     Attributes:
         name: Tournament name
         num_rounds: Number of rounds in the tournament
@@ -68,7 +68,7 @@ class TournamentConfig:
 @dataclass
 class MatchResult:
     """Represents the result of a single match.
-    
+
     Attributes:
         white_id: ID of the white player
         black_id: ID of the black player
@@ -106,7 +106,7 @@ class MatchResult:
 @dataclass
 class RoundData:
     """Contains all data for a single round.
-    
+
     Attributes:
         round_number: The round number (1-indexed)
         pairings: List of tuples (white_player_id, black_player_id)
@@ -146,7 +146,7 @@ class RoundData:
 @dataclass
 class PairingHistory:
     """Tracks historical pairings to prevent repeats.
-    
+
     Attributes:
         previous_matches: Set of frozensets containing player ID pairs who have played
         manual_adjustments: Dict mapping round numbers to manual pairing adjustments

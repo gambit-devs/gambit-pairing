@@ -2,7 +2,7 @@ from PyQt6 import QtCore, QtWidgets
 
 
 class UpdateDownloadDialog(QtWidgets.QDialog):
-    """Dialog to show download progress, completion, and errors with a modern look."""
+    """Dialog to show download progress, completion, and errors."""
 
     def __init__(self, parent=None):
         super().__init__(parent)

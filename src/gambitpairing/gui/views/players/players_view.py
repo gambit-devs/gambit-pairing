@@ -30,6 +30,7 @@ from gambitpairing.gui.notournament_placeholder import (
     NoTournamentPlaceholder,
     PlayerPlaceholder,
 )
+from gambitpairing.gui.widgets.header import TabHeader
 from gambitpairing.player import Player, create_player, create_player_from_dict
 
 
@@ -47,7 +48,7 @@ class NumericTableWidgetItem(QtWidgets.QTableWidgetItem):
             return super().__lt__(other)
 
 
-class PlayersTab(QtWidgets.QWidget):
+class PlayersView(QtWidgets.QWidget):
     status_message = pyqtSignal(str)
     history_message = pyqtSignal(str)
     dirty = pyqtSignal()
@@ -58,9 +59,16 @@ class PlayersTab(QtWidgets.QWidget):
         super().__init__(parent)
         self.tournament = None
         self.main_layout = QtWidgets.QVBoxLayout(self)
-        self.player_group = QtWidgets.QGroupBox("Players")
+
+        # Header
+        self.header = TabHeader("Players")
+        self.main_layout.addWidget(self.header)
+
+        self.player_group = QtWidgets.QGroupBox()
+        self.player_group.setStyleSheet("QGroupBox { border: none; margin-top: 0px; }")
         self.player_group.setToolTip("Manage players. Right-click a row for actions.")
         player_group_layout = QtWidgets.QVBoxLayout(self.player_group)
+        player_group_layout.setContentsMargins(0, 0, 0, 0)
 
         # --- Player Table ---
         self.table_players = QtWidgets.QTableWidget()
@@ -261,10 +269,10 @@ class PlayersTab(QtWidgets.QWidget):
                     self, "Validation Error", "Player name cannot be empty."
                 )
                 return
-            
+
             # Check if we're editing an existing player
             editing_player_id = dialog.get_editing_player_id()
-            
+
             if editing_player_id:
                 # Editing mode - update the existing player
                 player = self.tournament.players.get(editing_player_id)
@@ -273,16 +281,18 @@ class PlayersTab(QtWidgets.QWidget):
                         self, "Error", "Player not found in tournament."
                     )
                     return
-                
+
                 # Check for duplicate name only if the name has changed
                 if data["name"] != player.name and any(
                     p.name == data["name"] for p in self.tournament.players.values()
                 ):
                     QtWidgets.QMessageBox.warning(
-                        self, "Duplicate Player", f"Player '{data['name']}' already exists."
+                        self,
+                        "Duplicate Player",
+                        f"Player '{data['name']}' already exists.",
                     )
                     return
-                
+
                 # Update player attributes
                 self._update_player_from_data(player, data)
                 self.update_player_table_row(player)
@@ -290,15 +300,19 @@ class PlayersTab(QtWidgets.QWidget):
                 self.dirty.emit()
             else:
                 # Add mode - create new player
-                if any(p.name == data["name"] for p in self.tournament.players.values()):
+                if any(
+                    p.name == data["name"] for p in self.tournament.players.values()
+                ):
                     QtWidgets.QMessageBox.warning(
-                        self, "Duplicate Player", f"Player '{data['name']}' already exists."
+                        self,
+                        "Duplicate Player",
+                        f"Player '{data['name']}' already exists.",
                     )
                     return
-                
+
                 # Use factory to create player (automatically detects FidePlayer)
                 new_player = create_player_from_dict(data)
-                
+
                 self.tournament.players[new_player.id] = new_player
                 self.add_player_to_table(new_player)
                 self.status_message.emit(f"Added player: {new_player.name}")
@@ -306,17 +320,17 @@ class PlayersTab(QtWidgets.QWidget):
                     f"Player '{new_player.name}' ({new_player.rating}) added."
                 )
                 self.dirty.emit()
-            
+
             self.update_ui_state()
 
     def _update_player_from_data(self, player: Player, data: dict) -> None:
         """
         Intelligently update a player object from dictionary data.
-        
+
         This method handles the complexity of updating player attributes,
         including FIDE-specific data for FidePlayer instances. It uses
         reflection to avoid hardcoding attribute names.
-        
+
         Parameters
         ----------
         player : Player
@@ -325,18 +339,34 @@ class PlayersTab(QtWidgets.QWidget):
             Dictionary containing updated player data
         """
         from gambitpairing.player import FidePlayer
-        
+
         # Core attributes that all players have
-        core_attrs = ['name', 'rating', 'phone', 'email', 'club', 'gender', 'dob', 'federation']
-        
+        core_attrs = [
+            "name",
+            "rating",
+            "phone",
+            "email",
+            "club",
+            "gender",
+            "dob",
+            "federation",
+        ]
+
         # Update core attributes
         for attr in core_attrs:
             if attr in data:
                 setattr(player, attr, data[attr])
-        
+
         # Update FIDE-specific attributes if this is a FidePlayer
         if isinstance(player, FidePlayer):
-            fide_attrs = ['fide_id', 'fide_title', 'fide_standard', 'fide_rapid', 'fide_blitz', 'birth_year']
+            fide_attrs = [
+                "fide_id",
+                "fide_title",
+                "fide_standard",
+                "fide_rapid",
+                "fide_blitz",
+                "birth_year",
+            ]
             for attr in fide_attrs:
                 if attr in data and data.get(attr) is not None:
                     setattr(player, attr, data[attr])
@@ -485,7 +515,7 @@ class PlayersTab(QtWidgets.QWidget):
                     rating = (
                         int(rating_str) if rating_str and rating_str.isdigit() else None
                     )
-                    
+
                     # Use factory to create player
                     player = create_player(
                         name=name,
@@ -497,7 +527,7 @@ class PlayersTab(QtWidgets.QWidget):
                         club=row.get("Club"),
                         federation=row.get("Federation"),
                     )
-                    
+
                     self.tournament.players[player.id] = player
                     added_count += 1
             if added_count > 0:
@@ -507,7 +537,7 @@ class PlayersTab(QtWidgets.QWidget):
                 self.dirty.emit()
                 self.refresh_player_list()
                 self.update_ui_state()
-                # Modern notification
+                # Show notification
                 try:
                     show_notification(
                         self,

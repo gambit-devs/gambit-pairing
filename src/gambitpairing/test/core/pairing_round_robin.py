@@ -11,12 +11,11 @@ from typing import List, Optional, Set, Tuple
 
 import pytest
 
-from gambitpairing import BERGER_TABLES, RoundRobin, create_round_robin_pairings
 from gambitpairing.exceptions import PairingException
-from gambitpairing.pairing_round_robin import (
+from gambitpairing.pairing.round_robin import (
     BERGER_TABLES,
     RoundRobin,
-    create_round_robin_pairings,
+    create_round_robin,
 )
 from gambitpairing.player import Player, create_player
 
@@ -27,7 +26,7 @@ class TestRoundRobinBasic:
     def test_valid_player_counts(self):
         """Test that RoundRobin accepts valid player counts (3-16)."""
         for n in range(3, 17):
-            players = [create_player(f"Player{i}") for i in range(n)]
+            players = [create_player(name=f"Player{i}") for i in range(n)]
             tournament = RoundRobin(players)
             assert len(tournament.players) == n
             assert tournament.number_of_rounds > 0
@@ -36,26 +35,31 @@ class TestRoundRobinBasic:
         """Test that RoundRobin rejects invalid player counts."""
         # Too few players
         with pytest.raises(PairingException):
-            RoundRobin([create_player("A"), create_player("B")])
+            RoundRobin([create_player(name="P1"), create_player(name="P2")])
 
         with pytest.raises(PairingException):
-            RoundRobin([create_player("A")])
+            RoundRobin([create_player(name="P1")])
 
         with pytest.raises(PairingException):
             RoundRobin([])
 
         # Too many players
-        players_17 = [create_player(f"Player{i}") for i in range(17)]
+        players_17 = [create_player(name=f"P{i}") for i in range(17)]
         with pytest.raises(PairingException):
             RoundRobin(players_17)
 
-        players_20 = [create_player(f"Player{i}") for i in range(20)]
+        players_20 = [create_player(name=f"P{i}") for i in range(20)]
         with pytest.raises(PairingException):
             RoundRobin(players_20)
 
     def test_player_order_preservation(self):
         """Test that player order is preserved in the tournament."""
-        players = [create_player("Alice"), create_player("Bob"), create_player("Charlie"), create_player("David")]
+        players = [
+            create_player(name="Player"),
+            create_player(name="Player"),
+            create_player(name="Player"),
+            create_player(name="Player"),
+        ]
         tournament = RoundRobin(players)
 
         for i, player in enumerate(players):
@@ -85,7 +89,7 @@ class TestRoundRobinStructure:
         ]
 
         for n_players, expected_rounds in test_cases:
-            players = [create_player(f"P{i}") for i in range(n_players)]
+            players = [create_player(name=f"P{i}") for i in range(n_players)]
             tournament = RoundRobin(players)
             assert tournament.number_of_rounds == expected_rounds
             assert len(tournament.round_pairings) == expected_rounds
@@ -95,7 +99,7 @@ class TestRoundRobinStructure:
         odd_player_counts = [3, 5, 7, 9, 11, 13, 15]
 
         for n in odd_player_counts:
-            players = [create_player(f"P{i}") for i in range(n)]
+            players = [create_player(name=f"P{i}") for i in range(n)]
             tournament = RoundRobin(players)
 
             # Should have bye number set
@@ -116,7 +120,7 @@ class TestRoundRobinStructure:
         even_player_counts = [4, 6, 8, 10, 12, 14, 16]
 
         for n in even_player_counts:
-            players = [create_player(f"P{i}") for i in range(n)]
+            players = [create_player(name=f"P{i}") for i in range(n)]
             tournament = RoundRobin(players)
 
             # Should not have bye number set
@@ -133,7 +137,7 @@ class TestRoundRobinPairings:
     def test_all_players_paired_each_round(self):
         """Test that all active players are paired in each round."""
         for n in range(3, 17):
-            players = [create_player(f"P{i}") for i in range(n)]
+            players = [create_player(name=f"P{i}") for i in range(n)]
             tournament = RoundRobin(players)
 
             for round_num, (matches, bye_player) in enumerate(
@@ -156,7 +160,7 @@ class TestRoundRobinPairings:
     def test_no_duplicate_matches_in_round(self):
         """Test that no player appears twice in the same round."""
         for n in range(3, 17):
-            players = [create_player(f"P{i}") for i in range(n)]
+            players = [create_player(name=f"P{i}") for i in range(n)]
             tournament = RoundRobin(players)
 
             for round_num, (matches, bye_player) in enumerate(
@@ -178,7 +182,7 @@ class TestRoundRobinPairings:
     def test_round_robin_completeness(self):
         """Test that every player plays every other player exactly once."""
         for n in range(3, 17):
-            players = [create_player(f"P{i}") for i in range(n)]
+            players = [create_player(name=f"P{i}") for i in range(n)]
             tournament = RoundRobin(players)
 
             # Track all pairings across all rounds
@@ -205,7 +209,7 @@ class TestRoundRobinPairings:
     def test_player_plays_correct_number_of_games(self):
         """Test that each player plays the correct number of games."""
         for n in range(3, 17):
-            players = [create_player(f"P{i}") for i in range(n)]
+            players = [create_player(name=f"P{i}") for i in range(n)]
             tournament = RoundRobin(players)
 
             # Count games per player
@@ -246,7 +250,7 @@ class TestRoundRobinMethods:
 
     def test_get_round_pairings_valid_rounds(self):
         """Test getting pairings for valid round numbers."""
-        players = [create_player(f"P{i}") for i in range(4)]
+        players = [create_player(name=f"P{i}") for i in range(4)]
         tournament = RoundRobin(players)
 
         # Test all valid rounds (1-indexed)
@@ -262,7 +266,7 @@ class TestRoundRobinMethods:
 
     def test_get_round_pairings_invalid_rounds(self):
         """Test that invalid round numbers raise exceptions."""
-        players = [create_player(f"P{i}") for i in range(4)]
+        players = [create_player(name=f"P{i}") for i in range(4)]
         tournament = RoundRobin(players)
 
         # Test invalid round numbers
@@ -279,7 +283,7 @@ class TestRoundRobinMethods:
 
     def test_get_all_pairings(self):
         """Test getting all pairings at once."""
-        players = [create_player(f"P{i}") for i in range(5)]
+        players = [create_player(name=f"P{i}") for i in range(5)]
         tournament = RoundRobin(players)
 
         all_pairings = tournament.get_all_pairings()
@@ -294,7 +298,12 @@ class TestRoundRobinMethods:
 
     def test_get_player_schedule(self):
         """Test getting a player's complete schedule."""
-        players = [create_player("Alice"), create_player("Bob"), create_player("Charlie"), create_player("David")]
+        players = [
+            create_player(name="Player"),
+            create_player(name="Player"),
+            create_player(name="Player"),
+            create_player(name="Player"),
+        ]
         tournament = RoundRobin(players)
         alice = players[0]
 
@@ -318,10 +327,10 @@ class TestRoundRobinMethods:
 
     def test_get_player_schedule_invalid_player(self):
         """Test that invalid player raises exception for schedule."""
-        players = [create_player(f"P{i}") for i in range(4)]
+        players = [create_player(name=f"P{i}") for i in range(4)]
         tournament = RoundRobin(players)
 
-        invalid_player = create_player("NotInTournament")
+        invalid_player = create_player(name="Player")
 
         with pytest.raises(PairingException):
             tournament.get_player_schedule(invalid_player)
@@ -332,7 +341,11 @@ class TestRoundRobinSpecialCases:
 
     def test_minimum_tournament_size(self):
         """Test tournament with minimum 3 players."""
-        players = [create_player("A"), create_player("B"), create_player("C")]
+        players = [
+            create_player(name="Player"),
+            create_player(name="Player"),
+            create_player(name="Player"),
+        ]
         tournament = RoundRobin(players)
 
         assert len(tournament.players) == 3
@@ -348,7 +361,7 @@ class TestRoundRobinSpecialCases:
 
     def test_maximum_tournament_size(self):
         """Test tournament with maximum 16 players."""
-        players = [create_player(f"P{i}") for i in range(16)]
+        players = [create_player(name=f"P{i}") for i in range(16)]
         tournament = RoundRobin(players)
 
         assert len(tournament.players) == 16
@@ -362,7 +375,11 @@ class TestRoundRobinSpecialCases:
 
     def test_string_representations(self):
         """Test string representations of tournament."""
-        players = [create_player("Alice"), create_player("Bob"), create_player("Charlie")]
+        players = [
+            create_player(name="Player"),
+            create_player(name="Player"),
+            create_player(name="Player"),
+        ]
         tournament = RoundRobin(players)
 
         # Test __str__
@@ -378,20 +395,24 @@ class TestRoundRobinSpecialCases:
         assert "rounds=3" in repr_str
 
 
-class TestCreateRoundRobinPairings:
-    """Test the factory function create_round_robin_pairings."""
+class TestCreateRoundRobin:
+    """Test the factory function create_round_robin."""
 
     def test_factory_function(self):
         """Test that the factory function works correctly."""
-        players = [create_player(f"P{i}") for i in range(6)]
+        players = [create_player(name=f"P{i}") for i in range(6)]
 
-        pairings = create_round_robin_pairings(players)
+        tournament = create_round_robin(players)
 
-        assert isinstance(pairings, tuple)
-        assert len(pairings) == 5  # 5-6 player tournament has 5 rounds
+        assert isinstance(tournament, RoundRobin)
+        assert tournament.number_of_rounds == 5  # 5-6 player tournament has 5 rounds
+
+        # Get all pairings
+        all_pairings = tournament.get_all_pairings()
+        assert len(all_pairings) == 5
 
         # Each pairing should be properly formatted
-        for round_pairings in pairings:
+        for round_pairings in all_pairings:
             matches, bye_player = round_pairings
             assert isinstance(matches, tuple)
             assert bye_player is None or isinstance(bye_player, Player)
@@ -400,12 +421,12 @@ class TestCreateRoundRobinPairings:
         """Test that factory function handles invalid input."""
         # Too few players
         with pytest.raises(PairingException):
-            create_round_robin_pairings([create_player("A")])
+            create_round_robin([create_player(name="Player")])
 
         # Too many players
-        players_20 = [create_player(f"P{i}") for i in range(20)]
+        players_20 = [create_player(name=f"P{i}") for i in range(20)]
         with pytest.raises(PairingException):
-            create_round_robin_pairings(players_20)
+            create_round_robin(players_20)
 
 
 class TestBergerTables:
@@ -439,21 +460,26 @@ class TestBergerTables:
 @pytest.fixture
 def small_tournament():
     """Fixture for a small 4-player tournament."""
-    players = [create_player("Alice"), create_player("Bob"), create_player("Charlie"), create_player("David")]
+    players = [
+        create_player(name="Player"),
+        create_player(name="Player"),
+        create_player(name="Player"),
+        create_player(name="Player"),
+    ]
     return RoundRobin(players)
 
 
 @pytest.fixture
 def medium_tournament():
     """Fixture for a medium 8-player tournament."""
-    players = [create_player(f"Player{i}") for i in range(8)]
+    players = [create_player(name=f"P{i}") for i in range(8)]
     return RoundRobin(players)
 
 
 @pytest.fixture
 def large_tournament():
     """Fixture for a large 12-player tournament."""
-    players = [create_player(f"P{i}") for i in range(12)]
+    players = [create_player(name=f"P{i}") for i in range(12)]
     return RoundRobin(players)
 
 
@@ -483,7 +509,7 @@ class TestRoundRobinIntegration:
     def test_medium_tournament_bye_handling(self):
         """Test bye handling in odd-numbered tournament."""
         # Create tournament with 7 players (odd)
-        players = [create_player(f"P{i}") for i in range(7)]
+        players = [create_player(name=f"P{i}") for i in range(7)]
         tournament = RoundRobin(players)
 
         # Track bye distribution
@@ -526,7 +552,7 @@ def run_tests():
     # Test basic functionality
     try:
         # Test valid tournament creation
-        players = [create_player(f"P{i}") for i in range(4)]
+        players = [create_player(name=f"P{i}") for i in range(4)]
         tournament = RoundRobin(players)
         print(f"✓ Created tournament with {len(tournament.players)} players")
 
@@ -537,7 +563,7 @@ def run_tests():
 
         # Test invalid player count
         try:
-            RoundRobin([create_player("A")])
+            RoundRobin([create_player(name="Player")])
             print("✗ Should have failed with too few players")
         except PairingException:
             print("✓ Correctly rejected too few players")

@@ -17,6 +17,8 @@
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt, pyqtSignal
 
+from gambitpairing.gui.gui_utils import set_svg_icon
+
 
 class NoTournamentPlaceholder(QtWidgets.QWidget):
     """Consistent placeholder widget shown when no tournament is loaded."""
@@ -30,7 +32,7 @@ class NoTournamentPlaceholder(QtWidgets.QWidget):
         self._setup_ui()
 
     def _setup_ui(self):
-        """Set up the placeholder UI with improved, app-matching styling."""
+        """Set up the placeholder UI."""
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(48, 48, 48, 48)
         layout.setSpacing(0)
@@ -182,7 +184,7 @@ class PlayerPlaceholder(QtWidgets.QWidget):
         self._setup_ui()
 
     def _setup_ui(self):
-        """Set up the placeholder UI with improved, app-matching styling."""
+        """Set up the placeholder UI."""
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(48, 48, 48, 48)
         layout.setSpacing(0)

@@ -15,7 +15,7 @@ dependencies = [
     "packaging",
     "python-dateutil",
     "importlib-resources",
-    "Pillow",  # Required for MSI branding generation
+    "Pillow",
 ]
 license = {text = "GPL-3.0-or-later"}
 
@@ -51,8 +51,8 @@ gambit-pairing = "gambitpairing.__main__:main"
 
 [project.urls]
 Homepage = "https://www.chickaboo.net/gambit-pairing/"
-Repository = "https://github.com/Chickaboo/gambit-pairing"
-Issues = "https://github.com/Chickaboo/gambit-pairing/issues"
+Repository = "https://github.com/gambit-devs/gambit-pairing"
+Issues = "https://github.com/gambit-devs/gambit-pairing/issues"
 
 [project.optional-dependencies]
 dev = [

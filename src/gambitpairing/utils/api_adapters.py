@@ -16,13 +16,13 @@ logger = setup_logger(__name__)
 
 def fide_api_to_player_dict(fide_data: Dict[str, Any]) -> Dict[str, Any]:
     """Convert FIDE API response to player dictionary for factory.
-    
+
     Args:
         fide_data: Raw data from FIDE API search results
-        
+
     Returns:
         Dictionary compatible with create_player_from_dict()
-        
+
     Example:
         >>> fide_data = {
         ...     "fide_id": "123456",
@@ -45,10 +45,10 @@ def fide_api_to_player_dict(fide_data: Dict[str, Any]) -> Dict[str, Any]:
             fide_id = int(str(fide_data["fide_id"]).strip())
         except (ValueError, TypeError):
             logger.warning("Invalid FIDE ID: %s", fide_data.get("fide_id"))
-    
+
     # Parse name (FIDE format is usually "Last, First")
     name = fide_data.get("name", "").strip()
-    
+
     # Parse birth year to date of birth
     date_of_birth = None
     birth_year = fide_data.get("birth_year")
@@ -60,15 +60,15 @@ def fide_api_to_player_dict(fide_data: Dict[str, Any]) -> Dict[str, Any]:
                 date_of_birth = date(year, 1, 1)
         except (ValueError, TypeError):
             logger.debug("Could not parse birth year: %s", birth_year)
-    
+
     # Use standard rating as primary, fall back to rapid/blitz
     rating = (
-        fide_data.get("standard_rating") or
-        fide_data.get("rapid_rating") or
-        fide_data.get("blitz_rating") or
-        0
+        fide_data.get("standard_rating")
+        or fide_data.get("rapid_rating")
+        or fide_data.get("blitz_rating")
+        or 0
     )
-    
+
     return {
         "name": name,
         "rating": rating,
@@ -85,13 +85,13 @@ def fide_api_to_player_dict(fide_data: Dict[str, Any]) -> Dict[str, Any]:
 
 def cfc_api_to_player_dict(cfc_data: Dict[str, Any]) -> Dict[str, Any]:
     """Convert CFC API response to player dictionary for factory.
-    
+
     Args:
         cfc_data: Raw data from CFC API player endpoint
-        
+
     Returns:
         Dictionary compatible with create_player_from_dict()
-        
+
     Example:
         >>> cfc_data = {
         ...     "cfc_id": 123456,
@@ -108,47 +108,47 @@ def cfc_api_to_player_dict(cfc_data: Dict[str, Any]) -> Dict[str, Any]:
     first_name = cfc_data.get("name_first", "").strip()
     last_name = cfc_data.get("name_last", "").strip()
     name = f"{first_name} {last_name}".strip()
-    
+
     # Use regular rating as primary, fall back to quick rating
     rating = cfc_data.get("regular_rating") or cfc_data.get("quick_rating") or 0
-    
+
     # Build location string from city and province
     city = cfc_data.get("addr_city", "").strip()
     province = cfc_data.get("addr_province", "").strip()
     location = f"{city}, {province}" if city and province else (city or province)
-    
+
     # FIDE ID if available
     fide_id = cfc_data.get("fide_id")
     if fide_id and fide_id != 0:
         fide_id = int(fide_id)
     else:
         fide_id = None
-    
+
     player_dict = {
         "name": name,
         "rating": rating,
         "federation": "CAN",  # CFC is Canadian federation
     }
-    
+
     # Add FIDE ID if present
     if fide_id:
         player_dict["fide_id"] = fide_id
-    
+
     # Add location as club if available
     if location:
         player_dict["club"] = location
-    
+
     return player_dict
 
 
 def fide_profile_to_player_dict(profile_data: Dict[str, Any]) -> Dict[str, Any]:
     """Convert FIDE profile page data to player dictionary.
-    
+
     This is used when get_fide_player_info returns detailed profile data.
-    
+
     Args:
         profile_data: Parsed FIDE profile data
-        
+
     Returns:
         Dictionary compatible with create_player_from_dict()
     """
@@ -157,20 +157,19 @@ def fide_profile_to_player_dict(profile_data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def api_response_to_players(
-    api_responses: List[Dict[str, Any]],
-    source: str = "fide"
+    api_responses: List[Dict[str, Any]], source: str = "fide"
 ) -> List[Any]:  # Returns List[Player]
     """Convert list of API responses to Player objects.
-    
+
     Batch conversion with error handling for individual failures.
-    
+
     Args:
         api_responses: List of API response dictionaries
         source: API source ('fide', 'cfc', 'uscf')
-        
+
     Returns:
         List of Player objects (may be shorter than input if some fail)
-        
+
     Example:
         >>> from gambitpairing.utils.api import search_fide_players
         >>> api_results = search_fide_players("Carlsen")
@@ -178,7 +177,7 @@ def api_response_to_players(
     """
     # Import here to avoid circular dependency
     from gambitpairing.player import create_player_from_dict
-    
+
     # Select appropriate adapter
     if source.lower() == "fide":
         adapter = fide_api_to_player_dict
@@ -187,7 +186,7 @@ def api_response_to_players(
     else:
         logger.warning("Unknown API source: %s, using FIDE adapter", source)
         adapter = fide_api_to_player_dict
-    
+
     players = []
     for api_data in api_responses:
         try:
@@ -198,26 +197,26 @@ def api_response_to_players(
             logger.warning(
                 "Failed to create player from API data: %s - %s",
                 api_data.get("name", "Unknown"),
-                e
+                e,
             )
             continue
-    
+
     return players
 
 
 def create_player_from_fide_search(fide_data: Dict[str, Any]) -> Optional[Any]:
     """Create a single Player from FIDE search result.
-    
+
     Convenience function for single player creation.
-    
+
     Args:
         fide_data: Single FIDE API search result
-        
+
     Returns:
         Player object or None if creation fails
     """
     from gambitpairing.player import create_player_from_dict
-    
+
     try:
         player_dict = fide_api_to_player_dict(fide_data)
         return create_player_from_dict(player_dict)
@@ -228,17 +227,17 @@ def create_player_from_fide_search(fide_data: Dict[str, Any]) -> Optional[Any]:
 
 def create_player_from_cfc_data(cfc_data: Dict[str, Any]) -> Optional[Any]:
     """Create a single Player from CFC API response.
-    
+
     Convenience function for single player creation.
-    
+
     Args:
         cfc_data: Single CFC API player response
-        
+
     Returns:
         Player object or None if creation fails
     """
     from gambitpairing.player import create_player_from_dict
-    
+
     try:
         player_dict = cfc_api_to_player_dict(cfc_data)
         return create_player_from_dict(player_dict)

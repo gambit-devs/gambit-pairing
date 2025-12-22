@@ -5,6 +5,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import QObject, Qt, QThread, pyqtSignal
 
+from gambitpairing.gui.gui_utils import get_colored_icon, set_svg_icon
 from gambitpairing.gui.notification import show_notification
 from gambitpairing.player import Player, create_player_from_dict
 from gambitpairing.utils.api import (
@@ -13,8 +14,8 @@ from gambitpairing.utils.api import (
     search_fide_players,
 )
 from gambitpairing.utils.api_adapters import (
-    fide_api_to_player_dict,
     cfc_api_to_player_dict,
+    fide_api_to_player_dict,
 )
 
 # FIDE columns with better minimum widths
@@ -353,7 +354,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         return widget
 
     def _copy_to_clipboard(self, text: str, field_name: str = "") -> None:
-        """Copy text to clipboard with improved feedback using notification."""
+        """Copy text to clipboard with feedback using notification."""
         if not text.strip():
             show_notification(
                 self,
@@ -389,7 +390,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
     def _create_copy_button(
         self, tooltip_text: str, connected_widget: QtWidgets.QLineEdit, field_name: str
     ) -> QtWidgets.QPushButton:
-        """Create a modern, theme-consistent copy button with clipboard icon and styling."""
+        """Create a copy button with clipboard icon and styling."""
         btn = QtWidgets.QPushButton()
         btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         btn.setFlat(True)
@@ -404,8 +405,9 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         except Exception:
             icon = None
         if not icon or icon.isNull():
-            # Fallback: use a simple Unicode clipboard symbol
-            btn.setText("⧉")
+            # Fallback: use SVG
+            icon = get_colored_icon("copy.svg", "#444", 16)
+            btn.setIcon(icon)
             btn.setStyleSheet(
                 """
                 QPushButton {
@@ -801,6 +803,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         try:
             # Convert CFC API data to standardized player dict using adapter
             from gambitpairing.utils.api_adapters import cfc_api_to_player_dict
+
             standardized_data = cfc_api_to_player_dict(player_data)
 
             # Switch to Player Details tab
@@ -813,7 +816,9 @@ class PlayerManagementDialog(QtWidgets.QDialog):
             # Set gender
             gender = standardized_data.get("gender")
             if gender:
-                gender_text = "Male" if gender == "M" else "Female" if gender == "F" else ""
+                gender_text = (
+                    "Male" if gender == "M" else "Female" if gender == "F" else ""
+                )
                 if gender_text:
                     idx = self.gender_combo.findText(gender_text)
                     if idx >= 0:
@@ -1464,6 +1469,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
 
         # Convert FIDE API data to standardized player dict using adapter
         from gambitpairing.utils.api_adapters import fide_api_to_player_dict
+
         standardized_data = fide_api_to_player_dict(player_data)
 
         # Update details form with standardized data
@@ -1496,7 +1502,9 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         # Show FIDE info (now editable)
         self.fide_id_edit.setText(str(standardized_data.get("fide_id", "") or ""))
         self.fide_title_edit.setText(str(standardized_data.get("fide_title", "") or ""))
-        self.fide_std_edit.setText(str(standardized_data.get("fide_standard", "") or ""))
+        self.fide_std_edit.setText(
+            str(standardized_data.get("fide_standard", "") or "")
+        )
         self.fide_rapid_edit.setText(str(standardized_data.get("fide_rapid", "") or ""))
         self.fide_blitz_edit.setText(str(standardized_data.get("fide_blitz", "") or ""))
 
@@ -1790,7 +1798,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
 
     def get_editing_player_id(self) -> Optional[str]:
         """Get the ID of the player being edited, if any.
-        
+
         Returns:
             Player ID if editing an existing player, None if adding a new player
         """

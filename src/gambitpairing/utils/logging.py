@@ -48,7 +48,7 @@ def setup_logger(logger_name: str) -> logging.Logger:
         the created logger
     """
     global _LOG_PATH_PRINTED
-    
+
     # Setup logging to file and console
     lgr = logging.getLogger(name=logger_name)
     lgr.setLevel(logging.INFO)  # Set minimum level

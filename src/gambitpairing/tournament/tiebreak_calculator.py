@@ -40,7 +40,7 @@ logger = setup_logger(__name__)
 
 class TiebreakCalculator:
     """Calculates tiebreak scores for tournament standings.
-    
+
     This class implements various tiebreak systems including:
     - Median Buchholz (Modified Median)
     - Solkoff (Buchholz)
@@ -52,7 +52,7 @@ class TiebreakCalculator:
 
     def calculate_all_tiebreaks(self, players: Dict[str, Player]) -> None:
         """Calculate all tiebreaks for all players.
-        
+
         Args:
             players: Dictionary of all players (id -> Player)
         """
@@ -68,7 +68,7 @@ class TiebreakCalculator:
         self, player: Player, all_players: Dict[str, Player]
     ) -> None:
         """Calculate all tiebreak scores for a single player.
-        
+
         Args:
             player: The player to calculate tiebreaks for
             all_players: Dictionary of all players for opponent lookups
@@ -106,9 +106,7 @@ class TiebreakCalculator:
                     sb_score += 0.5 * opp_score
 
         # Calculate individual tiebreaks
-        player.tiebreakers[TB_MEDIAN] = self._calculate_median(
-            player, opponent_scores
-        )
+        player.tiebreakers[TB_MEDIAN] = self._calculate_median(player, opponent_scores)
         player.tiebreakers[TB_SOLKOFF] = sum(opponent_scores)
         player.tiebreakers[TB_CUMULATIVE] = (
             sum(player.running_scores) if player.running_scores else 0.0
@@ -118,20 +116,18 @@ class TiebreakCalculator:
         player.tiebreakers[TB_MOST_BLACKS] = float(player.num_black_games)
         player.tiebreakers[TB_HEAD_TO_HEAD] = 0.0  # Calculated when comparing players
 
-    def _calculate_median(
-        self, player: Player, opponent_scores: List[float]
-    ) -> float:
+    def _calculate_median(self, player: Player, opponent_scores: List[float]) -> float:
         """Calculate Modified Median (USCF Median Buchholz).
-        
+
         USCF Rule 34E3:
         - If player scored >50%, drop lowest opponent score
-        - If player scored <50%, drop highest opponent score  
+        - If player scored <50%, drop highest opponent score
         - If player scored exactly 50%, drop both highest and lowest
-        
+
         Args:
             player: The player to calculate for
             opponent_scores: List of opponent scores
-            
+
         Returns:
             The median buchholz score
         """
@@ -186,11 +182,11 @@ class TiebreakCalculator:
         self, player1: Player, player2: Player
     ) -> tuple[bool, bool]:
         """Calculate head-to-head results between two players.
-        
+
         Args:
             player1: First player
             player2: Second player
-            
+
         Returns:
             Tuple of (player1_won, player2_won) booleans
         """

@@ -1715,11 +1715,13 @@ def _compute_comprehensive_fide_quality_metrics(config: Dict) -> None:
             for p1, p2 in pairings
             if (
                 _has_absolute_color_preference(p1)
-                and _get_color_preference(p1) != (WHITE if p1 == pairings[0][0] else BLACK)
+                and _get_color_preference(p1)
+                != (WHITE if p1 == pairings[0][0] else BLACK)
             )
             or (
                 _has_absolute_color_preference(p2)
-                and _get_color_preference(p2) != (BLACK if p1 == pairings[0][0] else WHITE)
+                and _get_color_preference(p2)
+                != (BLACK if p1 == pairings[0][0] else WHITE)
             )
         )
         if pairings
@@ -1734,12 +1736,14 @@ def _compute_comprehensive_fide_quality_metrics(config: Dict) -> None:
             if (
                 _has_strong_color_preference(p1)
                 and not _has_absolute_color_preference(p1)
-                and _get_color_preference(p1) != (WHITE if p1 == pairings[0][0] else BLACK)
+                and _get_color_preference(p1)
+                != (WHITE if p1 == pairings[0][0] else BLACK)
             )
             or (
                 _has_strong_color_preference(p2)
                 and not _has_absolute_color_preference(p2)
-                and _get_color_preference(p2) != (BLACK if p1 == pairings[0][0] else WHITE)
+                and _get_color_preference(p2)
+                != (BLACK if p1 == pairings[0][0] else WHITE)
             )
         )
         if pairings
@@ -2055,7 +2059,7 @@ def _pair_dutch_bracket_improved(
     bracket: List[Player], previous_matches: Set[frozenset], current_round: int
 ) -> Tuple[List[Tuple[Player, Player]], List[Player]]:
     """
-    Improved Dutch system bracket pairing with better configuration selection.
+    Dutch system bracket pairing with configuration selection.
     Uses more sophisticated scoring and FIDE-compliant optimization.
     """
     if len(bracket) <= 1:
