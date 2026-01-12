@@ -87,6 +87,9 @@ ensure_newline_before_comments = true
 "gambitpairing.resources" = ["styles.qss"]
 "gambitpairing.resources.icons" = ["*.png", "*.ico", "*.webp", "*.svg"]
 
+[tool.setuptools.dynamic]
+version = {attr = "gambitpairing.__version__"}
+
 # Added for static type-checking support
 [tool.pyright]
 include = ["src", "tests"]
