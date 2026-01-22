@@ -52,7 +52,7 @@ class PairingsTable(QtWidgets.QWidget):
         self.table.customContextMenuRequested.connect(self.context_menu_requested.emit)
 
         # Increase row height for a more spacious table
-        self.table.verticalHeader().setDefaultSectionSize(58)
+        self.table.verticalHeader().setDefaultSectionSize(65)
 
         # Configure column sizing modes
         header = self.table.horizontalHeader()
@@ -64,7 +64,7 @@ class PairingsTable(QtWidgets.QWidget):
             3, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
         )
 
-        self.table.setColumnWidth(0, 55)  # Board column - compact
+        self.table.setColumnWidth(0, 70)  # Board column - wider for header
 
         layout.addWidget(self.table, 1)  # Give table stretch priority
 

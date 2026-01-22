@@ -359,6 +359,11 @@ QTableWidget[class="PairingsTable"]::item:selected {
     color: #1f2937;
 }
 
+/* Pairings Table Headers - Compact padding for narrow columns */
+QTableWidget[class="PairingsTable"] QHeaderView::section {
+    padding: 10px 8px;
+}
+
 /* --- Icon Button (for Edit Pairings, Print Pairings) --- */
 /* Subtle, icon-focused buttons for utility actions */
 /* Minimal icon buttons for toolbar-like appearance */

@@ -219,7 +219,7 @@ class ResultSelector(QtWidgets.QWidget):
         layout = QtWidgets.QHBoxLayout(self)
         # Add margins to prevent clipping of borders/shadows
         # Increased margins to fix clipping on bottom/right
-        layout.setContentsMargins(2, 2, 8, 12)
+        layout.setContentsMargins(2, 2, 8, 16)
         layout.setSpacing(0)
 
         # Enforce minimum size to prevent squashing in table
