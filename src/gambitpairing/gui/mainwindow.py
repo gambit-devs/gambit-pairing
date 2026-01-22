@@ -284,12 +284,14 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self.save_action.setIcon(QtGui.QIcon.fromTheme("document-save"))
         self.start_action.setIcon(QtGui.QIcon.fromTheme("media-playback-start"))
         self.record_results_action.setIcon(QtGui.QIcon.fromTheme("media-record"))
+        self.prepare_round_action.setIcon(QtGui.QIcon.fromTheme("go-next"))
 
         # Add file-related toolbar actions
         toolbar.addActions([self.new_action, self.load_action, self.save_action])
         toolbar.addSeparator()
         toolbar.addAction(self.start_action)
         toolbar.addAction(self.record_results_action)
+        toolbar.addAction(self.prepare_round_action)
 
         # Separator before tournament info when tournament is started
         self.tournament_separator = toolbar.addSeparator()
@@ -364,9 +366,8 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
 
         # Update toolbar visibility
         self.start_action.setVisible(can_start)
-        self.record_results_action.setVisible(
-            tournament_started and not tournament_finished
-        )
+        self.record_results_action.setVisible(can_record)
+        self.prepare_round_action.setVisible(can_prepare)
         self.tournament_separator.setVisible(tournament_exists)
 
         # File operations
