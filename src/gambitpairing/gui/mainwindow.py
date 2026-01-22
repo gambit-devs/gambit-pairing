@@ -37,13 +37,13 @@ from gambitpairing.gui.dialogs import (
     UpdatePromptDialog,
 )
 from gambitpairing.gui.import_player import ImportPlayer
-from gambitpairing.gui.tabs import (
-    CrosstableTab,
-    HistoryTab,
-    PlayersTab,
-    StandingsTab,
-    TournamentTab,
-)
+from gambitpairing.gui.notification import show_notification
+from gambitpairing.gui.notournament_placeholder import NoTournamentPlaceholder
+from gambitpairing.gui.views.crosstable.crosstable_view import CrosstableView
+from gambitpairing.gui.views.history.history_view import HistoryView
+from gambitpairing.gui.views.players.players_view import PlayersView
+from gambitpairing.gui.views.standings.standings_view import StandingsView
+from gambitpairing.gui.views.tournament.tournament_view import TournamentView
 from gambitpairing.tournament import Tournament
 from gambitpairing.update import Updater, UpdateWorker
 from gambitpairing.utils import setup_logger
@@ -91,34 +91,48 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
 
     def _setup_main_panel(self):
         """Create the tab widget and populates it with the modular tab classes."""
-        self.tabs = QtWidgets.QTabWidget()
-        self.main_layout.addWidget(self.tabs)
+        # Use QStackedWidget to prevent resizing when switching between placeholder and tabs
+        self.stacked_widget = QtWidgets.QStackedWidget()
+        self.main_layout.addWidget(self.stacked_widget)
 
-        self.players_tab = PlayersTab(self)
-        self.tournament_tab = TournamentTab(self)
-        self.standings_tab = StandingsTab(self)
-        self.crosstable_tab = CrosstableTab(self)
-        self.history_tab = HistoryTab(self)
+        # Placeholder for no tournament
+        self.no_tournament_placeholder = NoTournamentPlaceholder(self)
+        self.no_tournament_placeholder.create_tournament_requested.connect(
+            self.prompt_new_tournament
+        )
+        self.no_tournament_placeholder.import_tournament_requested.connect(
+            self.load_tournament
+        )
+        self.stacked_widget.addWidget(self.no_tournament_placeholder)
+
+        self.tabs = QtWidgets.QTabWidget()
+        self.stacked_widget.addWidget(self.tabs)
+
+        self.players_tab = PlayersView(self)
+        self.rounds_tab = TournamentView(self)
+        self.standings_tab = StandingsView(self)
+        self.crosstable_tab = CrosstableView(self)
+        self.history_tab = HistoryView(self)
 
         self.players_tab.status_message.connect(self.statusBar().showMessage)
-        self.tournament_tab.status_message.connect(self.statusBar().showMessage)
+        self.rounds_tab.status_message.connect(self.statusBar().showMessage)
         self.players_tab.history_message.connect(self.history_tab.update_history_log)
-        self.tournament_tab.history_message.connect(self.history_tab.update_history_log)
+        self.rounds_tab.history_message.connect(self.history_tab.update_history_log)
         self.players_tab.dirty.connect(self.mark_dirty)
-        self.tournament_tab.dirty.connect(self.mark_dirty)
-        self.tournament_tab.dirty.connect(self._update_ui_state)
-        self.tournament_tab.round_completed.connect(self._on_round_completed)
-        self.tournament_tab.standings_update_requested.connect(
+        self.rounds_tab.dirty.connect(self.mark_dirty)
+        self.rounds_tab.dirty.connect(self._update_ui_state)
+        self.rounds_tab.round_completed.connect(self._on_round_completed)
+        self.rounds_tab.standings_update_requested.connect(
             self.standings_tab.update_standings_table
         )
-        self.tournament_tab.standings_update_requested.connect(
+        self.rounds_tab.standings_update_requested.connect(
             self.players_tab.refresh_player_list
         )
 
         self.tabs.addTab(self.players_tab, "Players")
-        self.tabs.addTab(self.tournament_tab, "Tournament")
+        self.tabs.addTab(self.rounds_tab, "Rounds")
         self.tabs.addTab(self.standings_tab, "Standings")
-        self.tabs.addTab(self.crosstable_tab, "Cross-Table")
+        self.tabs.addTab(self.crosstable_tab, "Crosstable")
         self.tabs.addTab(self.history_tab, "History Log")
 
     def _setup_menu(self):
@@ -166,16 +180,16 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         # Tournament Menu
         tournament_menu = menu_bar.addMenu("&Tournament")
         self.start_action = self._create_action(
-            "&Start Tournament", self.tournament_tab.start_tournament
+            "&Start Tournament", self._start_tournament_with_navigation
         )
         self.prepare_round_action = self._create_action(
-            "&Prepare Next Round", self.tournament_tab.prepare_next_round
+            "&Prepare Next Round", self._prepare_round_with_navigation
         )
         self.record_results_action = self._create_action(
-            "&Record Results && Advance", self.tournament_tab.record_and_advance
+            "&Record Results && Advance", self._record_results_with_navigation
         )
         self.undo_results_action = self._create_action(
-            "&Undo Last Results", self.tournament_tab.undo_last_results
+            "&Undo Last Results", self._undo_results_with_navigation
         )
         tournament_menu.addActions(
             [
@@ -243,9 +257,13 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
     def _setup_toolbar(self) -> None:
         """Set up the main application toolbar.
 
+        The toolbar contains file operations and tournament control actions.
+        Tournament control actions show/hide based on tournament state for a cleaner UX.
         Icons are loaded from the system theme for a native look and feel.
         """
         toolbar = self.addToolBar("Main Toolbar")
+        toolbar.setObjectName("MainToolbar")
+        toolbar.setProperty("class", "MainToolbar")
         # Prevent detaching / floating
         toolbar.setMovable(False)
         try:
@@ -254,42 +272,62 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             pass
         toolbar.setAllowedAreas(
             Qt.ToolBarArea.TopToolBarArea | Qt.ToolBarArea.BottomToolBarArea
-        )  # restrict just in case
-        toolbar.setContextMenuPolicy(Qt.ContextMenuPolicy.PreventContextMenu)
-        toolbar.setIconSize(QtCore.QSize(24, 24))
-        toolbar.setStyleSheet(
-            """
-            QToolBar {
-                background: #f9fafb;
-                border-bottom: 1px solid #bbb;
-            }
-        """
         )
-        QtGui.QIcon.setThemeName(
-            "Adwaita"
-        )  # Adwaita is often monochrome, fallback to system if not found
+        toolbar.setContextMenuPolicy(Qt.ContextMenuPolicy.PreventContextMenu)
+        toolbar.setIconSize(QtCore.QSize(18, 18))
+
+        QtGui.QIcon.setThemeName("Adwaita")
+
+        # Set icons for file actions
         self.new_action.setIcon(QtGui.QIcon.fromTheme("document-new"))
         self.load_action.setIcon(QtGui.QIcon.fromTheme("document-open"))
         self.save_action.setIcon(QtGui.QIcon.fromTheme("document-save"))
         self.start_action.setIcon(QtGui.QIcon.fromTheme("media-playback-start"))
-        self.prepare_round_action.setIcon(QtGui.QIcon.fromTheme("view-refresh"))
-        self.record_results_action.setIcon(QtGui.QIcon.fromTheme("document-send"))
-        self.undo_results_action.setIcon(QtGui.QIcon.fromTheme("edit-undo"))
-        # Add toolbar actions
+        self.record_results_action.setIcon(QtGui.QIcon.fromTheme("media-record"))
+        self.prepare_round_action.setIcon(QtGui.QIcon.fromTheme("go-next"))
+
+        # Add file-related toolbar actions
         toolbar.addActions([self.new_action, self.load_action, self.save_action])
-        toolbar.addSeparator()
-        toolbar.addActions(
-            [
-                self.start_action,
-                self.prepare_round_action,
-                self.record_results_action,
-                self.undo_results_action,
-            ]
-        )
+        self.file_separator = toolbar.addSeparator()
+        toolbar.addAction(self.start_action)
+        toolbar.addAction(self.record_results_action)
+        toolbar.addAction(self.prepare_round_action)
+
+        # Separator before tournament info when tournament is started
+        self.tournament_separator = toolbar.addSeparator()
+
+        # Add tournament info container
+        tournament_info_container = QtWidgets.QWidget()
+        tournament_info_container.setProperty("class", "ToolbarInfoContainer")
+        tournament_info_layout = QtWidgets.QHBoxLayout(tournament_info_container)
+        tournament_info_layout.setContentsMargins(8, 0, 8, 0)
+        tournament_info_layout.setSpacing(12)
+
+        # Tournament name label
+        self.toolbar_tournament_label = QtWidgets.QLabel("No Tournament Loaded")
+        self.toolbar_tournament_label.setProperty("class", "ToolbarTournamentLabel")
+        tournament_info_layout.addWidget(self.toolbar_tournament_label)
+
+        toolbar.addWidget(tournament_info_container)
 
     def _update_ui_state(self):
-        """Update the state of UI elements based on the tournament's current state."""
+        """Update the state of UI elements based on the tournament's current state.
+
+        Tournament control actions (Start, Prepare, Record, Undo) are now
+        primarily managed in the Tournament tab. This method focuses on:
+        - Menu action enable/disable states
+        - File operations state
+        - Player operations state
+        - Window title and status bar updates
+        """
         tournament_exists = self.tournament is not None
+
+        # Switch between placeholder and tabs using stacked widget
+        if tournament_exists:
+            self.stacked_widget.setCurrentWidget(self.tabs)
+        else:
+            self.stacked_widget.setCurrentWidget(self.no_tournament_placeholder)
+
         pairings_generated = (
             len(self.tournament.rounds_pairings_ids) if tournament_exists else 0
         )
@@ -300,7 +338,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             tournament_exists and results_recorded >= total_rounds and total_rounds > 0
         )
 
-        # can_start = tournament_exists and not tournament_started and len(self.tournament.players) >= 2
+        # Determine action states for menu items
         can_start = tournament_exists and not tournament_started
         can_prepare = (
             tournament_exists
@@ -320,16 +358,29 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             and bool(self.last_recorded_results_data)
         )
 
-        # Update main actions (toolbar and menu)
+        # Update menu actions (still accessible via menus)
         self.start_action.setEnabled(can_start)
         self.prepare_round_action.setEnabled(can_prepare)
         self.record_results_action.setEnabled(can_record)
         self.undo_results_action.setEnabled(can_undo)
+
+        # Update toolbar visibility
+        self.start_action.setVisible(can_start)
+        self.record_results_action.setVisible(can_record)
+        self.prepare_round_action.setVisible(can_prepare)
+        self.file_separator.setVisible(
+            True
+        )  # Always show separator between file actions and info
+        self.tournament_separator.setVisible(tournament_exists)
+
+        # File operations
         self.save_action.setEnabled(tournament_exists)
         self.save_as_action.setEnabled(tournament_exists)
         self.export_standings_action.setEnabled(
             tournament_exists and results_recorded > 0
         )
+
+        # Player operations
         self.import_players_action.setEnabled(
             tournament_exists and not tournament_started
         )
@@ -339,12 +390,9 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self.add_player_action.setEnabled(not tournament_started)
         self.settings_action.setEnabled(tournament_exists)
 
-        # Do NOT disable the Players tab after tournament starts
-        # self.tabs.setTabEnabled(self.tabs.indexOf(self.players_tab), not tournament_started)
-
         # Delegate UI state updates to the tabs themselves
         self.players_tab.update_ui_state()
-        self.tournament_tab.update_ui_state()
+        self.rounds_tab.update_ui_state()
         self.standings_tab.update_ui_state()
         self.crosstable_tab.update_ui_state()
         self.history_tab.update_ui_state()
@@ -384,6 +432,15 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             status = "Ready - Create New or Load Tournament."
         self.statusBar().showMessage(status)
 
+        # Update toolbar labels
+        if tournament_exists:
+            tournament_name = self.tournament.name
+            if self._dirty:
+                tournament_name += " *"
+            self.toolbar_tournament_label.setText(tournament_name)
+        else:
+            self.toolbar_tournament_label.setText("No Tournament Loaded")
+
     def mark_dirty(self, dirty=True):
         """Mark as dirty."""
         if self._dirty != dirty:
@@ -398,16 +455,20 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         """Pass the current tournament object to all tabs so they can access its data."""
         for tab in [
             self.players_tab,
-            self.tournament_tab,
+            self.rounds_tab,
             self.standings_tab,
             self.crosstable_tab,
             self.history_tab,
         ]:
             if hasattr(tab, "set_tournament"):
                 tab.set_tournament(self.tournament)
-        # Also set current_round_index on tournament_tab if method exists
-        if hasattr(self.tournament_tab, "set_current_round_index"):
-            self.tournament_tab.set_current_round_index(self.current_round_index)
+        # Also set current_round_index and last_recorded_results_data on rounds_tab
+        if hasattr(self.rounds_tab, "set_current_round_index"):
+            self.rounds_tab.set_current_round_index(self.current_round_index)
+        if hasattr(self.rounds_tab, "last_recorded_results_data"):
+            self.rounds_tab.last_recorded_results_data = list(
+                self.last_recorded_results_data
+            )
         # Ensure UI state is updated after tournament propagation
         self._update_ui_state()
 
@@ -423,8 +484,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
 
         # Explicitly clear UI elements in tabs
         self.players_tab.list_players.clear()
-        self.tournament_tab.table_pairings.setRowCount(0)
-        self.tournament_tab.lbl_bye.setText("Bye: None")
+        self.rounds_tab.clear_pairings_display()
         self.standings_tab.table_standings.setRowCount(0)
         self.crosstable_tab.table_crosstable.setRowCount(0)
         self.history_tab.history_view.clear()
@@ -457,6 +517,15 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
                 self._set_tournament_on_tabs()
                 self.standings_tab.update_standings_table_headers()
                 self._update_ui_state()
+                try:
+                    show_notification(
+                        self,
+                        f"New tournament '{name}' created.",
+                        duration=3500,
+                        notification_type="success",
+                    )
+                except Exception:
+                    pass
 
     def show_settings_dialog(self) -> bool:
         if not self.tournament:
@@ -604,24 +673,41 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
                 pairings, bye_player = self.tournament.get_pairings_for_round(
                     self.current_round_index
                 )
-                self.tournament_tab.display_pairings_for_input(
+                self.rounds_tab.display_pairings_for_input(
                     pairings, [bye_player] if bye_player else []
                 )
             else:
-                self.tournament_tab.clear_pairings_display()
+                self.rounds_tab.clear_pairings_display()
 
             self.mark_clean()
             self.update_history_log(
                 f"--- Tournament loaded from {QFileInfo(filename).fileName()} ---"
             )
             self.statusBar().showMessage(f"Loaded tournament: {self.tournament.name}")
+            try:
+                show_notification(
+                    self,
+                    f"Loaded tournament: {self.tournament.name}",
+                    duration=3000,
+                    notification_type="info",
+                )
+            except Exception:
+                pass
 
         except Exception as e:
             logging.exception("Error loading tournament:")
             self.reset_tournament_state()
-            QtWidgets.QMessageBox.critical(
-                self, "Load Error", f"Could not load tournament file:\n{e}"
-            )
+            try:
+                show_notification(
+                    self,
+                    f"Could not load tournament: {e}",
+                    duration=6000,
+                    notification_type="error",
+                )
+            except Exception:
+                QtWidgets.QMessageBox.critical(
+                    self, "Load Error", f"Could not load tournament file:\n{e}"
+                )
 
         self._update_ui_state()
 
@@ -742,7 +828,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             self.prompt_update()
 
     def prompt_update(self):
-        """Show a modern dialog prompting the user to download the new version."""
+        """Show a dialog prompting the user to download the new version."""
         if not self.updater or not self.updater.latest_version_info:
             return
 
@@ -793,7 +879,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self.download_dialog.exec()
 
     def on_update_done(self, success: bool, message: str):
-        """Handle both success and error for update in a modern dialog."""
+        """Handle both success and error for update."""
         if success:
             self.download_dialog.show_complete()
             # Connect restart button to restart logic
@@ -826,8 +912,37 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
     def _on_round_completed(self, round_index: int):
         """Slot called when a round is recorded and the tournament is advanced."""
         self.current_round_index = round_index
+        # Sync last_recorded_results_data from rounds_tab to main window
+        if hasattr(self.rounds_tab, "last_recorded_results_data"):
+            self.last_recorded_results_data = list(
+                self.rounds_tab.last_recorded_results_data
+            )
         self.mark_dirty()
         self._update_ui_state()
+
+    def _navigate_to_rounds_tab(self):
+        """Switch to the Rounds tab."""
+        self.tabs.setCurrentWidget(self.rounds_tab)
+
+    def _start_tournament_with_navigation(self):
+        """Navigate to Rounds tab and start the tournament."""
+        self._navigate_to_rounds_tab()
+        self.rounds_tab.start_tournament()
+
+    def _prepare_round_with_navigation(self):
+        """Navigate to Rounds tab and prepare the next round."""
+        self._navigate_to_rounds_tab()
+        self.rounds_tab.prepare_next_round()
+
+    def _record_results_with_navigation(self):
+        """Navigate to Rounds tab and record results."""
+        self._navigate_to_rounds_tab()
+        self.rounds_tab.record_and_advance()
+
+    def _undo_results_with_navigation(self):
+        """Navigate to Rounds tab and undo last results."""
+        self._navigate_to_rounds_tab()
+        self.rounds_tab.undo_last_results()
 
     def set_app_instance(self, app):
         """Store a reference to the QApplication instance for stylesheet control."""

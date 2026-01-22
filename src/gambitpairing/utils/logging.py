@@ -27,6 +27,9 @@ from PyQt6 import QtCore
 # the logger format used
 LOG_FMT = "LVL: %(levelname)s | FILE PATH: %(pathname)s | FUN: %(funcName)s | msg: %(message)s | ln#:%(lineno)d"
 
+# Track if we've already printed the log file location
+_LOG_PATH_PRINTED = False
+
 
 # --- Logging Setup ---
 def setup_logger(logger_name: str) -> logging.Logger:
@@ -44,6 +47,8 @@ def setup_logger(logger_name: str) -> logging.Logger:
     logging.Logger
         the created logger
     """
+    global _LOG_PATH_PRINTED
+
     # Setup logging to file and console
     lgr = logging.getLogger(name=logger_name)
     lgr.setLevel(logging.INFO)  # Set minimum level
@@ -98,11 +103,16 @@ def setup_logger(logger_name: str) -> logging.Logger:
                     log_path, maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8"
                 )
                 file_handler.setFormatter(log_formatter)
-                print(f"Logging to: {log_path}")  # Inform user where logs are
+                # Only print the log path once on first logger setup
+                if not _LOG_PATH_PRINTED:
+                    print(f"Logging to: {log_path}")
+                    _LOG_PATH_PRINTED = True
             except Exception:
                 file_handler = None
         else:
-            print("Warning: Could not determine writable location for log file.")
+            if not _LOG_PATH_PRINTED:
+                print("Warning: Could not determine writable location for log file.")
+                _LOG_PATH_PRINTED = True
             file_handler = None
     except Exception:
         # If anything goes wrong creating the file handler, continue without file logging

@@ -2,11 +2,15 @@
 
 from typing import List, Literal, Optional, Tuple
 
-# chess colours
+# Chess color string constants (for runtime use)
+WHITE = "White"
+BLACK = "Black"
+
+# Chess color type aliases (for type hints)
 W = Literal["White"]
 B = Literal["Black"]
 # Basically, white or black
-Colour = Literal[W, B]
+Colour = Literal["White", "Black"]
 
 
 # List of players

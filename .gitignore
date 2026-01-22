@@ -206,3 +206,5 @@ cython_debug/
 # Marimo
 marimo/_static/
 marimo/_lsp/
+
+.idea

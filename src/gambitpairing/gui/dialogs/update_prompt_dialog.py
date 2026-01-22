@@ -4,7 +4,7 @@ from gambitpairing import APP_NAME
 
 
 class UpdatePromptDialog(QtWidgets.QDialog):
-    """A modern dialog to prompt the user for an update."""
+    """A dialog to prompt the user for an update."""
 
     def __init__(
         self, new_version: str, current_version: str, release_notes: str, parent=None
