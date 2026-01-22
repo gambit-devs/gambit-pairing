@@ -20,7 +20,7 @@ This module defines the fundamental data structures used throughout the tourname
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Boolean, Dict, List, Optional, Set, Tuple
 
 from gambitpairing.constants import DEFAULT_TIEBREAK_SORT_ORDER
 
@@ -30,10 +30,11 @@ class TournamentConfig:
     """Configuration settings for a tournament.
 
     Attributes:
-        name: Tournament name
-        num_rounds: Number of rounds in the tournament
-        pairing_system: Pairing system to use ('dutch_swiss', 'round_robin', 'manual')
-        tiebreak_order: List of tiebreak criteria in priority order
+        name: str - Tournament name
+        num_rounds: int - Number of rounds in the tournament
+        pairing_system: str - Pairing system to use ('dutch_swiss', 'round_robin', 'manual')
+        tiebreak_order: List[str] - List of tiebreak criteria in priority order
+        tournament_over: Boolean - Is the tournament complete, default False
     """
 
     name: str
@@ -42,6 +43,8 @@ class TournamentConfig:
     tiebreak_order: List[str] = field(
         default_factory=lambda: list(DEFAULT_TIEBREAK_SORT_ORDER)
     )
+    # Is the tournament complete?
+    tournament_over: Boolean = False
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize configuration to dictionary."""
@@ -50,6 +53,7 @@ class TournamentConfig:
             "num_rounds": self.num_rounds,
             "pairing_system": self.pairing_system,
             "tiebreak_order": self.tiebreak_order,
+            "tournament_over": self.tournament_over,
         }
 
     @classmethod
@@ -62,6 +66,7 @@ class TournamentConfig:
             tiebreak_order=data.get(
                 "tiebreak_order", list(DEFAULT_TIEBREAK_SORT_ORDER)
             ),
+            tournament_over=data.get("tournament_over", False),
         )
 
 

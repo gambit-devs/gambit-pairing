@@ -130,6 +130,16 @@ class Tournament:
         """Set tiebreak order."""
         self.config.tiebreak_order = value
 
+    @property
+    def tournament_over(self) -> Boolean:
+        """Is the tournament over?"""
+        return self.config.tournament_over
+
+    @tiebreak_order.setter
+    def tournament_over(self, value: Boolean) -> None:
+        """Set tournament over"""
+        self.config.tournament_over = value
+
     # ========== Player Management ==========
 
     def get_player_list(self, active_only: bool = False) -> List[Player]:
