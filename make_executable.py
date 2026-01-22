@@ -65,12 +65,17 @@ def build_executable(spec_file: Path):
         ["pyinstaller", "--clean", str(spec_file)], f"PyInstaller ({spec_file.name})"
     )
 
+    name = "gambit-pairing"
     # Verify the build
     if spec_file.name.endswith("-onedir.spec"):
-        expected_exe = Path("dist/gambit-pairing/gambit-pairing.exe")
+        expected_exe = Path("dist") / (
+            name + (".exe" if sys.platform == "win32" else "")
+        )
         build_type = "onedir"
     else:
-        expected_exe = Path("dist/gambit-pairing.exe")
+        expected_exe = Path("dist") / (
+            name + (".exe" if sys.platform == "win32" else "")
+        )
         build_type = "onefile"
 
     if expected_exe.exists():
