@@ -52,7 +52,6 @@ from gambitpairing.constants import (
     WIN_SCORE,
 )
 from gambitpairing.gui.dialogs import ManualPairingDialog
-from gambitpairing.gui.gui_utils import get_colored_icon, set_svg_icon
 from gambitpairing.gui.notournament_placeholder import NoTournamentPlaceholder
 from gambitpairing.gui.views.tournament.components.pairings_table import PairingsTable
 from gambitpairing.gui.views.tournament.components.pre_tournament_widget import (
@@ -74,7 +73,6 @@ from gambitpairing.gui.views.tournament.tournament_state import (
 from gambitpairing.gui.views.tournament.utils.pairings_printer import PairingsPrinter
 from gambitpairing.gui.widgets.header import TabHeader
 from gambitpairing.player import Player
-from gambitpairing.resources.resource_utils import get_resource_path
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)
@@ -449,9 +447,6 @@ class TournamentView(QtWidgets.QWidget):
         if not isinstance(result_selector, ResultSelector):
             return
 
-        white_id = result_selector.property("white_id")
-        black_id = result_selector.property("black_id")
-
         menu = QtWidgets.QMenu(self)
 
         # Offer option to edit all pairings for all tournaments
@@ -778,7 +773,6 @@ class TournamentView(QtWidgets.QWidget):
         return self.pairings_table.get_results()
 
     def log_results_details(self, results_data, round_index_recorded):
-        bye_id = self.tournament.rounds_byes_ids[round_index_recorded]
         # Log paired game results
         for w_id, b_id, score_w in results_data:
             w = self.tournament.players.get(w_id)  # Assume player exists

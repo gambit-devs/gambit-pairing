@@ -17,8 +17,6 @@
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt, pyqtSignal
 
-from gambitpairing.gui.gui_utils import set_svg_icon
-
 
 class NoTournamentPlaceholder(QtWidgets.QWidget):
     """Consistent placeholder widget shown when no tournament is loaded."""

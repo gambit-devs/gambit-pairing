@@ -1,4 +1,4 @@
-from PyQt6 import QtCore, QtGui, QtWidgets
+from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
 
 from gambitpairing.gui.gui_utils import get_colored_icon, set_svg_icon
