@@ -257,9 +257,8 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
     def _setup_toolbar(self) -> None:
         """Set up the main application toolbar.
 
-        The toolbar contains file operations and tournament name display.
-        Tournament control actions (Start, Prepare, Record, Undo) are now
-        managed exclusively within the Tournament tab for a cleaner UX.
+        The toolbar contains file operations and tournament control actions.
+        Tournament control actions show/hide based on tournament state for a cleaner UX.
         Icons are loaded from the system theme for a native look and feel.
         """
         toolbar = self.addToolBar("Main Toolbar")
@@ -284,14 +283,16 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self.load_action.setIcon(QtGui.QIcon.fromTheme("document-open"))
         self.save_action.setIcon(QtGui.QIcon.fromTheme("document-save"))
         self.start_action.setIcon(QtGui.QIcon.fromTheme("media-playback-start"))
+        self.record_results_action.setIcon(QtGui.QIcon.fromTheme("media-record"))
 
         # Add file-related toolbar actions
         toolbar.addActions([self.new_action, self.load_action, self.save_action])
         toolbar.addSeparator()
         toolbar.addAction(self.start_action)
+        toolbar.addAction(self.record_results_action)
 
-        # Add separator
-        toolbar.addSeparator()
+        # Separator before tournament info when tournament is started
+        self.tournament_separator = toolbar.addSeparator()
 
         # Add tournament info container
         tournament_info_container = QtWidgets.QWidget()
@@ -360,6 +361,13 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self.prepare_round_action.setEnabled(can_prepare)
         self.record_results_action.setEnabled(can_record)
         self.undo_results_action.setEnabled(can_undo)
+
+        # Update toolbar visibility
+        self.start_action.setVisible(can_start)
+        self.record_results_action.setVisible(
+            tournament_started and not tournament_finished
+        )
+        self.tournament_separator.setVisible(tournament_exists)
 
         # File operations
         self.save_action.setEnabled(tournament_exists)
