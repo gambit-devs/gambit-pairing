@@ -6,6 +6,7 @@ QWidget {
     font-family: 'Segoe UI', 'Inter', 'DejaVu Sans', Arial, sans-serif;
     font-size: 11pt;
     border: none;
+    outline: none;
 }
 
 /* GroupBox */
@@ -16,6 +17,7 @@ QGroupBox {
     background: #fff;
     padding: 18px 18px 12px 18px;
     font-weight: 600;
+    outline: none;
 }
 QGroupBox::title {
     subcontrol-origin: margin;
@@ -30,6 +32,7 @@ QGroupBox::title {
     border-radius: 6px;
     border: none;
     letter-spacing: 0.01em;
+    outline: none;
 }
 
 /* TabWidget */
@@ -137,34 +140,302 @@ QTableWidget:focus, QTableView:focus {
 }
 
 /* --- Result Selector Buttons --- */
+/* Container widget for result selector */
+QWidget[class="ResultSelector"] {
+    background: transparent;
+}
+
 QPushButton[class="ResultSelectorButton"] {
-    background-color: #f3f7fc; /* Light grey, less prominent */
-    color: #374151; /* Dark grey text */
-    border: 1.5px solid #e0e7ef;
-    border-radius: 7px;
-    padding: 6px 10px;
+    background-color: #ffffff;
+    color: #4b5563;
+    border: 1px solid #d1d5db;
+    border-radius: 0px;
+    padding: 4px 8px;
     font-weight: 600;
     font-size: 10pt;
     outline: none;
-    min-height: 28px; /* Ensure height is sufficient */
-    min-width: 40px;
-    margin-bottom: 18px;
-    margin-right: 8px;
+    min-height: 32px;
+    min-width: 44px;
+    max-width: 66px;
+    margin: 0;
+    margin-left: -1px;
 }
+QPushButton[class="ResultSelectorButton"][result_type="white"] {
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+    margin-left: 0;
+}
+QPushButton[class="ResultSelectorButton"][result_type="black"] {
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
 QPushButton[class="ResultSelectorButton"]:hover {
-    background-color: #e0e7ef;
-    border-color: #cdd6e1;
+    background-color: #f3f4f6;
+    border-color: #9ca3af;
+    color: #374151;
 }
 QPushButton[class="ResultSelectorButton"]:checked {
-    background-color: #2d5a27; /* Chess green */
+    background-color: #2d5a27;
     color: #ffffff;
     border-color: #2d5a27;
     font-weight: 700;
+}
+QPushButton[class="ResultSelectorButton"]:checked:hover {
+    background-color: #3d7a37;
+    border-color: #3d7a37;
 }
 QPushButton[class="ResultSelectorButton"]:disabled {
     background-color: #f9fafb;
     color: #d1d5db;
     border-color: #f3f4f6;
+}
+
+/* Color-coded result buttons when checked */
+QPushButton[class="ResultSelectorButton"][result_type="white"]:checked {
+    background-color: #1e40af;
+    border-color: #1e40af;
+}
+QPushButton[class="ResultSelectorButton"][result_type="white"]:checked:hover {
+    background-color: #1d4ed8;
+    border-color: #1d4ed8;
+}
+QPushButton[class="ResultSelectorButton"][result_type="draw"]:checked {
+    background-color: #6b7280;
+    border-color: #6b7280;
+}
+QPushButton[class="ResultSelectorButton"][result_type="draw"]:checked:hover {
+    background-color: #4b5563;
+    border-color: #4b5563;
+}
+QPushButton[class="ResultSelectorButton"][result_type="black"]:checked {
+    background-color: #111827;
+    border-color: #111827;
+}
+QPushButton[class="ResultSelectorButton"][result_type="black"]:checked:hover {
+    background-color: #1f2937;
+    border-color: #1f2937;
+}
+
+/* =============================================
+   TOURNAMENT TAB BUTTON STYLES
+   ============================================= */
+
+/* --- Round Card Container --- */
+QFrame[class="RoundCard"] {
+    background: #ffffff;
+    border: 1px solid #e3e7ee;
+    border-radius: 16px;
+}
+
+/* --- Tournament Header --- */
+QWidget[class="TournamentHeader"] {
+    background: transparent;
+}
+
+QLabel[class="RoundTitle"] {
+    color: #1f2937;
+    font-size: 16pt;
+    font-weight: 700;
+    background: transparent;
+    padding: 0;
+}
+
+/* --- Standings Header --- */
+QWidget[class="StandingsHeader"] {
+    background: transparent;
+}
+
+QLabel[class="StandingsTitle"] {
+    color: #1f2937;
+    font-size: 16pt;
+    font-weight: 700;
+    background: transparent;
+    padding: 0;
+}
+
+/* --- Round Progress Indicator --- */
+QWidget[class="RoundProgressIndicator"] {
+    background: transparent;
+}
+
+QWidget[class="RoundProgressIndicator"] QLabel {
+    background: #f3f7fc;
+    color: #6b7280;
+    border: 2px solid #e3e7ee;
+    border-radius: 8px;
+    font-size: 9pt;
+    font-weight: 600;
+}
+
+QWidget[class="RoundProgressIndicator"] QLabel[state="completed"] {
+    background: #2d5a27;
+    color: #ffffff;
+    border-color: #2d5a27;
+}
+
+QWidget[class="RoundProgressIndicator"] QLabel[state="active"] {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #f59e0b;
+    font-weight: 700;
+}
+
+QWidget[class="RoundProgressIndicator"] QLabel[state="current"] {
+    background: #e8f0e8;
+    color: #2d5a27;
+    border-color: #2d5a27;
+    font-weight: 700;
+}
+
+QWidget[class="RoundProgressIndicator"] QLabel[state="pending"] {
+    background: #f9fafb;
+    color: #9ca3af;
+    border-color: #e5e7eb;
+}
+
+QLabel[class="ProgressLabel"] {
+    color: #6b7280;
+    font-size: 10pt;
+    font-weight: 500;
+    background: transparent;
+    border: none;
+}
+
+QLabel[class="ProgressEllipsis"] {
+    color: #9ca3af;
+    font-size: 10pt;
+    font-weight: 500;
+    background: transparent;
+    border: none;
+}
+
+/* --- Bye Info Bar --- */
+QWidget[class="ByeInfoBar"] {
+    background: #fef3c7;
+    border-top: 1px solid #f3d5a7;
+}
+
+QLabel[class="ByeIcon"] {
+    font-size: 14pt;
+    background: transparent;
+}
+
+QLabel[class="ByeLabel"] {
+    color: #92400e;
+    font-size: 10.5pt;
+    font-weight: 500;
+    background: transparent;
+}
+
+/* --- Action Footer --- */
+QWidget[class="ActionFooter"] {
+    background: #f9fafb;
+    border-top: 1px solid #e3e7ee;
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
+}
+
+/* --- Pairings Table Specific --- */
+QTableWidget[class="PairingsTable"] {
+    background: #fff;
+    border: none;
+    border-radius: 0;
+    gridline-color: #f3f4f6;
+    selection-background-color: #e8f0e8;
+    selection-color: #1f2937;
+    alternate-background-color: #fafbfc;
+    font-size: 10.5pt;
+}
+
+QTableWidget[class="PairingsTable"]::item {
+    padding: 8px 12px;
+    border: none;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+QTableWidget[class="PairingsTable"]::item:selected {
+    background-color: #e8f0e8;
+    color: #1f2937;
+}
+
+/* --- Icon Button (for Edit Pairings, Print Pairings) --- */
+/* Subtle, icon-focused buttons for utility actions */
+/* Minimal icon buttons for toolbar-like appearance */
+QPushButton[class="IconButton"] {
+    background-color: transparent;
+    color: #374151;
+    border: none;
+    border-radius: 4px;
+    padding: 4px;
+    font-weight: 500;
+    font-size: 12pt;
+    outline: none;
+    min-width: 32px;
+    max-width: 32px;
+    min-height: 32px;
+    max-height: 32px;
+    qproperty-iconSize: 16px 16px;
+}
+QPushButton[class="IconButton"]:hover {
+    background-color: #f3f4f6;
+    color: #2d5a27;
+}
+QPushButton[class="IconButton"]:pressed {
+    background-color: #e5e7eb;
+    color: #1d4a17;
+}
+QPushButton[class="IconButton"]:disabled {
+    color: #d1d5db;
+    background-color: transparent;
+}
+
+/* =============================================
+   STATUS INSTRUCTION LABEL STYLES
+   ============================================= */
+
+/* Base status instruction style */
+QLabel[class="StatusInstruction"] {
+    font-size: 11pt;
+    font-weight: 500;
+    padding: 14px 20px;
+    border-radius: 0;
+    margin: 0;
+    border-bottom: 1px solid #e3e7ee;
+}
+
+/* Default/neutral state */
+QLabel[class="StatusInstruction"][state="default"] {
+    color: #374151;
+    background-color: #f9fafb;
+}
+
+/* Ready to start - inviting */
+QLabel[class="StatusInstruction"][state="ready"] {
+    color: #374151;
+    background-color: #f9fafb;
+}
+
+/* Recording results - action needed */
+QLabel[class="StatusInstruction"][state="recording"] {
+    color: #1e40af;
+    background-color: #eff6ff;
+    border-bottom-color: #bfdbfe;
+}
+
+/* Prepare next round - transitional */
+QLabel[class="StatusInstruction"][state="prepare"] {
+    color: #92400e;
+    background-color: #fef3c7;
+    border-bottom-color: #f3d5a7;
+}
+
+/* Tournament finished - success */
+QLabel[class="StatusInstruction"][state="finished"] {
+    color: #2d5a27;
+    background-color: #e8f5e9;
+    font-weight: 600;
+    border-bottom-color: #a7d9a0;
 }
 
 /* --- Quick Edit Button --- */
@@ -263,16 +534,19 @@ QPushButton:hover, QPushButton:focus {
     background: #f5e9da;
     color: #111;
     border: 2px solid #111;
+    outline: none;
 }
 QPushButton:pressed {
     background: #111;
     color: #fff;
     border: 2px solid #111;
+    outline: none;
 }
 QPushButton:disabled {
     background: #e5e7eb;
     color: #a1a7b3;
     border: none;
+    outline: none;
 }
 
 /* Quick Action Buttons (Secondary Buttons) */
@@ -517,42 +791,63 @@ QMenu::separator {
 
 /* QToolBar */
 QToolBar {
-    background: #f9fafb;
-    border-bottom: 1.5px solid #e3e7ee;
-    padding: 6px 10px;
-    spacing: 10px;
+    background: #ffffff;
+    border-bottom: 1px solid #e3e7ee;
+    padding: 8px 12px;
+    spacing: 6px;
 }
+
+QToolBar#MainToolbar {
+    background: #ffffff;
+    border-bottom: 1px solid #e3e7ee;
+    padding: 6px 12px;
+    spacing: 4px;
+    min-height: 44px;
+}
+
 QToolBar QToolButton {
-    background: #fff;
-    border: 1.5px solid #e3e7ee;
-    border-radius: 8px;
-    padding: 8px 14px;
+    background: transparent;
+    border: 1.5px solid transparent;
+    border-radius: 6px;
+    padding: 6px 10px;
     margin: 0 2px;
-    color: #23272f;
-    font-size: 11pt;
-    font-weight: 600;
-    min-width: 36px;
+    color: #4b5563;
+    font-size: 10pt;
+    font-weight: 500;
+    min-width: 32px;
     min-height: 32px;
 }
 QToolBar QToolButton:hover, QToolBar QToolButton:focus {
-    background: #f5e9da; /* light wood / tan yellow */
-    color: #2d5a27; /* chess green */
-    border-color: #2d5a27;
+    background: #f5e9da;
+    color: #2d5a27;
+    border-color: transparent;
 }
 QToolBar QToolButton:pressed {
-    background: #e2c290; /* chess beige */
-    color: #8b5c2b; /* brown */
-    border-color: #8b5c2b;
+    background: #e2c290;
+    color: #8b5c2b;
 }
 QToolBar QToolButton:disabled {
-    background: #f3f7fc;
-    color: #a1a7b3;
-    border-color: #e5e7eb;
+    background: transparent;
+    color: #d1d5db;
+    border-color: transparent;
 }
 QToolBar QToolButton:checked {
-    background: #e2c290; /* chess beige */
+    background: #e8f0e8;
     color: #2d5a27;
-    border-color: #2d5a27;
+    border-color: transparent;
+}
+
+/* Toolbar Labels */
+QWidget[class="ToolbarInfoContainer"] {
+    background: transparent;
+}
+
+QLabel[class="ToolbarTournamentLabel"] {
+    color: #1f2937;
+    font-size: 11pt;
+    font-weight: 600;
+    background: transparent;
+    padding: 0;
 }
 
 /* --- Toolbar Menu Buttons (File, View, etc.) --- */
@@ -811,6 +1106,7 @@ QCalendarWidget QTableView, QCalendarWidget QAbstractItemView {
 QPrintPreviewDialog QLabel, QPrintDialog QLabel,
 QPrintPreviewDialog QComboBox, QPrintDialog QComboBox {
     font-size: 6pt; /* Slightly smaller to prevent text cutoff */
+    outline: none;
 }
 
 /* --- Print Dialog Toolbar Buttons: Make Smaller --- */
@@ -820,4 +1116,113 @@ QPrintPreviewDialog QToolButton, QPrintDialog QToolButton {
     padding: 2px 4px;
     icon-size: 16px 16px;
     font-size: 9pt;
+    outline: none;
+}
+
+/* ========================================
+   Focus Rectangle and Outline Removal
+   Removes gray backgrounds and focus rectangles
+   ======================================== */
+
+/* Remove focus rectangles from all widgets */
+QWidget:focus {
+    outline: none;
+}
+
+/* Label - prevent background outline */
+QLabel {
+    outline: none;
+    background: transparent;
+    border: none;
+}
+QLabel:focus {
+    outline: none;
+}
+
+/* Frame - remove outlines */
+QFrame {
+    outline: none;
+    border: none;
+}
+QFrame:focus {
+    outline: none;
+}
+
+/* Tab bar and widget focus removal */
+QTabBar:focus, QTabWidget:focus {
+    outline: none;
+}
+QTabBar::tab:focus, QTabBar::tab:selected:focus {
+    outline: none;
+}
+
+/* List and table focus removal */
+QListWidget:focus, QListView:focus {
+    outline: none;
+}
+QTableWidget:focus, QTableView:focus {
+    outline: none;
+}
+
+/* Input field focus border styling (keep border but no gray background) */
+QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus,
+QComboBox:focus, QDateEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {
+    outline: none;
+}
+
+/* Combo box dropdown item focus */
+QComboBox QAbstractItemView:focus,
+QComboBox QAbstractItemView::item:focus {
+    outline: none;
+}
+
+/* Menu and toolbar focus */
+QMenu:focus, QMenuBar:focus, QToolBar:focus {
+    outline: none;
+}
+QMenu::item:focus, QMenuBar::item:focus {
+    outline: none;
+}
+
+/* Checkbox and radio button focus */
+QCheckBox:focus, QRadioButton:focus {
+    outline: none;
+}
+QCheckBox::indicator:focus, QRadioButton::indicator:focus {
+    outline: none;
+}
+
+/* Splitter handle focus */
+QSplitter::handle:focus {
+    outline: none;
+}
+
+/* Dialog focus */
+QDialog:focus {
+    outline: none;
+}
+
+/* Calendar widget focus */
+QCalendarWidget:focus, QCalendarWidget QAbstractItemView:focus {
+    outline: none;
+}
+
+/* =============================================
+   PRINT OPTIONS DIALOG STYLES
+   ============================================= */
+
+/* Dialog header styling */
+QLabel[class="DialogHeader"] {
+    color: #1f2937;
+    font-size: 12pt;
+    font-weight: 700;
+    background: transparent;
+    padding-bottom: 4px;
+}
+
+QLabel[class="DialogSubtitle"] {
+    color: #6b7280;
+    font-size: 10pt;
+    font-weight: 500;
+    background: transparent;
 }

@@ -230,7 +230,7 @@ class NewTournamentDialog(QtWidgets.QDialog):
                 "details": "<ul><li><b>Pairing Logic:</b> No automatic pairing. TD manually creates all matches each round.</li><li><b>Best For:</b> Special events, demonstration games, custom formats.</li><li><b>Features:</b> Full pairing editor with drag-and-drop, player pool, edit mode for swapping players.</li><li><b>Notes:</b> Maximum flexibility but requires manual work for every round.</li></ul>",
             },
         }
-        # Modern dialog with sidebar
+        # Dialog with sidebar
         dialog = QtWidgets.QDialog(self)
         dialog.setWindowTitle("About Pairing Systems")
         dialog.setMinimumWidth(600)

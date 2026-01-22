@@ -797,9 +797,9 @@ class ManualPairingDialog(QtWidgets.QDialog):
         self.player_pool_dock = QDockWidget("Player Pool", self)
 
         # Enable docking features but disable closing (we'll handle X button differently)
+        # Disable floating to prevent "detachable" issues
         self.player_pool_dock.setFeatures(
             QDockWidget.DockWidgetFeature.DockWidgetMovable
-            | QDockWidget.DockWidgetFeature.DockWidgetFloatable
         )
 
         # Allow docking to all sides
@@ -1506,6 +1506,46 @@ class ManualPairingDialog(QtWidgets.QDialog):
                 "Auto-Pair Error",
                 f"Could not auto-pair remaining players: {str(e)}",
             )
+
+    def _auto_pair_selected_player(self, item):
+        """Auto-pair the selected player with the best available opponent."""
+        player = item.data(Qt.ItemDataRole.UserRole)
+        if not player:
+            return
+
+        # Find best opponent among available players
+        available_players = []
+        for i in range(self.player_pool.count()):
+            pool_item = self.player_pool.item(i)
+            if pool_item and not pool_item.isHidden():
+                pool_player = pool_item.data(Qt.ItemDataRole.UserRole)
+                if (
+                    pool_player
+                    and pool_player.id != player.id
+                    and pool_player.is_active
+                ):
+                    available_players.append(pool_player)
+
+        if not available_players:
+            QtWidgets.QMessageBox.information(
+                self, "Auto-Pair", "No available opponents found."
+            )
+            return
+
+        # Simple logic: find closest rating
+        best_opponent = min(
+            available_players, key=lambda p: abs(p.rating - player.rating)
+        )
+
+        self._save_state_for_undo()
+
+        # Add to pairings
+        self.pairings.append((player, best_opponent))
+
+        self._populate_player_pool()
+        self._update_pairings_display()
+        self._update_stats()
+        self._update_validation()
 
     def _is_player_available(self, player: Player) -> bool:
         """Check if a player is available for pairing."""

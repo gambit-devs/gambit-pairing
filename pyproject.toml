@@ -15,7 +15,7 @@ dependencies = [
     "packaging",
     "python-dateutil",
     "importlib-resources",
-    "Pillow",  # Required for MSI branding generation
+    "Pillow",
 ]
 license = {text = "GPL-3.0-or-later"}
 
@@ -51,8 +51,8 @@ gambit-pairing = "gambitpairing.__main__:main"
 
 [project.urls]
 Homepage = "https://www.chickaboo.net/gambit-pairing/"
-Repository = "https://github.com/Chickaboo/gambit-pairing"
-Issues = "https://github.com/Chickaboo/gambit-pairing/issues"
+Repository = "https://github.com/gambit-devs/gambit-pairing"
+Issues = "https://github.com/gambit-devs/gambit-pairing/issues"
 
 [project.optional-dependencies]
 dev = [
@@ -86,6 +86,9 @@ ensure_newline_before_comments = true
 [tool.setuptools.package-data]
 "gambitpairing.resources" = ["styles.qss"]
 "gambitpairing.resources.icons" = ["*.png", "*.ico", "*.webp", "*.svg"]
+
+[tool.setuptools.dynamic]
+version = {attr = "gambitpairing.__version__"}
 
 # Added for static type-checking support
 [tool.pyright]
