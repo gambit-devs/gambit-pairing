@@ -288,7 +288,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
 
         # Add file-related toolbar actions
         toolbar.addActions([self.new_action, self.load_action, self.save_action])
-        toolbar.addSeparator()
+        self.file_separator = toolbar.addSeparator()
         toolbar.addAction(self.start_action)
         toolbar.addAction(self.record_results_action)
         toolbar.addAction(self.prepare_round_action)
@@ -368,6 +368,9 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self.start_action.setVisible(can_start)
         self.record_results_action.setVisible(can_record)
         self.prepare_round_action.setVisible(can_prepare)
+        self.file_separator.setVisible(
+            True
+        )  # Always show separator between file actions and info
         self.tournament_separator.setVisible(tournament_exists)
 
         # File operations
