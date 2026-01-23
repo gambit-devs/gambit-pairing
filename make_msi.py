@@ -793,9 +793,10 @@ def main():
     version = get_version()
     print(f"Version: {version}")
 
-    # Set output directory
-    output_dir = Path("./build/gambit-pairing-msi")
-    output_dir.mkdir(exist_ok=True)
+    # Set output directory absolute path
+    script_dir = Path(__file__).parent.absolute()
+    output_dir = script_dir / "build" / "gambit-pairing-msi"
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     # Step 1: Build onedir executable with PyInstaller
     print("\n=== Building Onedir Executable ===")

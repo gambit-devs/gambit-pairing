@@ -136,7 +136,14 @@ jobs:
         }
 
         # Check MSI installer
-        $msi = Get-ChildItem "build\gambit-pairing-msi\*.msi" -ErrorAction SilentlyContinue | Select-Object -First 1
+        Write-Host "Checking contents of build directory..."
+        if (Test-Path "build") {
+            Get-ChildItem -Path "build" -Recurse | Select-Object FullName
+        } else {
+            Write-Host "build directory does not exist!"
+        }
+
+        $msi = Get-ChildItem "build/gambit-pairing-msi/*.msi" -ErrorAction SilentlyContinue | Select-Object -First 1
         if ($msi) {
           $size = $msi.Length / 1MB
           Write-Host "[+] MSI installer: $($msi.FullName) ($([math]::Round($size, 1)) MB)"
