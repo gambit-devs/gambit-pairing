@@ -731,15 +731,13 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         msgbox.addButton(btn_cancel, QtWidgets.QMessageBox.ButtonRole.RejectRole)
 
         # I do not know enough about pyQT but in line does not seem ideal
-        msgbox.setStyleSheet(
-            """
+        msgbox.setStyleSheet("""
             QPushButton {
                 padding: 6px 14px;
                 font-size: 10pt;
                 min-width: 140px;
             }
-        """
-        )
+        """)
 
         msgbox.exec()
         clicked = msgbox.clickedButton()

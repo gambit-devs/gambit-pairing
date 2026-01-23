@@ -41,22 +41,19 @@ class NoTournamentPlaceholder(QtWidgets.QWidget):
         # Icon/Symbol
         icon_label = QtWidgets.QLabel("♟️")
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        icon_label.setStyleSheet(
-            """
+        icon_label.setStyleSheet("""
             QLabel {
                 font-size: 54pt;
                 margin-bottom: 18px;
                 color: #2d5a27;
             }
-        """
-        )
+        """)
         layout.addWidget(icon_label)
 
         # Main message
         title_label = QtWidgets.QLabel("No Tournament Loaded")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_label.setStyleSheet(
-            """
+        title_label.setStyleSheet("""
             QLabel {
                 font-size: 20pt;
                 font-weight: 700;
@@ -64,8 +61,7 @@ class NoTournamentPlaceholder(QtWidgets.QWidget):
                 margin-bottom: 10px;
                 letter-spacing: 0.01em;
             }
-        """
-        )
+        """)
         layout.addWidget(title_label)
 
         # Description
@@ -78,8 +74,7 @@ class NoTournamentPlaceholder(QtWidgets.QWidget):
         desc_label = QtWidgets.QLabel(desc_text)
         desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         desc_label.setWordWrap(True)
-        desc_label.setStyleSheet(
-            """
+        desc_label.setStyleSheet("""
             QLabel {
                 font-size: 13pt;
                 color: #8b5c2b;
@@ -87,8 +82,7 @@ class NoTournamentPlaceholder(QtWidgets.QWidget):
                 line-height: 1.5;
                 font-weight: 500;
             }
-        """
-        )
+        """)
         layout.addWidget(desc_label)
 
         # Action buttons
@@ -98,8 +92,7 @@ class NoTournamentPlaceholder(QtWidgets.QWidget):
         # Create Tournament Button
         self.create_btn = QtWidgets.QPushButton("Create Tournament")
         self.create_btn.clicked.connect(self.create_tournament_requested.emit)
-        self.create_btn.setStyleSheet(
-            """
+        self.create_btn.setStyleSheet("""
             QPushButton {
                 background-color: #2d5a27;
                 color: #fff;
@@ -119,14 +112,12 @@ class NoTournamentPlaceholder(QtWidgets.QWidget):
                 background-color: #8b5c2b;
                 color: #fff;
             }
-        """
-        )
+        """)
 
         # Import Tournament Button
         self.import_btn = QtWidgets.QPushButton("Import Tournament")
         self.import_btn.clicked.connect(self.import_tournament_requested.emit)
-        self.import_btn.setStyleSheet(
-            """
+        self.import_btn.setStyleSheet("""
             QPushButton {
                 background-color: #e2c290;
                 color: #2d5a27;
@@ -146,8 +137,7 @@ class NoTournamentPlaceholder(QtWidgets.QWidget):
                 background-color: #8b5c2b;
                 color: #fff;
             }
-        """
-        )
+        """)
 
         # Center the buttons
         button_layout.addStretch()
@@ -160,15 +150,13 @@ class NoTournamentPlaceholder(QtWidgets.QWidget):
         layout.addStretch()
 
         # Set overall styling
-        self.setStyleSheet(
-            """
+        self.setStyleSheet("""
             NoTournamentPlaceholder {
                 background-color: #fffbe9;
                 border: 2px solid #e2c290;
                 border-radius: 18px;
             }
-        """
-        )
+        """)
 
 
 class PlayerPlaceholder(QtWidgets.QWidget):
@@ -193,22 +181,19 @@ class PlayerPlaceholder(QtWidgets.QWidget):
         # Icon/Symbol
         icon_label = QtWidgets.QLabel("👥")
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        icon_label.setStyleSheet(
-            """
+        icon_label.setStyleSheet("""
             QLabel {
                 font-size: 54pt;
                 margin-bottom: 18px;
                 color: #2d5a27;
             }
-        """
-        )
+        """)
         layout.addWidget(icon_label)
 
         # Main message
         title_label = QtWidgets.QLabel("No Players Added")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_label.setStyleSheet(
-            """
+        title_label.setStyleSheet("""
             QLabel {
                 font-size: 20pt;
                 font-weight: 700;
@@ -216,16 +201,14 @@ class PlayerPlaceholder(QtWidgets.QWidget):
                 margin-bottom: 10px;
                 letter-spacing: 0.01em;
             }
-        """
-        )
+        """)
         layout.addWidget(title_label)
 
         # Description
         desc_label = QtWidgets.QLabel("Add players to your tournament to get started.")
         desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         desc_label.setWordWrap(True)
-        desc_label.setStyleSheet(
-            """
+        desc_label.setStyleSheet("""
             QLabel {
                 font-size: 13pt;
                 color: #8b5c2b;
@@ -233,8 +216,7 @@ class PlayerPlaceholder(QtWidgets.QWidget):
                 line-height: 1.5;
                 font-weight: 500;
             }
-        """
-        )
+        """)
         layout.addWidget(desc_label)
 
         # Action buttons
@@ -243,8 +225,7 @@ class PlayerPlaceholder(QtWidgets.QWidget):
 
         self.import_btn = QtWidgets.QPushButton("Import Players")
         self.import_btn.clicked.connect(self.import_players_requested.emit)
-        self.import_btn.setStyleSheet(
-            """
+        self.import_btn.setStyleSheet("""
             QPushButton {
                 background-color: #e2c290;
                 color: #2d5a27;
@@ -264,13 +245,11 @@ class PlayerPlaceholder(QtWidgets.QWidget):
                 background-color: #8b5c2b;
                 color: #fff;
             }
-        """
-        )
+        """)
 
         self.add_btn = QtWidgets.QPushButton("Add Player")
         self.add_btn.clicked.connect(self.add_player_requested.emit)
-        self.add_btn.setStyleSheet(
-            """
+        self.add_btn.setStyleSheet("""
             QPushButton {
                 background-color: #2d5a27;
                 color: #fff;
@@ -290,8 +269,7 @@ class PlayerPlaceholder(QtWidgets.QWidget):
                 background-color: #8b5c2b;
                 color: #fff;
             }
-        """
-        )
+        """)
 
         button_layout.addStretch()
         button_layout.addWidget(self.import_btn)
@@ -303,12 +281,10 @@ class PlayerPlaceholder(QtWidgets.QWidget):
         layout.addStretch()
 
         # Set overall styling
-        self.setStyleSheet(
-            """
+        self.setStyleSheet("""
             PlayerPlaceholder {
                 background-color: #fffbe9;
                 border: 2px solid #e2c290;
                 border-radius: 18px;
             }
-        """
-        )
+        """)

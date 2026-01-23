@@ -12,8 +12,7 @@ class UpdatePromptDialog(QtWidgets.QDialog):
         super().__init__(parent)
         self.setWindowTitle("Update Available")
         self.setMinimumWidth(500)
-        self.setStyleSheet(
-            """
+        self.setStyleSheet("""
             QDialog {
                 background-color: #f9fafb;
             }
@@ -34,8 +33,7 @@ class UpdatePromptDialog(QtWidgets.QDialog):
                 font-size: 10pt;
                 border-radius: 4px;
             }
-        """
-        )
+        """)
 
         self.main_layout = QtWidgets.QVBoxLayout(self)
         self.main_layout.setContentsMargins(20, 20, 20, 20)

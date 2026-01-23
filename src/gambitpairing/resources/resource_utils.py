@@ -1,5 +1,6 @@
 # gambitpairing/resources/resource_utils.py
 """Utility functions for accessing package resources at runtime."""
+
 # Gambit Pairing
 # Copyright (C) year nrv
 #

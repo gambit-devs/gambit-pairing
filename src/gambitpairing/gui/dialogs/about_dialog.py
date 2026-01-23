@@ -68,16 +68,14 @@ class AboutDialog(QDialog):
 
         # Create tab widget
         tab_widget = QTabWidget()
-        tab_widget.setStyleSheet(
-            """
+        tab_widget.setStyleSheet("""
             QTabBar {
                 qproperty-expanding: true;
             }
             QTabBar::tab {
                 min-width: 80px;
             }
-        """
-        )
+        """)
         tab_widget.addTab(self._create_about_tab(), "About")
         tab_widget.addTab(self._create_license_tab(), "License")
 
@@ -196,16 +194,14 @@ class AboutDialog(QDialog):
         license_text.setReadOnly(True)
         gpl = read_resource_text("LICENSE")
         license_text.setPlainText(gpl)
-        license_text.setStyleSheet(
-            """
+        license_text.setStyleSheet("""
             QTextEdit {
                 border: 1px solid #ccc;
                 border-radius: 4px;
                 font-family: monospace;
                 font-size: 7px;
             }
-        """
-        )
+        """)
         license_text.setReadOnly(True)
 
         layout.addWidget(license_text)

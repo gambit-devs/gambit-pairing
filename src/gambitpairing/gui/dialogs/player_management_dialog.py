@@ -408,8 +408,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
             # Fallback: use SVG
             icon = get_colored_icon("copy.svg", "#444", 16)
             btn.setIcon(icon)
-            btn.setStyleSheet(
-                """
+            btn.setStyleSheet("""
                 QPushButton {
                     font-size: 16px;
                     color: #444;
@@ -425,13 +424,11 @@ class PlayerManagementDialog(QtWidgets.QDialog):
                 QPushButton:pressed {
                     background: #d0d4da;
                 }
-            """
-            )
+            """)
         else:
             btn.setIcon(icon)
             btn.setIconSize(QtCore.QSize(18, 18))
-            btn.setStyleSheet(
-                """
+            btn.setStyleSheet("""
                 QPushButton {
                     background: transparent;
                     border: none;
@@ -444,8 +441,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
                 QPushButton:pressed {
                     background: #d0d4da;
                 }
-            """
-            )
+            """)
         btn.clicked.connect(
             lambda: self._copy_to_clipboard(connected_widget.text(), field_name)
         )
