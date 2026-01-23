@@ -173,6 +173,16 @@ jobs:
         Write-Host "- Portable EXE: $oneFileExe"
         Write-Host "- Directory ZIP: $oneDirArchive"
 
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: gambit-pairing-${{ steps.get_version.outputs.version }}-windows
+        path: |
+          ${{ env.onefile_exe }}
+          ${{ env.onedir_archive }}
+          ${{ env.msi_path }}
+        retention-days: 30
+
     - name: Upload release assets
       if: github.event_name == 'release'
       uses: softprops/action-gh-release@v2

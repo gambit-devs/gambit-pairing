@@ -131,12 +131,12 @@ class Tournament:
         self.config.tiebreak_order = value
 
     @property
-    def tournament_over(self) -> Boolean:
+    def tournament_over(self) -> bool:
         """Is the tournament over?"""
         return self.config.tournament_over
 
     @tiebreak_order.setter
-    def tournament_over(self, value: Boolean) -> None:
+    def tournament_over(self, value: bool) -> None:
         """Set tournament over"""
         self.config.tournament_over = value
 
