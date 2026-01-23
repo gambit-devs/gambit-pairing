@@ -62,7 +62,8 @@ def build_executable(spec_file: Path):
 
     print(f"Building executable with: {spec_file.name}")
     run_command(
-        ["pyinstaller", "--clean", str(spec_file)], f"PyInstaller ({spec_file.name})"
+        ["pyinstaller", "--clean", "-y", str(spec_file)],
+        f"PyInstaller ({spec_file.name})",
     )
 
     name = "gambit-pairing"
