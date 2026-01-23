@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
 
 from datetime import date
 from typing import Any, Dict, List, Optional, Tuple
@@ -235,7 +236,7 @@ class Player:
         else:
             return None, None
 
-    def get_color_preference(self) -> Colour | None:
+    def get_color_preference(self) -> Optional[Colour]:
         """Determine color preference based on FIDE/US-CF pairing rules.
 
         Rules:

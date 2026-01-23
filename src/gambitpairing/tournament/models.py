@@ -20,7 +20,7 @@ This module defines the fundamental data structures used throughout the tourname
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from dataclasses import dataclass, field
-from typing import Any, Boolean, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from gambitpairing.constants import DEFAULT_TIEBREAK_SORT_ORDER
 
@@ -34,7 +34,7 @@ class TournamentConfig:
         num_rounds: int - Number of rounds in the tournament
         pairing_system: str - Pairing system to use ('dutch_swiss', 'round_robin', 'manual')
         tiebreak_order: List[str] - List of tiebreak criteria in priority order
-        tournament_over: Boolean - Is the tournament complete, default False
+        tournament_over: bool - Is the tournament complete, default False
     """
 
     name: str
@@ -44,7 +44,7 @@ class TournamentConfig:
         default_factory=lambda: list(DEFAULT_TIEBREAK_SORT_ORDER)
     )
     # Is the tournament complete?
-    tournament_over: Boolean = False
+    tournament_over: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize configuration to dictionary."""
