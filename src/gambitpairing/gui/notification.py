@@ -205,7 +205,8 @@ class Notification(QWidget):
 
         self._bg_color = QtGui.QColor(bg)
 
-        self.message_label.setStyleSheet(f"""
+        self.message_label.setStyleSheet(
+            f"""
             QLabel {{
                 color: {text};
                 font-size: 11pt;
@@ -213,9 +214,11 @@ class Notification(QWidget):
                 background: transparent;
                 border: none;
             }}
-        """)
+        """
+        )
 
-        self.progress_bar.setStyleSheet(f"""
+        self.progress_bar.setStyleSheet(
+            f"""
             QProgressBar {{
                 background-color: rgba(255,255,255,0.08);
                 border: none;
@@ -225,7 +228,8 @@ class Notification(QWidget):
                 background-color: {prog};
                 border-radius: 2px;
             }}
-        """)
+        """
+        )
 
     def _start_slide_in(self):
         self.slide_anim.stop()
@@ -409,7 +413,8 @@ def show_notification(
 # Legacy function kept for backward compatibility
 def show_legacy_notification(parent, message: str, duration: int = 1500):
     notif = QtWidgets.QLabel(message, parent)
-    notif.setStyleSheet("""
+    notif.setStyleSheet(
+        """
         QLabel {
             background: rgba(30,30,30,220);
             color: white;
@@ -421,7 +426,8 @@ def show_legacy_notification(parent, message: str, duration: int = 1500):
             qproperty-alignment: AlignCenter;
             border: 1px solid rgba(0,0,0,0.18);
         }
-    """)
+    """
+    )
     notif.setAttribute(QtCore.Qt.WidgetAttribute.WA_TranslucentBackground)
     notif.setAttribute(QtCore.Qt.WidgetAttribute.WA_ShowWithoutActivating)
     notif.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)

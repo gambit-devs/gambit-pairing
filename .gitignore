@@ -208,3 +208,7 @@ marimo/_static/
 marimo/_lsp/
 
 .idea
+
+# Project-specific ignores
+bbp_pairings/
+bbpPairings-dutch-2025/

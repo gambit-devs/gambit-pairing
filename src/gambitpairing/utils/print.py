@@ -188,7 +188,8 @@ class PrintOptionsDialog(QtWidgets.QDialog):
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QDialog {
                 background-color: #f8f9fa;
             }
@@ -201,7 +202,8 @@ class PrintOptionsDialog(QtWidgets.QDialog):
                 padding: 6px 12px;
                 min-width: 70px;
             }
-        """)
+        """
+        )
 
     def get_options(self) -> dict:
         return {"include_tournament_name": True}

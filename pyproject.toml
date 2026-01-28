@@ -16,6 +16,7 @@ dependencies = [
     "python-dateutil",
     "importlib-resources",
     "Pillow",
+    "prompt_toolkit>=3.0",
 ]
 license = {text = "GPL-3.0-or-later"}
 
@@ -48,6 +49,9 @@ classifiers = [
 [project.gui-scripts]
 gambit-pairing = "gambitpairing.__main__:main"
 
+[project.scripts]
+gambit-compare = "gambitpairing.comparison.cli:main"
+gambit-test = "gambitpairing.testing.__main__:main"
 
 [project.urls]
 Homepage = "https://www.chickaboo.net/gambit-pairing/"

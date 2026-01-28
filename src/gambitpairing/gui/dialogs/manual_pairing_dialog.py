@@ -26,7 +26,8 @@ class DraggableListWidget(QtWidgets.QListWidget):
         # For touch/click pairing functionality
         self.selected_player = None
 
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QListWidget {
                 background-color: #f8f9fa;
                 border: 1px solid #dee2e6;
@@ -49,7 +50,8 @@ class DraggableListWidget(QtWidgets.QListWidget):
                 color: white;
                 border-color: #1565c0;
             }
-        """)
+        """
+        )
 
     def startDrag(self, supported_actions):
         """Start drag operation from player pool."""
@@ -135,18 +137,22 @@ class DraggableListWidget(QtWidgets.QListWidget):
         """Handle drag enter events for player pool."""
         if event.mimeData().hasText() and event.mimeData().text().startswith("player:"):
             event.acceptProposedAction()
-            self.setStyleSheet(self.styleSheet() + """
+            self.setStyleSheet(
+                self.styleSheet()
+                + """
                 QListWidget {
                     border: 2px dashed #4caf50;
                     background-color: #e8f5e8;
                 }
-            """)
+            """
+            )
         else:
             event.ignore()
 
     def dragLeaveEvent(self, event):
         """Handle drag leave events."""
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QListWidget {
                 background-color: #f8f9fa;
                 border: 1px solid #dee2e6;
@@ -169,7 +175,8 @@ class DraggableListWidget(QtWidgets.QListWidget):
                 color: white;
                 border-color: #1565c0;
             }
-        """)
+        """
+        )
 
     def dropEvent(self, event):
         """Handle drop events for player pool - comprehensive handling."""
@@ -231,7 +238,8 @@ class DroppableByeListWidget(DraggableListWidget):
         super().__init__(parent)
         self.setMinimumHeight(60)
         self.setMaximumHeight(120)
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QListWidget {
                 background-color: #fff3cd;
                 border: 2px dashed #e2c290;
@@ -256,7 +264,8 @@ class DroppableByeListWidget(DraggableListWidget):
                 color: white;
                 border-color: #b7950b;
             }
-        """)
+        """
+        )
 
     def startDrag(self, supported_actions):
         """Start drag operation from bye pool."""
@@ -308,7 +317,8 @@ class DroppableByeListWidget(DraggableListWidget):
         if event.mimeData().hasText() and event.mimeData().text().startswith("player:"):
             event.acceptProposedAction()
             # Visual feedback for drag enter
-            self.setStyleSheet("""
+            self.setStyleSheet(
+                """
                 QListWidget {
                     background-color: #e8f5e8;
                     border: 2px dashed #4caf50;
@@ -324,14 +334,16 @@ class DroppableByeListWidget(DraggableListWidget):
                     color: #8b5c2b;
                     font-weight: bold;
                 }
-            """)
+            """
+            )
         else:
             event.ignore()
 
     def dragLeaveEvent(self, event):
         """Handle drag leave events."""
         # Reset to normal styling
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QListWidget {
                 background-color: #fff3cd;
                 border: 2px dashed #e2c290;
@@ -356,7 +368,8 @@ class DroppableByeListWidget(DraggableListWidget):
                 color: white;
                 border-color: #b7950b;
             }
-        """)
+        """
+        )
 
     def dropEvent(self, event):
         """Handle drop events for bye pool."""
@@ -713,7 +726,8 @@ class ManualPairingDialog(QtWidgets.QDialog):
     def _setup_ui(self):
         """Setup the user interface."""
         # Apply dialog-wide styling using the chess color scheme
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QDialog {
                 background: #f9fafb;
                 color: #23272f;
@@ -742,17 +756,20 @@ class ManualPairingDialog(QtWidgets.QDialog):
             QLabel {
                 color: #23272f;
             }
-        """)
+        """
+        )
 
         main_layout = QVBoxLayout(self)
 
         # Create a main window widget for proper dock widget support
         self.main_window_widget = QtWidgets.QMainWindow()
-        self.main_window_widget.setStyleSheet("""
+        self.main_window_widget.setStyleSheet(
+            """
             QMainWindow {
                 background: #f9fafb;
             }
-        """)
+        """
+        )
 
         # Create detachable player pool
         self._create_detachable_player_pool()
@@ -794,7 +811,8 @@ class ManualPairingDialog(QtWidgets.QDialog):
         )
 
         # Style the dock widget with chess theme but keep normal title bar
-        self.player_pool_dock.setStyleSheet("""
+        self.player_pool_dock.setStyleSheet(
+            """
             QDockWidget {
                 background: #fff;
                 border: 1px solid #e3e7ee;
@@ -829,7 +847,8 @@ class ManualPairingDialog(QtWidgets.QDialog):
             QDockWidget::close-button:pressed, QDockWidget::float-button:pressed {
                 background: #b0b0b0;
             }
-        """)
+        """
+        )
 
         # Connect dock widget events for reattachment functionality
         self.player_pool_dock.topLevelChanged.connect(self._on_dock_detached)
@@ -872,7 +891,8 @@ class ManualPairingDialog(QtWidgets.QDialog):
         self.search_box.textChanged.connect(self._filter_player_pool)
 
         # Style the search box with chess theme
-        self.search_box.setStyleSheet("""
+        self.search_box.setStyleSheet(
+            """
             QLineEdit {
                 background: #fff;
                 border: 1.5px solid #e3e7ee;
@@ -890,7 +910,8 @@ class ManualPairingDialog(QtWidgets.QDialog):
                 color: #a1a7b3;
                 border-color: #e5e7eb;
             }
-        """)
+        """
+        )
 
         search_layout.addWidget(self.search_box)
 
@@ -1015,7 +1036,8 @@ class ManualPairingDialog(QtWidgets.QDialog):
         button.clicked.connect(callback)
 
         # Style the button using the chess-inspired color scheme from styles.qss
-        button.setStyleSheet("""
+        button.setStyleSheet(
+            """
             QPushButton {
                 background: #fff;
                 color: #111;
@@ -1042,7 +1064,8 @@ class ManualPairingDialog(QtWidgets.QDialog):
                 color: #a1a7b3;
                 border-color: #e5e7eb;
             }
-        """)
+        """
+        )
 
         return button
 
@@ -1577,6 +1600,11 @@ class ManualPairingDialog(QtWidgets.QDialog):
                 get_eligible_bye_player,
                 None,  # allow_repeat_pairing_callback
                 self.tournament.num_rounds if self.tournament else 5,
+                fide_strict=(
+                    self.tournament.config.fide_strict
+                    if self.tournament and hasattr(self.tournament, "config")
+                    else False
+                ),
             )
         )
 

@@ -58,6 +58,7 @@ class Tournament:
         num_rounds: int,
         tiebreak_order: Optional[List[str]] = None,
         pairing_system: str = "dutch_swiss",
+        fide_strict: bool = False,
     ) -> None:
         """Initialize a new tournament.
 
@@ -67,12 +68,14 @@ class Tournament:
             num_rounds: Number of rounds to play
             tiebreak_order: Priority order for tiebreak criteria
             pairing_system: Pairing system ('dutch_swiss', 'round_robin', 'manual')
+            fide_strict: Use stricter FIDE compliance search for Dutch Swiss
         """
         # Configuration
         self.config = TournamentConfig(
             name=name,
             num_rounds=num_rounds,
             pairing_system=pairing_system,
+            fide_strict=fide_strict,
             tiebreak_order=tiebreak_order,
         )
 
@@ -87,6 +90,7 @@ class Tournament:
             pairing_system=self.config.pairing_system,
             num_rounds=self.config.num_rounds,
             pairing_history=self.pairing_history,
+            fide_strict=self.config.fide_strict,
         )
         self.result_recorder = ResultRecorder()
         self.tiebreak_calculator = TiebreakCalculator()

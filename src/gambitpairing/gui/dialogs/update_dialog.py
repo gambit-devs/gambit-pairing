@@ -9,7 +9,8 @@ class UpdateDownloadDialog(QtWidgets.QDialog):
         self.setWindowTitle("Updating Gambit Pairing")
         self.setModal(True)
         self.setMinimumWidth(400)
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QDialog {
                 background-color: #f9fafb;
             }
@@ -31,7 +32,8 @@ class UpdateDownloadDialog(QtWidgets.QDialog):
                 font-size: 10pt;
                 border-radius: 4px;
             }
-        """)
+        """
+        )
 
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.setContentsMargins(20, 20, 20, 20)

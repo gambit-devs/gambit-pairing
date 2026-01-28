@@ -33,6 +33,7 @@ class TournamentConfig:
         name: str - Tournament name
         num_rounds: int - Number of rounds in the tournament
         pairing_system: str - Pairing system to use ('dutch_swiss', 'round_robin', 'manual')
+        fide_strict: bool - Use stricter FIDE compliance search
         tiebreak_order: List[str] - List of tiebreak criteria in priority order
         tournament_over: bool - Is the tournament complete, default False
     """
@@ -40,6 +41,7 @@ class TournamentConfig:
     name: str
     num_rounds: int
     pairing_system: str = "dutch_swiss"
+    fide_strict: bool = False
     tiebreak_order: List[str] = field(
         default_factory=lambda: list(DEFAULT_TIEBREAK_SORT_ORDER)
     )
@@ -52,6 +54,7 @@ class TournamentConfig:
             "name": self.name,
             "num_rounds": self.num_rounds,
             "pairing_system": self.pairing_system,
+            "fide_strict": self.fide_strict,
             "tiebreak_order": self.tiebreak_order,
             "tournament_over": self.tournament_over,
         }
@@ -63,6 +66,7 @@ class TournamentConfig:
             name=data.get("name", "Untitled Tournament"),
             num_rounds=data["num_rounds"],
             pairing_system=data.get("pairing_system", "dutch_swiss"),
+            fide_strict=data.get("fide_strict", False),
             tiebreak_order=data.get(
                 "tiebreak_order", list(DEFAULT_TIEBREAK_SORT_ORDER)
             ),

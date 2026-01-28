@@ -56,7 +56,8 @@ class PreTournamentWidget(QtWidgets.QWidget):
         # Title
         self.title_label = QtWidgets.QLabel("Ready to Start")
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.title_label.setStyleSheet("""
+        self.title_label.setStyleSheet(
+            """
             QLabel {
                 font-size: 20pt;
                 font-weight: 700;
@@ -64,7 +65,8 @@ class PreTournamentWidget(QtWidgets.QWidget):
                 margin-bottom: 10px;
                 letter-spacing: 0.01em;
             }
-            """)
+            """
+        )
         layout.addWidget(self.title_label)
 
         # Description
@@ -74,7 +76,8 @@ class PreTournamentWidget(QtWidgets.QWidget):
         )
         self.desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.desc_label.setWordWrap(True)
-        self.desc_label.setStyleSheet("""
+        self.desc_label.setStyleSheet(
+            """
             QLabel {
                 font-size: 13pt;
                 color: #8b5c2b;
@@ -82,7 +85,8 @@ class PreTournamentWidget(QtWidgets.QWidget):
                 line-height: 1.5;
                 font-weight: 500;
             }
-            """)
+            """
+        )
         layout.addWidget(self.desc_label)
 
         # Start Button
@@ -91,7 +95,8 @@ class PreTournamentWidget(QtWidgets.QWidget):
         self.btn_start.setMinimumWidth(200)
 
         # Style the button to match NoTournamentPlaceholder
-        self.btn_start.setStyleSheet("""
+        self.btn_start.setStyleSheet(
+            """
             QPushButton {
                 background-color: #2d5a27;
                 color: #fff;
@@ -111,7 +116,8 @@ class PreTournamentWidget(QtWidgets.QWidget):
                 background-color: #8b5c2b;
                 color: #fff;
             }
-        """)
+        """
+        )
 
         self.btn_start.clicked.connect(self.start_requested.emit)
 
