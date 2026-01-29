@@ -49,15 +49,32 @@ gambit-test generate --players 32 --rounds 7 --validate
 Generate realistic tournaments for testing.
 
 ```bash
-gambit-test generate --players N --rounds N [OPTIONS]
+gambit-test generate [OPTIONS]
 ```
 
 **Options:**
-- `--players N`: Number of players (default: 24).
-- `--rounds N`: Number of rounds (default: 7).
+- `--players N|MIN-MAX`: Number of players (default: 24). Specify a fixed number `N` or a range `MIN-MAX` (e.g., `16-32`). For ranges, each tournament will randomly select a size within the range.
+- `--rounds N|MIN-MAX`: Number of rounds (default: 7). Specify a fixed number `N` or a range `MIN-MAX` (e.g., `5-9`). For ranges, each tournament will randomly select rounds within the range.
+- `--tournaments N`: Number of tournaments to generate (default: 1). When combined with ranges, generates multiple tournaments with varying parameters.
 - `--distribution TYPE`: Rating distribution (e.g., `uniform`, `normal`, `fide`).
-- `--output FILE`: Save to file.
+- `--pattern TYPE`: Result pattern (e.g., `realistic`, `balanced`, `upset_friendly`).
+- `--pairing-system TYPE`: Pairing system (e.g., `dutch_swiss`, `bbp_dutch`, `dual`).
+- `--seed N`: Random seed for reproducibility.
+- `--output FILE`: Save to file. For multiple tournaments, files will be numbered.
+- `--format TYPE`: Output format (`json` or `trf`).
 - `--validate`: Validate FIDE compliance.
+
+**Examples:**
+```bash
+# Generate single tournament with fixed parameters
+gambit-test generate --players 24 --rounds 7
+
+# Generate 10 tournaments with varying sizes and rounds
+gambit-test generate --players 16-32 --rounds 5-9 --tournaments 10
+
+# Generate and validate with seed
+gambit-test generate --players 24 --rounds 7 --validate --seed 42
+```
 
 ### 2. Compare Engines
 
@@ -68,10 +85,28 @@ gambit-test compare --tournaments N [OPTIONS]
 ```
 
 **Options:**
-- `--tournaments N`: Number of tournaments (default: 50).
-- `--size N|MIN-MAX`: Players per tournament. Specify a fixed number `N` or a range `MIN-MAX` (e.g., `16-64`). For ranges, each tournament will randomly select a size within the range.
-- `--fide-weight FLOAT`: FIDE compliance weight.
+- `--tournaments N`: Number of tournaments to compare (default: 50).
+- `--size N|MIN-MAX`: Players per tournament (default: 24). Specify a fixed number `N` or a range `MIN-MAX` (e.g., `16-64`). For ranges, each tournament will randomly select a size within the range.
+- `--rounds N|MIN-MAX`: Rounds per tournament (default: 7). Specify a fixed number `N` or a range `MIN-MAX` (e.g., `5-9`). For ranges, each tournament will randomly select rounds within the range.
+- `--distribution TYPE`: Rating distribution pattern.
+- `--pattern TYPE`: Result generation pattern.
+- `--seed N`: Random seed for reproducibility.
+- `--fide-weight FLOAT`: FIDE compliance weight (default: 0.7).
+- `--quality-weight FLOAT`: Quality metrics weight (default: 0.3).
 - `--output DIR`: Save results.
+- `--bbp-executable PATH`: Path to BBP executable.
+
+**Examples:**
+```bash
+# Compare with fixed parameters
+gambit-test compare --tournaments 50 --size 24 --rounds 7
+
+# Compare with varying tournament sizes and rounds
+gambit-test compare --tournaments 100 --size 16-64 --rounds 5-9
+
+# Compare with specific distribution and pattern
+gambit-test compare --tournaments 50 --distribution elite --pattern balanced
+```
 
 ### 3. Validate Tournaments
 
@@ -114,16 +149,38 @@ gambit-test benchmark [OPTIONS]
 
 ## Examples
 
-### Generate and Validate
+### Generate Single Tournament
 
 ```bash
+# Generate single tournament with fixed parameters
 gambit-test generate --players 32 --rounds 7 --validate
 ```
 
-### Compare Engines
+### Generate Multiple Tournaments with Ranges
 
 ```bash
-gambit-test compare --tournaments 100 --size 32
+# Generate 20 tournaments with varying sizes (16-48 players) and rounds (5-9)
+gambit-test generate --players 16-48 --rounds 5-9 --tournaments 20 --seed 42
+
+# Generate and save to files (creates output_1.json, output_2.json, etc.)
+gambit-test generate --players 16-32 --rounds 5-7 --tournaments 5 --output tournament.json
+```
+
+### Compare Engines with Fixed Parameters
+
+```bash
+# Compare 100 tournaments with fixed size and rounds
+gambit-test compare --tournaments 100 --size 32 --rounds 7
+```
+
+### Compare Engines with Ranges
+
+```bash
+# Compare 50 tournaments with varying sizes (16-64 players) and rounds (5-9)
+gambit-test compare --tournaments 50 --size 16-64 --rounds 5-9
+
+# Compare with specific distribution and pattern
+gambit-test compare --tournaments 100 --size 24-48 --rounds 7-9 --distribution elite --pattern balanced
 ```
 
 ### Validate Tournament

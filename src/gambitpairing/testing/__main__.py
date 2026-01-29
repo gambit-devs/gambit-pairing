@@ -36,7 +36,7 @@ try:
 except ImportError:
     PROMPT_TOOLKIT_AVAILABLE = False
 
-from gambitpairing.comparison.cli import parse_size_range
+from gambitpairing.comparison.cli import parse_rounds_range, parse_size_range
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)
@@ -86,8 +86,9 @@ COMMANDS = {
     "generate": {
         "description": "Generate random tournaments (RTG)",
         "options": {
-            "--players": "Number of players (default: 24)",
-            "--rounds": "Number of rounds (default: 7)",
+            "--players": "Number of players (default: 24, or range like 16-32 for random)",
+            "--rounds": "Number of rounds (default: 7, or range like 5-9 for random)",
+            "--tournaments": "Number of tournaments to generate (default: 1)",
             "--distribution": "Rating distribution (uniform/normal/skewed/elite/club/fide)",
             "--pattern": "Result pattern (realistic/balanced/upset_friendly/predictable/random)",
             "--seed": "Random seed for reproducibility",
@@ -102,7 +103,7 @@ COMMANDS = {
         "options": {
             "--tournaments": "Number of tournaments to compare (default: 50)",
             "--size": "Players per tournament (default: 24, or range like 16-64 for random selection)",
-            "--rounds": "Rounds per tournament (default: 7)",
+            "--rounds": "Rounds per tournament (default: 7, or range like 5-9 for random)",
             "--distribution": "Rating distribution",
             "--pattern": "Result pattern",
             "--seed": "Random seed",
@@ -225,14 +226,14 @@ def create_completer():
 
 def run_generate_command(args: argparse.Namespace) -> int:
     """Run the generate (RTG) command."""
+    import random
+
     from gambitpairing.testing.rtg import (
         RandomTournamentGenerator,
         RatingDistribution,
         ResultPattern,
         RTGConfig,
     )
-
-    print(f"\n{Colors.BOLD}Generating tournament...{Colors.ENDC}")
 
     # Convert string enums
     distribution = (
@@ -244,59 +245,243 @@ def run_generate_command(args: argparse.Namespace) -> int:
         ResultPattern[args.pattern.upper()] if args.pattern else ResultPattern.REALISTIC
     )
 
-    # Create config
-    config = RTGConfig(
-        num_players=args.players,
-        num_rounds=args.rounds,
-        rating_distribution=distribution,
-        result_pattern=pattern,
-        pairing_system=args.pairing_system or "dutch_swiss",
-        seed=args.seed,
-        validate_with_fpc=args.validate,
-    )
-    if args.validate:
-        config.fide_strict = True
+    # Parse player parameter (can be single value or range)
+    players_spec = args.players if isinstance(args.players, list) else [args.players]
+    is_players_range = len(players_spec) == 2
 
-    # Generate tournament
-    rtg = RandomTournamentGenerator(config)
-    tournament_data = rtg.generate_complete_tournament()
+    # Parse rounds parameter (can be single value or range)
+    rounds_spec = args.rounds if isinstance(args.rounds, list) else [args.rounds]
+    is_rounds_range = len(rounds_spec) == 2
 
-    # Export if requested
-    if args.output:
-        output_path = Path(args.output)
-        if args.format == "json":
-            content = rtg.export_json_format(tournament_data)
-            output_path.write_text(content, encoding="utf-8")
-        elif args.format == "trf":
-            content = rtg.export_trf_format(tournament_data)
-            output_path.write_text(content, encoding="utf-8")
+    # Determine number of tournaments
+    num_tournaments = getattr(args, "tournaments", 1)
 
-        print(f"{Colors.OKGREEN}Tournament saved to: {output_path}{Colors.ENDC}")
+    # Validate tournaments count
+    if num_tournaments < 1:
+        print(
+            f"{Colors.FAIL}Error: Number of tournaments must be at least 1{Colors.ENDC}"
+        )
+        return 1
+    if num_tournaments > 1000:
+        print(
+            f"{Colors.WARNING}Warning: Generating {num_tournaments} tournaments may take considerable time{Colors.ENDC}"
+        )
 
-    # Print summary
-    print(f"\n{Colors.BOLD}Tournament Generated:{Colors.ENDC}")
-    print(f"  Players: {len(tournament_data['players'])}")
-    print(f"  Rounds: {len(tournament_data['rounds'])}")
+    print(f"\n{Colors.BOLD}Generating {num_tournaments} tournament(s)...{Colors.ENDC}")
 
-    if "fpc_report" in tournament_data:
-        report = tournament_data["fpc_report"]
-        print(f"\n{Colors.BOLD}FIDE Compliance:{Colors.ENDC}")
+    # Statistics tracking for summary
+    total_violations = 0
+    total_warnings = 0
+    total_games = 0
+    total_byes = 0
+    total_players = 0
+    total_rounds = 0
+    tournaments_with_violations = 0
+    all_violation_criteria = set()
 
-        # Show violation counts if any
-        num_violations = len(report.get("absolute_violations", []))
-        num_warnings = len(report.get("warnings", []))
+    # Generate tournaments
+    for tournament_idx in range(num_tournaments):
+        # Determine tournament parameters (random from range or fixed)
+        num_players = (
+            random.randint(players_spec[0], players_spec[1])
+            if is_players_range
+            else players_spec[0]
+        )
+        num_rounds = (
+            random.randint(rounds_spec[0], rounds_spec[1])
+            if is_rounds_range
+            else rounds_spec[0]
+        )
 
-        if num_violations > 0:
-            print(f"  {Colors.FAIL}Absolute violations: {num_violations}{Colors.ENDC}")
-            violation_ids = report.get("absolute_violations", [])
-            if violation_ids:
-                print(f"    Criteria: {' '.join(violation_ids)}")
+        if num_tournaments > 1:
+            print(
+                f"\n{Colors.BOLD}Tournament {tournament_idx + 1}/{num_tournaments} "
+                f"(players: {num_players}, rounds: {num_rounds}){Colors.ENDC}"
+            )
 
-        if num_warnings > 0:
-            print(f"  {Colors.WARNING}Quality warnings: {num_warnings}{Colors.ENDC}")
+        # Determine seed
+        tournament_seed = args.seed + tournament_idx if args.seed else None
 
-        # Show summary
-        print(f"  {report.get('summary', 'N/A')}")
+        # Create config
+        config = RTGConfig(
+            num_players=num_players,
+            num_rounds=num_rounds,
+            rating_distribution=distribution,
+            result_pattern=pattern,
+            pairing_system=args.pairing_system or "dutch_swiss",
+            seed=tournament_seed,
+            validate_with_fpc=args.validate,
+        )
+        if args.validate:
+            config.fide_strict = True
+
+        # Generate tournament
+        rtg = RandomTournamentGenerator(config)
+        tournament_data = rtg.generate_complete_tournament()
+
+        # Calculate statistics for this tournament
+        players_count = len(tournament_data["players"])
+        rounds_count = len(tournament_data["rounds"])
+
+        # Calculate games and byes for this tournament
+        tournament_byes = 0
+        tournament_games = 0
+        for round_data in tournament_data["rounds"]:
+            # Count pairings (games)
+            pairings = round_data.get("pairings", [])
+            tournament_games += len(pairings)
+
+            # Count byes (odd number of players means one bye per round)
+            if players_count % 2 == 1:
+                tournament_byes += 1
+
+        # Update totals
+        total_players += players_count
+        total_rounds += rounds_count
+        total_games += tournament_games
+        total_byes += tournament_byes
+
+        # Export if requested
+        if args.output:
+            output_path = Path(args.output)
+
+            # Create parent directory if it doesn't exist
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # If multiple tournaments, add index to filename
+            if num_tournaments > 1:
+                stem = output_path.stem
+                suffix = output_path.suffix
+                output_path = (
+                    output_path.parent / f"{stem}_{tournament_idx + 1}{suffix}"
+                )
+
+            try:
+                if args.format == "json":
+                    content = rtg.export_json_format(tournament_data)
+                    output_path.write_text(content, encoding="utf-8")
+                elif args.format == "trf":
+                    content = rtg.export_trf_format(tournament_data)
+                    output_path.write_text(content, encoding="utf-8")
+
+                print(
+                    f"{Colors.OKGREEN}Tournament saved to: {output_path}{Colors.ENDC}"
+                )
+            except (OSError, IOError) as e:
+                print(
+                    f"{Colors.FAIL}Error saving tournament to {output_path}: {e}{Colors.ENDC}"
+                )
+                return 1
+
+        # Print individual tournament summary
+        print(f"\n{Colors.BOLD}Tournament Generated:{Colors.ENDC}")
+        print(f"  Players: {players_count}")
+        print(f"  Rounds: {rounds_count}")
+        print(f"  Games: {tournament_games}")
+        if tournament_byes > 0:
+            print(f"  Byes: {tournament_byes}")
+
+        if "fpc_report" in tournament_data:
+            report = tournament_data["fpc_report"]
+            print(f"\n{Colors.BOLD}FIDE Compliance:{Colors.ENDC}")
+
+            # Show violation counts if any
+            num_violations = len(report.get("absolute_violations", []))
+            num_warnings = len(report.get("warnings", []))
+
+            # Track violations for summary
+            total_violations += num_violations
+            total_warnings += num_warnings
+            if num_violations > 0:
+                tournaments_with_violations += 1
+                violation_ids = report.get("absolute_violations", [])
+                all_violation_criteria.update(violation_ids)
+
+            if num_violations > 0:
+                print(
+                    f"  {Colors.FAIL}Critical violations: {num_violations}{Colors.ENDC}"
+                )
+                violation_ids = report.get("absolute_violations", [])
+                if violation_ids:
+                    print(f"    Criteria: {' '.join(violation_ids)}")
+
+            if num_warnings > 0:
+                print(
+                    f"  {Colors.WARNING}Quality warnings: {num_warnings}{Colors.ENDC}"
+                )
+
+            # Show summary
+            print(f"  {report.get('summary', 'N/A')}")
+
+    # Display aggregate summary if multiple tournaments
+    if num_tournaments > 1:
+        print(f"\n{'=' * 70}")
+        print(
+            f"{Colors.BOLD}AGGREGATE SUMMARY ({num_tournaments} Tournaments){Colors.ENDC}"
+        )
+        print(f"{'=' * 70}")
+
+        # Tournament statistics
+        avg_players = total_players / num_tournaments
+        avg_rounds = total_rounds / num_tournaments
+        avg_games = total_games / num_tournaments
+
+        print(f"\n{Colors.BOLD}Tournament Statistics:{Colors.ENDC}")
+        print(f"  Total tournaments: {num_tournaments}")
+        print(
+            f"  Total players: {total_players} (avg: {avg_players:.1f} per tournament)"
+        )
+        print(f"  Total rounds: {total_rounds} (avg: {avg_rounds:.1f} per tournament)")
+        print(f"  Total games: {total_games} (avg: {avg_games:.1f} per tournament)")
+        if total_byes > 0:
+            avg_byes = total_byes / num_tournaments
+            print(f"  Total byes: {total_byes} (avg: {avg_byes:.1f} per tournament)")
+
+        # FIDE compliance statistics
+        if args.validate:
+            print(f"\n{Colors.BOLD}FIDE Compliance Summary:{Colors.ENDC}")
+
+            if total_violations > 0:
+                avg_violations_per_tournament = total_violations / num_tournaments
+                avg_violations_per_game = (
+                    total_violations / total_games if total_games > 0 else 0
+                )
+                violation_rate = (tournaments_with_violations / num_tournaments) * 100
+
+                print(
+                    f"  {Colors.FAIL}Total critical violations: {total_violations}{Colors.ENDC}"
+                )
+                print(
+                    f"  Tournaments with violations: {tournaments_with_violations} ({violation_rate:.1f}%)"
+                )
+                print(
+                    f"  Avg violations per tournament: {avg_violations_per_tournament:.2f}"
+                )
+                print(f"  Avg violations per game: {avg_violations_per_game:.4f}")
+                if all_violation_criteria:
+                    print(
+                        f"  Unique criteria violated: {', '.join(sorted(all_violation_criteria))}"
+                    )
+            else:
+                print(f"  {Colors.OKGREEN}✓ No critical FIDE violations{Colors.ENDC}")
+
+            if total_warnings > 0:
+                avg_warnings_per_tournament = total_warnings / num_tournaments
+                avg_warnings_per_game = (
+                    total_warnings / total_games if total_games > 0 else 0
+                )
+
+                print(
+                    f"\n  {Colors.WARNING}Total quality warnings: {total_warnings}{Colors.ENDC}"
+                )
+                print(
+                    f"  Avg warnings per tournament: {avg_warnings_per_tournament:.2f}"
+                )
+                print(f"  Avg warnings per game: {avg_warnings_per_game:.4f}")
+            else:
+                print(f"  {Colors.OKGREEN}✓ No quality warnings{Colors.ENDC}")
+
+        print(f"\n{'=' * 70}\n")
 
     return 0
 
@@ -595,8 +780,24 @@ def run_standard_mode():
 def create_generate_parser():
     """Create parser for generate subcommand."""
     parser = argparse.ArgumentParser(description="Generate random tournaments")
-    parser.add_argument("--players", type=int, default=24, help="Number of players")
-    parser.add_argument("--rounds", type=int, default=7, help="Number of rounds")
+    parser.add_argument(
+        "--players",
+        type=parse_size_range,
+        default=[24],
+        help="Number of players (default: 24). Use range like '16-32' to randomly select players for each tournament",
+    )
+    parser.add_argument(
+        "--rounds",
+        type=parse_rounds_range,
+        default=[7],
+        help="Number of rounds (default: 7). Use range like '5-9' to randomly select rounds for each tournament",
+    )
+    parser.add_argument(
+        "--tournaments",
+        type=int,
+        default=1,
+        help="Number of tournaments to generate (default: 1)",
+    )
     parser.add_argument(
         "--distribution",
         choices=["uniform", "normal", "skewed", "elite", "club", "fide"],
@@ -636,7 +837,12 @@ def create_compare_parser():
         default=[24],
         help="Players per tournament. Use range like '16-64' to randomly select size for each tournament",
     )
-    parser.add_argument("--rounds", type=int, default=7, help="Rounds per tournament")
+    parser.add_argument(
+        "--rounds",
+        type=parse_rounds_range,
+        default=[7],
+        help="Rounds per tournament. Use range like '5-9' to randomly select rounds for each tournament",
+    )
     parser.add_argument(
         "--distribution",
         choices=["uniform", "normal", "skewed", "elite", "club", "fide"],
@@ -753,8 +959,21 @@ Examples:
 
     # Generate subcommand
     gen_parser = subparsers.add_parser("generate", help="Generate random tournaments")
-    gen_parser.add_argument("--players", type=int, default=24)
-    gen_parser.add_argument("--rounds", type=int, default=7)
+    gen_parser.add_argument(
+        "--players",
+        type=parse_size_range,
+        default=[24],
+        help="Number of players (use range like '16-32')",
+    )
+    gen_parser.add_argument(
+        "--rounds",
+        type=parse_rounds_range,
+        default=[7],
+        help="Number of rounds (use range like '5-9')",
+    )
+    gen_parser.add_argument(
+        "--tournaments", type=int, default=1, help="Number of tournaments to generate"
+    )
     gen_parser.add_argument(
         "--distribution",
         choices=["uniform", "normal", "skewed", "elite", "club", "fide"],
@@ -779,8 +998,18 @@ Examples:
     # Compare subcommand
     cmp_parser = subparsers.add_parser("compare", help="Compare Gambit vs BBP")
     cmp_parser.add_argument("--tournaments", type=int, default=50)
-    cmp_parser.add_argument("--size", type=int, default=24)
-    cmp_parser.add_argument("--rounds", type=int, default=7)
+    cmp_parser.add_argument(
+        "--size",
+        type=parse_size_range,
+        default=[24],
+        help="Players per tournament (use range like '16-64')",
+    )
+    cmp_parser.add_argument(
+        "--rounds",
+        type=parse_rounds_range,
+        default=[7],
+        help="Rounds per tournament (use range like '5-9')",
+    )
     cmp_parser.add_argument(
         "--distribution",
         choices=["uniform", "normal", "skewed", "elite", "club", "fide"],

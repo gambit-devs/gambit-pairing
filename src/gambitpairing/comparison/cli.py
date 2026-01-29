@@ -43,8 +43,81 @@ from gambitpairing.utils import setup_logger
 logger = setup_logger(__name__)
 
 
+def _parse_range_value(
+    value: str, min_value: int, value_name: str, example_range: str
+) -> list[int]:
+    """Parse a parameter that can be a single value or range.
+
+    Args:
+        value: Value as string (e.g., "24" or "16-64")
+        min_value: Minimum allowed value
+        value_name: Name of the parameter for error messages
+        example_range: Example range for error messages
+
+    Returns:
+        [value] for single value, [min, max] for range
+
+    Raises:
+        argparse.ArgumentTypeError: If format is invalid
+    """
+    value = value.strip()
+
+    if "-" in value:
+        try:
+            parts = value.split("-")
+            if len(parts) != 2:
+                raise argparse.ArgumentTypeError(
+                    f"Invalid range format '{value}'. Use 'MIN-MAX' (e.g., '{example_range}')"
+                )
+
+            min_val = int(parts[0].strip())
+            max_val = int(parts[1].strip())
+
+            if min_val >= max_val:
+                raise argparse.ArgumentTypeError(
+                    f"Range minimum ({min_val}) must be less than maximum ({max_val})"
+                )
+
+            if min_val < min_value:
+                raise argparse.ArgumentTypeError(
+                    f"Minimum {value_name} must be at least {min_value}"
+                )
+
+            # Sanity check: ensure range is reasonable
+            if max_val > 10000:
+                raise argparse.ArgumentTypeError(
+                    f"Maximum {value_name} ({max_val}) exceeds reasonable limit (10000)"
+                )
+
+            return [min_val, max_val]
+        except ValueError as e:
+            if "invalid literal for int()" in str(e):
+                raise argparse.ArgumentTypeError(
+                    f"Invalid range '{value}'. Both values must be integers"
+                )
+            raise argparse.ArgumentTypeError(
+                f"Invalid range '{value}'. Both values must be integers: {e}"
+            )
+    else:
+        try:
+            val = int(value)
+            if val < min_value:
+                raise argparse.ArgumentTypeError(
+                    f"{value_name.capitalize()} must be at least {min_value}"
+                )
+            if val > 10000:
+                raise argparse.ArgumentTypeError(
+                    f"{value_name.capitalize()} ({val}) exceeds reasonable limit (10000)"
+                )
+            return [val]
+        except ValueError:
+            raise argparse.ArgumentTypeError(
+                f"Invalid {value_name} '{value}'. Must be an integer or range (e.g., '{example_range}')"
+            )
+
+
 def parse_size_range(value: str) -> list[int]:
-    """Parse size parameter which can be a single value or range.
+    """Parse tournament size parameter (single value or range).
 
     Args:
         value: Size value as string (e.g., "24" or "16-64")
@@ -61,45 +134,28 @@ def parse_size_range(value: str) -> list[int]:
         >>> parse_size_range("16-64")
         [16, 64]
     """
-    if "-" in value:
-        try:
-            parts = value.split("-")
-            if len(parts) != 2:
-                raise argparse.ArgumentTypeError(
-                    f"Invalid range format '{value}'. Use 'MIN-MAX' (e.g., '16-64')"
-                )
+    return _parse_range_value(value, 4, "tournament size", "16-64")
 
-            min_size = int(parts[0])
-            max_size = int(parts[1])
 
-            if min_size >= max_size:
-                raise argparse.ArgumentTypeError(
-                    f"Range minimum ({min_size}) must be less than maximum ({max_size})"
-                )
+def parse_rounds_range(value: str) -> list[int]:
+    """Parse rounds argument (single value or range).
 
-            if min_size < 4:
-                raise argparse.ArgumentTypeError(
-                    f"Minimum size must be at least 4 players"
-                )
+    Args:
+        value: Rounds specification (e.g., "7" or "5-9")
 
-            # Return [min, max] to indicate a range
-            return [min_size, max_size]
-        except ValueError as e:
-            raise argparse.ArgumentTypeError(
-                f"Invalid range '{value}'. Both values must be integers: {e}"
-            )
-    else:
-        try:
-            size = int(value)
-            if size < 4:
-                raise argparse.ArgumentTypeError(
-                    "Tournament size must be at least 4 players"
-                )
-            return [size]
-        except ValueError:
-            raise argparse.ArgumentTypeError(
-                f"Invalid size '{value}'. Must be an integer or range (e.g., '16-64')"
-            )
+    Returns:
+        List with single value [N] or range [MIN, MAX]
+
+    Raises:
+        argparse.ArgumentTypeError: If format is invalid
+
+    Examples:
+        >>> parse_rounds_range("7")
+        [7]
+        >>> parse_rounds_range("5-9")
+        [5, 9]
+    """
+    return _parse_range_value(value, 1, "rounds", "5-9")
 
 
 def create_output_directory(base_path: Optional[str] = None) -> Path:
@@ -176,23 +232,34 @@ def run_comparison(args: argparse.Namespace) -> int:
 
     # Parse size parameter (can be single value or range)
     size_spec = args.size if isinstance(args.size, list) else [args.size]
+    is_size_range = len(size_spec) == 2
 
-    # Determine if it's a range or fixed size
-    is_range = len(size_spec) == 2
-    if is_range:
+    # Parse rounds parameter (can be single value or range)
+    rounds_spec = args.rounds if isinstance(args.rounds, list) else [args.rounds]
+    is_rounds_range = len(rounds_spec) == 2
+
+    # Log comparison setup
+    logger.info("Starting comparison of %d tournaments", args.tournaments)
+
+    if is_size_range:
         min_size, max_size = size_spec
-        logger.info("Starting comparison of %d tournaments", args.tournaments)
         logger.info(
             "Tournament size range: %d-%d players (random for each tournament)",
             min_size,
             max_size,
         )
     else:
-        fixed_size = size_spec[0]
-        logger.info("Starting comparison of %d tournaments", args.tournaments)
-        logger.info("Tournament size: %d players", fixed_size)
+        logger.info("Tournament size: %d players", size_spec[0])
 
-    logger.info("Rounds per tournament: %d", args.rounds)
+    if is_rounds_range:
+        min_rounds, max_rounds = rounds_spec
+        logger.info(
+            "Rounds range: %d-%d rounds (random for each tournament)",
+            min_rounds,
+            max_rounds,
+        )
+    else:
+        logger.info("Rounds per tournament: %d", rounds_spec[0])
 
     # Initialize comparison engine
     comparison_engine = PairingComparisonEngine(
@@ -204,17 +271,24 @@ def run_comparison(args: argparse.Namespace) -> int:
     all_results = []
 
     for i in range(args.tournaments):
-        # Determine tournament size (random from range or fixed)
-        if is_range:
-            tournament_size = random.randint(min_size, max_size)
-        else:
-            tournament_size = fixed_size
+        # Determine tournament parameters (random from range or fixed)
+        tournament_size = (
+            random.randint(size_spec[0], size_spec[1])
+            if is_size_range
+            else size_spec[0]
+        )
+        num_rounds = (
+            random.randint(rounds_spec[0], rounds_spec[1])
+            if is_rounds_range
+            else rounds_spec[0]
+        )
 
         logger.info(
-            "Generating tournament %d/%d (size: %d)",
+            "Generating tournament %d/%d (size: %d, rounds: %d)",
             i + 1,
             args.tournaments,
             tournament_size,
+            num_rounds,
         )
 
         try:
@@ -222,7 +296,7 @@ def run_comparison(args: argparse.Namespace) -> int:
             tournament_seed = args.seed + i if args.seed else None
             tournament_config = RTGConfig(
                 num_players=tournament_size,
-                num_rounds=args.rounds,
+                num_rounds=num_rounds,
                 rating_distribution=RatingDistribution[args.distribution.upper()],
                 result_pattern=ResultPattern[args.pattern.upper()],
                 pairing_system="dual",
@@ -626,9 +700,9 @@ Examples:
 
     parser.add_argument(
         "--rounds",
-        type=int,
-        default=7,
-        help="Number of rounds per tournament (default: 7)",
+        type=parse_rounds_range,
+        default=[7],
+        help="Number of rounds per tournament (default: 7). Use range like '5-9' to randomly select rounds for each tournament",
     )
 
     # Tournament generation options
