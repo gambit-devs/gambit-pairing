@@ -29,12 +29,15 @@ from typing import Optional
 from gambitpairing.comparison.analyzer import create_statistical_analyzer
 from gambitpairing.comparison.engine import PairingComparisonEngine
 from gambitpairing.comparison.reporter import generate_comprehensive_report
+from gambitpairing.constants import BYE_SCORE, DRAW_SCORE, LOSS_SCORE, WIN_SCORE
+from gambitpairing.player import Player
 from gambitpairing.testing.rtg import (
     RandomTournamentGenerator,
     RatingDistribution,
     ResultPattern,
     RTGConfig,
 )
+from gambitpairing.type_hints import WHITE
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)
@@ -168,24 +171,24 @@ def run_comparison(args: argparse.Namespace) -> int:
             for round_data in rounds:
                 round_num = round_data["round_number"]
 
-                # Get Gambit pairings
-                gambit_pairings = round_data.get("gambit_pairings", [])
-                gambit_bye_id = round_data.get("gambit_bye_player_id")
-                gambit_bye = (
-                    next((p for p in players if p.id == gambit_bye_id), None)
-                    if gambit_bye_id
-                    else None
+                all_snapshot_players, active_players, previous_matches, bye_history = (
+                    _build_round_snapshot(players, rounds, round_num)
                 )
+
+                # Build player lookup from snapshot players
+                snapshot_map = {p.id: p for p in all_snapshot_players}
+
+                # Convert raw pairings (with stale Player objects) to snapshot players
+                raw_gambit_pairings = round_data.get("gambit_pairings", [])
+                gambit_pairings = _remap_pairings(raw_gambit_pairings, snapshot_map)
+                gambit_bye_id = round_data.get("gambit_bye_player_id")
+                gambit_bye = snapshot_map.get(gambit_bye_id) if gambit_bye_id else None
                 gambit_time = round_data.get("gambit_time_ms", 0.0)
 
-                # Get BBP pairings
-                bbp_pairings = round_data.get("bbp_pairings", [])
+                raw_bbp_pairings = round_data.get("bbp_pairings", [])
+                bbp_pairings = _remap_pairings(raw_bbp_pairings, snapshot_map)
                 bbp_bye_id = round_data.get("bbp_bye_player_id")
-                bbp_bye = (
-                    next((p for p in players if p.id == bbp_bye_id), None)
-                    if bbp_bye_id
-                    else None
-                )
+                bbp_bye = snapshot_map.get(bbp_bye_id) if bbp_bye_id else None
                 bbp_time = round_data.get("bbp_time_ms", 0.0)
 
                 # Only compare if both pairings exist
@@ -196,11 +199,13 @@ def run_comparison(args: argparse.Namespace) -> int:
                         bbp_pairings=bbp_pairings,
                         gambit_bye=gambit_bye,
                         bbp_bye=bbp_bye,
-                        players=players,
+                        players=active_players,
                         round_number=round_num,
                         total_rounds=args.rounds,
                         gambit_time_ms=gambit_time,
                         bbp_time_ms=bbp_time,
+                        previous_matches=previous_matches,
+                        player_bye_history=bye_history,
                     )
                     all_results.append(result)
 
@@ -259,6 +264,173 @@ def run_comparison(args: argparse.Namespace) -> int:
 
     logger.info("Comparison complete!")
     return 0
+
+
+def _remap_pairings(
+    raw_pairings: list,
+    snapshot_map: dict[str, Player],
+) -> list[tuple[Player, Player]]:
+    """Convert pairings from raw format to snapshot player objects.
+
+    RTG stores pairings as (Player, Player) tuples where the Player objects
+    have accumulated all tournament history. For accurate per-round validation,
+    we need to remap these to snapshot players that only have history up to
+    the current round.
+
+    Args:
+        raw_pairings: Pairings as (Player, Player) tuples or (id, id) tuples
+        snapshot_map: Mapping from player ID to snapshot Player object
+
+    Returns:
+        List of (white, black) Player tuples using snapshot players
+    """
+    remapped = []
+    for pairing in raw_pairings:
+        if isinstance(pairing, tuple) and len(pairing) >= 2:
+            white_ref, black_ref = pairing[0], pairing[1]
+            # Handle both Player objects and ID strings
+            white_id = white_ref.id if hasattr(white_ref, "id") else white_ref
+            black_id = black_ref.id if hasattr(black_ref, "id") else black_ref
+            white = snapshot_map.get(white_id)
+            black = snapshot_map.get(black_id)
+            if white and black:
+                remapped.append((white, black))
+    return remapped
+
+
+def _create_fresh_player(source_player) -> Player:
+    """Create a fresh player with static attributes but empty history.
+
+    Args:
+        source_player: Source player object or dict to copy attributes from
+
+    Returns:
+        New Player instance with empty history lists
+    """
+    if isinstance(source_player, Player):
+        data = source_player.to_dict()
+    else:
+        data = dict(source_player)
+
+    # Create player with only static attributes
+    fresh = Player(
+        name=data.get("name", "Unknown"),
+        rating=data.get("rating"),
+    )
+
+    # Copy static identification attributes
+    fresh.id = data.get("id", fresh.id)
+    fresh.pairing_number = data.get("pairing_number")
+    fresh.club = data.get("club")
+    fresh.federation = data.get("federation")
+    fresh.gender = data.get("gender")
+    fresh.title = data.get("title")
+    fresh.fide_id = data.get("fide_id")
+
+    # Reset all history to empty (critical for accurate round-by-round validation)
+    fresh.opponent_ids = []
+    fresh.results = []
+    fresh.color_history = []
+    fresh.running_scores = []
+    fresh.float_history = []
+    fresh.match_history = []
+    fresh.has_received_bye = False
+    fresh.num_black_games = 0
+    fresh.is_active = data.get("is_active", True)
+    fresh.points = 0.0
+
+    return fresh
+
+
+def _build_round_snapshot(
+    players: list,
+    rounds: list,
+    round_number: int,
+) -> tuple[list[Player], list[Player], set, dict]:
+    player_map: dict[str, Player] = {}
+    for player in players:
+        player_obj = _create_fresh_player(player)
+        player_map[player_obj.id] = player_obj
+
+    previous_matches: set = set()
+    bye_history: dict[str, int] = {}
+
+    rounds_sorted = sorted(rounds, key=lambda r: r.get("round_number", 0))
+    for round_data in rounds_sorted:
+        current_round = round_data.get("round_number", 0)
+        if current_round >= round_number:
+            break
+
+        pairing_ids = round_data.get("pairings", [])
+        results = round_data.get("results", [])
+        results_map: dict[tuple[str, str], tuple[float, float]] = {}
+        for result in results:
+            if isinstance(result, dict):
+                white_id = result.get("white_id")
+                black_id = result.get("black_id")
+                white_score = result.get("white_score")
+                black_score = result.get("black_score")
+            else:
+                white_id, black_id = result[0], result[1]
+                white_score = result[2] if len(result) > 2 else None
+                black_score = result[3] if len(result) > 3 else None
+                forfeit = result[4] if len(result) > 4 else False
+                if black_score is None and white_score is not None:
+                    if forfeit and float(white_score) == LOSS_SCORE:
+                        black_score = LOSS_SCORE
+                    else:
+                        black_score = WIN_SCORE - float(white_score)
+
+            if white_id and black_id and white_score is not None:
+                if black_score is None:
+                    black_score = WIN_SCORE - float(white_score)
+                results_map[(white_id, black_id)] = (
+                    float(white_score),
+                    float(black_score),
+                )
+
+        for white_id, black_id in pairing_ids:
+            if white_id not in player_map or black_id not in player_map:
+                continue
+            scores = results_map.get((white_id, black_id))
+            if scores is None:
+                continue
+            white_score, black_score = scores
+            white_player = player_map[white_id]
+            black_player = player_map[black_id]
+            white_player.add_round_result(black_player, white_score, WHITE)
+            black_player.add_round_result(white_player, black_score, BLACK)
+            previous_matches.add(frozenset({white_id, black_id}))
+
+        bye_id = round_data.get("bye_player_id") or round_data.get("bye_player")
+        if bye_id and bye_id in player_map:
+            player_map[bye_id].add_round_result(None, BYE_SCORE, None)
+            bye_history[bye_id] = bye_history.get(bye_id, 0) + 1
+
+        scheduled_byes = round_data.get("scheduled_byes", {})
+        for half_id in scheduled_byes.get("half_point", []):
+            if half_id in player_map:
+                player_map[half_id].add_round_result(None, DRAW_SCORE, None)
+        for zero_id in scheduled_byes.get("zero_point", []):
+            if zero_id in player_map:
+                player_map[zero_id].add_round_result(None, LOSS_SCORE, None)
+
+    excluded_ids = set()
+    for round_data in rounds_sorted:
+        if round_data.get("round_number", 0) != round_number:
+            continue
+        scheduled_byes = round_data.get("scheduled_byes", {})
+        excluded_ids |= set(scheduled_byes.get("half_point", []))
+        excluded_ids |= set(scheduled_byes.get("zero_point", []))
+        break
+
+    active_players = [
+        player
+        for player_id, player in player_map.items()
+        if player_id not in excluded_ids
+    ]
+
+    return list(player_map.values()), active_players, previous_matches, bye_history
 
 
 def print_summary(summary, report_path: Path) -> None:

@@ -31,6 +31,24 @@ LOG_FMT = "LVL: %(levelname)s | FILE PATH: %(pathname)s | FUN: %(funcName)s | ms
 _LOG_PATH_PRINTED = False
 
 
+class SafeRotatingFileHandler(RotatingFileHandler):
+    """RotatingFileHandler that handles rotation errors gracefully on Windows."""
+
+    def doRollover(self):
+        """Perform rollover, but handle permission errors gracefully."""
+        try:
+            super().doRollover()
+        except (OSError, PermissionError):
+            # If rotation fails due to file being in use, just truncate the current file
+            # This is better than crashing the application
+            try:
+                with open(self.baseFilename, "w", encoding=self.encoding):
+                    pass  # Truncate the file
+            except Exception:
+                # If we can't even truncate, just continue without rotation
+                pass
+
+
 # --- Logging Setup ---
 def setup_logger(logger_name: str) -> logging.Logger:
     """Set up loger for a python module.
@@ -97,9 +115,9 @@ def setup_logger(logger_name: str) -> logging.Logger:
                 os.makedirs(log_folder, exist_ok=True)
 
             log_path = os.path.join(log_folder, "gambit-pairing.log")
-            # Use RotatingFileHandler to prevent unbounded log growth
+            # Use SafeRotatingFileHandler to prevent unbounded log growth
             try:
-                file_handler = RotatingFileHandler(
+                file_handler = SafeRotatingFileHandler(
                     log_path, maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8"
                 )
                 file_handler.setFormatter(log_formatter)

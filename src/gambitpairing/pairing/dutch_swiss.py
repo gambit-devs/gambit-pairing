@@ -255,17 +255,6 @@ def create_dutch_swiss_pairings(
         if hasattr(p, "is_moved_down"):
             p.is_moved_down = False
 
-    # Enhanced performance optimization with FIDE compliance preservation
-    # Only use simplified approach for extremely large tournaments in later rounds
-    if not fide_strict and len(active_players) > 50 and current_round > 5:
-        return _create_simplified_dutch_pairings(
-            active_players,
-            current_round,
-            previous_matches,
-            get_eligible_bye_player,
-            initial_color,
-        )
-
     # Sort players by score (descending), then pairing number (ascending) - FIDE Article 1.2
     sorted_players = _sort_players_for_pairing(active_players)
 
@@ -274,10 +263,22 @@ def create_dutch_swiss_pairings(
 
     # Handle bye assignment for odd number of players
     if len(sorted_players) % 2 == 1:
-        bye_player = get_eligible_bye_player(sorted_players)
+        bye_player = _select_safe_bye_candidate(sorted_players, get_eligible_bye_player)
         if bye_player:
             bye_player_id = bye_player.id
             sorted_players.remove(bye_player)
+
+    # Enhanced performance optimization with FIDE compliance preservation
+    # Only use simplified approach for extremely large tournaments in later rounds
+    if not fide_strict and len(sorted_players) > 200 and current_round > 5:
+        return _create_simplified_dutch_pairings(
+            sorted_players,
+            current_round,
+            previous_matches,
+            initial_color,
+            bye_player,
+            bye_player_id,
+        )
 
     # Round 1 special case: top half vs bottom half
     if current_round == 1:
@@ -2222,6 +2223,34 @@ def _is_bye_candidate(player: Player, bye_assignee_score: float) -> bool:
     return player.score <= bye_assignee_score
 
 
+def _select_safe_bye_candidate(
+    players: List[Player], get_eligible_bye_player
+) -> Optional[Player]:
+    """Select a FIDE-eligible bye candidate with fallback ordering (C5, C9)."""
+    if not players:
+        return None
+
+    min_score = min(player.score for player in players)
+    preferred = None
+    if get_eligible_bye_player is not None:
+        preferred = get_eligible_bye_player(players)
+        if preferred and _is_bye_candidate(preferred, min_score):
+            return preferred
+
+    eligible = [p for p in players if _is_bye_candidate(p, min_score)]
+    if not eligible:
+        return None
+
+    def unplayed_count(player: Player) -> int:
+        return len([opp_id for opp_id in player.opponent_ids if opp_id is None])
+
+    min_score = min(player.score for player in eligible)
+    candidates = [p for p in eligible if p.score == min_score]
+    min_unplayed = min(unplayed_count(p) for p in candidates)
+    candidates = [p for p in candidates if unplayed_count(p) == min_unplayed]
+    return sorted(candidates, key=lambda p: p.pairing_number)[0]
+
+
 def _validate_downfloater_status(player: Player, original_bracket_score: float) -> bool:
     """
     Validate if a player should be considered a downfloater.
@@ -2306,8 +2335,9 @@ def _create_simplified_dutch_pairings(
     players: List[Player],
     current_round: int,
     previous_matches: Set[frozenset],
-    get_eligible_bye_player,
     initial_color: str,
+    bye_player: Optional[Player],
+    bye_player_id: Optional[str],
 ) -> Tuple[
     List[Tuple[Player, Player]], Optional[Player], List[Tuple[str, str]], Optional[str]
 ]:
@@ -2376,7 +2406,11 @@ def _create_simplified_dutch_pairings(
     pairings.extend(final_pairings)
     round_pairings_ids.extend([(p[0].id, p[1].id) for p in final_pairings])
 
-    return pairings, None, round_pairings_ids, None
+    if unpaired and bye_player is None:
+        bye_player = unpaired.pop(0)
+        bye_player_id = bye_player.id
+
+    return pairings, bye_player, round_pairings_ids, bye_player_id
 
 
 def _create_fallback_pairings(

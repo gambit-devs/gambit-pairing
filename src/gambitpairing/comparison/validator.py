@@ -47,6 +47,8 @@ class ComparisonValidator:
         players: List[Player],
         round_number: int,
         total_rounds: int,
+        previous_matches: Optional[set] = None,
+        player_bye_history: Optional[Dict[str, int]] = None,
     ) -> ValidationReport:
         """Validate pairings for a single round in comparison mode.
 
@@ -72,14 +74,17 @@ class ComparisonValidator:
             "results": [],  # Results not available during pairing validation
         }
 
+        previous_matches = previous_matches or set()
+        player_bye_history = player_bye_history or {}
+
         # Validate using FPC
         report = self.fpc_validator.validate_round_pairings(
             pairings=pairings,
             bye_player=bye_player,
             current_round=round_number,
             total_rounds=total_rounds,
-            previous_matches=set(),  # Not available in comparison mode
-            player_bye_history={},  # Not available in comparison mode
+            previous_matches=previous_matches,
+            player_bye_history=player_bye_history,
             players=players,
         )
 

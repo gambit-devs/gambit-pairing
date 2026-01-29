@@ -170,6 +170,8 @@ class PairingComparisonEngine:
         total_rounds: int = 1,
         gambit_time_ms: float = 0.0,
         bbp_time_ms: float = 0.0,
+        previous_matches: Optional[set] = None,
+        player_bye_history: Optional[Dict[str, int]] = None,
     ) -> ComparisonResult:
         """Compare two pairing sets from different engines.
 
@@ -205,10 +207,22 @@ class PairingComparisonEngine:
         # Validate both pairing sets if players provided
         if players:
             result.fpc_gambit = self.validator.validate_pairings_for_comparison(
-                gambit_pairings, gambit_bye, players, round_number, total_rounds
+                gambit_pairings,
+                gambit_bye,
+                players,
+                round_number,
+                total_rounds,
+                previous_matches=previous_matches,
+                player_bye_history=player_bye_history,
             )
             result.fpc_bbp = self.validator.validate_pairings_for_comparison(
-                bbp_pairings, bbp_bye, players, round_number, total_rounds
+                bbp_pairings,
+                bbp_bye,
+                players,
+                round_number,
+                total_rounds,
+                previous_matches=previous_matches,
+                player_bye_history=player_bye_history,
             )
 
         # Calculate metrics for both engines

@@ -435,11 +435,21 @@ class RandomTournamentGenerator:
             "dutch_swiss",
             "dual",
         }:
+            validation_players = [
+                {
+                    "id": player.id,
+                    "name": player.name,
+                    "rating": player.rating,
+                    "pairing_number": player.pairing_number,
+                    "federation": player.federation,
+                }
+                for player in players
+            ]
             validator = create_fpc_validator()
             report = validator.validate_tournament_compliance(
                 {
                     "config": {"num_rounds": self.config.num_rounds},
-                    "players": players,
+                    "players": validation_players,
                     "rounds": [
                         {
                             "round_number": round_data["round_number"],
@@ -520,12 +530,21 @@ class RandomTournamentGenerator:
             import time
 
             start_time = time.perf_counter()
-            bbp_pairings, bbp_bye = self.bbp_engine.generate_pairings(
-                active_players,
-                round_number,
-                self.config.num_rounds,
-            )
-            bbp_time_ms = (time.perf_counter() - start_time) * 1000
+            try:
+                bbp_pairings, bbp_bye = self.bbp_engine.generate_pairings(
+                    active_players,
+                    round_number,
+                    self.config.num_rounds,
+                )
+                bbp_time_ms = (time.perf_counter() - start_time) * 1000
+            except RuntimeError as exc:
+                logger.warning(
+                    "BBP pairing failed for round %s: %s",
+                    round_number,
+                    exc,
+                )
+                bbp_pairings = None
+                bbp_bye = None
 
         if self.config.pairing_system == "bbp_dutch":
             pairings = bbp_pairings or []
@@ -541,7 +560,15 @@ class RandomTournamentGenerator:
                     white_player, black_player, round_number
                 )
             )
-            results.append((white_player.id, black_player.id, white_score, forfeit))
+            results.append(
+                (
+                    white_player.id,
+                    black_player.id,
+                    white_score,
+                    black_score,
+                    forfeit,
+                )
+            )
             white_player.add_round_result(black_player, white_score, WHITE)
             black_player.add_round_result(white_player, black_score, BLACK)
             self.pairing_history.add_pairing(white_player.id, black_player.id)

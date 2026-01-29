@@ -253,6 +253,8 @@ def run_generate_command(args: argparse.Namespace) -> int:
         seed=args.seed,
         validate_with_fpc=args.validate,
     )
+    if args.validate:
+        config.fide_strict = True
 
     # Generate tournament
     rtg = RandomTournamentGenerator(config)
