@@ -36,6 +36,7 @@ try:
 except ImportError:
     PROMPT_TOOLKIT_AVAILABLE = False
 
+from gambitpairing.comparison.cli import parse_size_range
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)
@@ -100,7 +101,7 @@ COMMANDS = {
         "description": "Compare Gambit vs BBP pairing engines",
         "options": {
             "--tournaments": "Number of tournaments to compare (default: 50)",
-            "--size": "Players per tournament (default: 24)",
+            "--size": "Players per tournament (default: 24, or range like 16-64 for random selection)",
             "--rounds": "Rounds per tournament (default: 7)",
             "--distribution": "Rating distribution",
             "--pattern": "Result pattern",
@@ -140,7 +141,7 @@ COMMANDS = {
     "benchmark": {
         "description": "Performance benchmarking",
         "options": {
-            "--size": "Tournament size to benchmark (default: 24)",
+            "--size": "Tournament size to benchmark (default: 24, or range like 16-64 for random)",
             "--rounds": "Number of rounds (default: 7)",
             "--iterations": "Number of iterations (default: 10)",
             "--compare-bbp": "Include BBP in benchmark",
@@ -280,6 +281,21 @@ def run_generate_command(args: argparse.Namespace) -> int:
     if "fpc_report" in tournament_data:
         report = tournament_data["fpc_report"]
         print(f"\n{Colors.BOLD}FIDE Compliance:{Colors.ENDC}")
+
+        # Show violation counts if any
+        num_violations = len(report.get("absolute_violations", []))
+        num_warnings = len(report.get("warnings", []))
+
+        if num_violations > 0:
+            print(f"  {Colors.FAIL}Absolute violations: {num_violations}{Colors.ENDC}")
+            violation_ids = report.get("absolute_violations", [])
+            if violation_ids:
+                print(f"    Criteria: {' '.join(violation_ids)}")
+
+        if num_warnings > 0:
+            print(f"  {Colors.WARNING}Quality warnings: {num_warnings}{Colors.ENDC}")
+
+        # Show summary
         print(f"  {report.get('summary', 'N/A')}")
 
     return 0
@@ -614,7 +630,12 @@ def create_compare_parser():
     parser.add_argument(
         "--tournaments", type=int, default=50, help="Number of tournaments"
     )
-    parser.add_argument("--size", type=int, default=24, help="Players per tournament")
+    parser.add_argument(
+        "--size",
+        type=parse_size_range,
+        default=[24],
+        help="Players per tournament. Use range like '16-64' to randomly select size for each tournament",
+    )
     parser.add_argument("--rounds", type=int, default=7, help="Rounds per tournament")
     parser.add_argument(
         "--distribution",

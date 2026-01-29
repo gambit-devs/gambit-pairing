@@ -499,12 +499,52 @@ class QualityCriteriaChecker:
         ]
 
         if missing:
+            # Check if this is because C1-C3 cannot be satisfied
+            # If there are unpaired players with no valid opponents (all have been played),
+            # this is an ABSOLUTE violation indicating C1-C3 infeasibility
+            unpaired_players = [
+                p
+                for p in context.players
+                if getattr(p, "is_active", True) and p.id not in paired_ids
+            ]
+
+            # Check if any unpaired player has available opponents
+            has_unavoidable_violation = False
+            for player in unpaired_players:
+                # Count how many valid opponents exist
+                valid_opponents = [
+                    other
+                    for other in context.players
+                    if other.id != player.id
+                    and getattr(other, "is_active", True)
+                    and frozenset({player.id, other.id}) not in context.previous_matches
+                ]
+                # If a player has no valid opponents left, C1 cannot be satisfied
+                if not valid_opponents:
+                    has_unavoidable_violation = True
+                    break
+
+            violation_type = (
+                ViolationType.ABSOLUTE
+                if has_unavoidable_violation
+                else ViolationType.QUALITY
+            )
+
+            description = (
+                "Cannot create pairings without violating C1 (no repeat pairings)"
+                if has_unavoidable_violation
+                else "Some active players were not paired"
+            )
+
             return CriterionResult(
                 criterion="C4",
                 status=CriterionStatus.VIOLATION,
-                violation_type=ViolationType.QUALITY,
-                description="Some active players were not paired",
-                details={"unpaired_players": missing},
+                violation_type=violation_type,
+                description=description,
+                details={
+                    "unpaired_players": missing,
+                    "c1_unavoidable": has_unavoidable_violation,
+                },
             )
 
         return CriterionResult(
@@ -1036,6 +1076,49 @@ class FPCValidator:
         self.absolute_checker = AbsoluteCriteriaChecker()
         self.quality_checker = QualityCriteriaChecker()
 
+    def check_tournament_feasibility(
+        self, num_players: int, num_rounds: int
+    ) -> Optional[CriterionResult]:
+        """Check if tournament configuration can satisfy C1 (no repeat pairings).
+
+        With N players, there are at most C(N,2) = N*(N-1)/2 unique pairings.
+        With R rounds and N players, we need R * floor(N/2) total pairings.
+
+        If required pairings exceed unique pairings, C1 violations are inevitable.
+
+        Returns:
+            CriterionResult if configuration is infeasible, None otherwise.
+        """
+        if num_players < 2 or num_rounds < 1:
+            return None
+
+        max_unique_pairings = num_players * (num_players - 1) // 2
+        pairings_per_round = num_players // 2
+        total_pairings_needed = num_rounds * pairings_per_round
+
+        if total_pairings_needed > max_unique_pairings:
+            min_repeats = total_pairings_needed - max_unique_pairings
+            return CriterionResult(
+                criterion="C1",
+                status=CriterionStatus.VIOLATION,
+                violation_type=ViolationType.ABSOLUTE,
+                description=(
+                    f"Tournament configuration makes C1 compliance impossible: "
+                    f"{num_players} players over {num_rounds} rounds requires "
+                    f"{total_pairings_needed} pairings, but only {max_unique_pairings} "
+                    f"unique pairings exist (minimum {min_repeats} repeat pairings required)"
+                ),
+                details={
+                    "num_players": num_players,
+                    "num_rounds": num_rounds,
+                    "max_unique_pairings": max_unique_pairings,
+                    "total_pairings_needed": total_pairings_needed,
+                    "min_repeat_pairings": min_repeats,
+                },
+            )
+
+        return None
+
     def validate_round_pairings(
         self,
         pairings: Pairings,
@@ -1141,6 +1224,26 @@ class FPCValidator:
                 summary="No tournament data provided for validation",
             )
 
+        # Check tournament feasibility upfront
+        num_players = len(players)
+        num_rounds = tournament_data.get("config", {}).get("num_rounds", len(rounds))
+        feasibility_result = self.check_tournament_feasibility(num_players, num_rounds)
+
+        if feasibility_result:
+            logger.warning(
+                "Tournament configuration is infeasible: %s",
+                feasibility_result.description,
+            )
+            return ValidationReport(
+                total_criteria=1,
+                compliant_count=0,
+                violations=[feasibility_result],
+                quality_warnings=[],
+                overall_status=CriterionStatus.VIOLATION,
+                summary=feasibility_result.description,
+                criteria_results=[feasibility_result],
+            )
+
         player_map: Dict[str, Player] = {}
         for player in players:
             if isinstance(player, Player):
@@ -1242,15 +1345,29 @@ class FPCValidator:
         overall_status = (
             CriterionStatus.VIOLATION if violations else CriterionStatus.COMPLIANT
         )
+
+        # Check if there are C4 absolute violations (indicating C1-C3 impossibility)
+        c4_absolute_violations = [
+            v
+            for v in violations
+            if v.criterion_id == "C4" and v.violation_type == ViolationType.ABSOLUTE
+        ]
+
         if total_criteria:
             if violations or quality_warnings:
                 violation_ids = [v.criterion_id for v in violations]
                 warning_ids = [w.criterion_id for w in quality_warnings]
                 all_ids = violation_ids + warning_ids
+
+                # Add special note if C4 absolute violations indicate C1-C3 impossibility
+                c4_note = ""
+                if c4_absolute_violations:
+                    c4_note = " (C4 violations indicate C1-C3 cannot be satisfied)"
+
                 summary = (
                     f"Tournament validation complete - {len(violations)} "
                     f"absolute violations, {len(quality_warnings)} quality warnings "
-                    f"({' '.join(all_ids)})"
+                    f"({' '.join(all_ids)}){c4_note}"
                 )
             else:
                 summary = "Tournament validation complete"

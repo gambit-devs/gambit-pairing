@@ -43,6 +43,65 @@ from gambitpairing.utils import setup_logger
 logger = setup_logger(__name__)
 
 
+def parse_size_range(value: str) -> list[int]:
+    """Parse size parameter which can be a single value or range.
+
+    Args:
+        value: Size value as string (e.g., "24" or "16-64")
+
+    Returns:
+        [size] for single value, [min, max] for range
+
+    Raises:
+        argparse.ArgumentTypeError: If format is invalid
+
+    Examples:
+        >>> parse_size_range("24")
+        [24]
+        >>> parse_size_range("16-64")
+        [16, 64]
+    """
+    if "-" in value:
+        try:
+            parts = value.split("-")
+            if len(parts) != 2:
+                raise argparse.ArgumentTypeError(
+                    f"Invalid range format '{value}'. Use 'MIN-MAX' (e.g., '16-64')"
+                )
+
+            min_size = int(parts[0])
+            max_size = int(parts[1])
+
+            if min_size >= max_size:
+                raise argparse.ArgumentTypeError(
+                    f"Range minimum ({min_size}) must be less than maximum ({max_size})"
+                )
+
+            if min_size < 4:
+                raise argparse.ArgumentTypeError(
+                    f"Minimum size must be at least 4 players"
+                )
+
+            # Return [min, max] to indicate a range
+            return [min_size, max_size]
+        except ValueError as e:
+            raise argparse.ArgumentTypeError(
+                f"Invalid range '{value}'. Both values must be integers: {e}"
+            )
+    else:
+        try:
+            size = int(value)
+            if size < 4:
+                raise argparse.ArgumentTypeError(
+                    "Tournament size must be at least 4 players"
+                )
+            return [size]
+        except ValueError:
+            raise argparse.ArgumentTypeError(
+                f"Invalid size '{value}'. Must be an integer or range (e.g., '16-64')"
+            )
+
+
 def create_output_directory(base_path: Optional[str] = None) -> Path:
     """Create output directory for comparison results.
 
@@ -107,29 +166,33 @@ def run_comparison(args: argparse.Namespace) -> int:
     Returns:
         Exit code (0 for success)
     """
+    import random
+
     # Load configuration if provided
     config_dict = load_configuration(args.config)
 
     # Create output directory
     output_dir = create_output_directory(args.output)
 
-    # Setup RTG configuration
-    rtg_config = RTGConfig(
-        num_players=args.size,
-        num_rounds=args.rounds,
-        rating_distribution=RatingDistribution[args.distribution.upper()],
-        result_pattern=ResultPattern[args.pattern.upper()],
-        pairing_system="dual",  # Use dual mode for comparison
-        bbp_executable=args.bbp_executable,
-        bbp_workdir=str(output_dir / "bbp_files"),
-        bbp_keep_files=args.keep_bbp_files,
-        validate_with_fpc=True,
-        fide_strict=args.fide_strict,
-        seed=args.seed,
-    )
+    # Parse size parameter (can be single value or range)
+    size_spec = args.size if isinstance(args.size, list) else [args.size]
 
-    logger.info("Starting comparison of %d tournaments", args.tournaments)
-    logger.info("Tournament size: %d players, %d rounds", args.size, args.rounds)
+    # Determine if it's a range or fixed size
+    is_range = len(size_spec) == 2
+    if is_range:
+        min_size, max_size = size_spec
+        logger.info("Starting comparison of %d tournaments", args.tournaments)
+        logger.info(
+            "Tournament size range: %d-%d players (random for each tournament)",
+            min_size,
+            max_size,
+        )
+    else:
+        fixed_size = size_spec[0]
+        logger.info("Starting comparison of %d tournaments", args.tournaments)
+        logger.info("Tournament size: %d players", fixed_size)
+
+    logger.info("Rounds per tournament: %d", args.rounds)
 
     # Initialize comparison engine
     comparison_engine = PairingComparisonEngine(
@@ -141,13 +204,24 @@ def run_comparison(args: argparse.Namespace) -> int:
     all_results = []
 
     for i in range(args.tournaments):
-        logger.info("Generating tournament %d/%d", i + 1, args.tournaments)
+        # Determine tournament size (random from range or fixed)
+        if is_range:
+            tournament_size = random.randint(min_size, max_size)
+        else:
+            tournament_size = fixed_size
+
+        logger.info(
+            "Generating tournament %d/%d (size: %d)",
+            i + 1,
+            args.tournaments,
+            tournament_size,
+        )
 
         try:
             # Create new RTG for each tournament with different seed
             tournament_seed = args.seed + i if args.seed else None
             tournament_config = RTGConfig(
-                num_players=args.size,
+                num_players=tournament_size,
                 num_rounds=args.rounds,
                 rating_distribution=RatingDistribution[args.distribution.upper()],
                 result_pattern=ResultPattern[args.pattern.upper()],
@@ -521,6 +595,9 @@ Examples:
   # Large tournaments with custom parameters
   gambit-compare --tournaments 100 --size 64 --rounds 9
 
+  # Random size from range for each tournament
+  gambit-compare --tournaments 100 --size 16-64 --rounds 5
+
   # Custom scoring weights
   gambit-compare --fide-weight 0.8 --quality-weight 0.2
 
@@ -542,9 +619,9 @@ Examples:
 
     parser.add_argument(
         "--size",
-        type=int,
-        default=24,
-        help="Number of players per tournament (default: 24)",
+        type=parse_size_range,
+        default=[24],
+        help="Number of players per tournament (default: 24). Use range like '16-64' to randomly select size for each tournament",
     )
 
     parser.add_argument(

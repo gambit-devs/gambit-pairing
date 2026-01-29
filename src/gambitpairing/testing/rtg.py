@@ -418,6 +418,27 @@ class RandomTournamentGenerator:
             self.config.num_rounds,
         )
 
+        # Check for mathematically impossible configurations
+        max_unique_pairings = (
+            self.config.num_players * (self.config.num_players - 1) // 2
+        )
+        pairings_per_round = self.config.num_players // 2
+        total_pairings_needed = self.config.num_rounds * pairings_per_round
+
+        if total_pairings_needed > max_unique_pairings:
+            min_repeats = total_pairings_needed - max_unique_pairings
+            logger.warning(
+                "Tournament configuration makes C1 compliance impossible: "
+                "%d players over %d rounds requires %d pairings, but only %d "
+                "unique pairings exist (minimum %d repeat pairings required). "
+                "The pairing engine will stop when it runs out of valid opponents.",
+                self.config.num_players,
+                self.config.num_rounds,
+                total_pairings_needed,
+                max_unique_pairings,
+                min_repeats,
+            )
+
         players = self.player_factory.create_players()
         bye_schedule = self._build_bye_schedule(players)
 

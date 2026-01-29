@@ -69,7 +69,7 @@ gambit-test compare --tournaments N [OPTIONS]
 
 **Options:**
 - `--tournaments N`: Number of tournaments (default: 50).
-- `--size N`: Players per tournament.
+- `--size N|MIN-MAX`: Players per tournament. Specify a fixed number `N` or a range `MIN-MAX` (e.g., `16-64`). For ranges, each tournament will randomly select a size within the range.
 - `--fide-weight FLOAT`: FIDE compliance weight.
 - `--output DIR`: Save results.
 
