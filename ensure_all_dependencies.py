@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 
 import subprocess
+import os
 import sys
 import tomllib
 from pathlib import Path
 
 
 def run_command(cmd, description):
-    """Run a command and handle errors"""
+    """Run a command and handle errors."""
     print(f"Running: {description}")
     try:
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)
@@ -25,7 +26,7 @@ def run_command(cmd, description):
 
 
 def load_pyproject_dependencies():
-    """Load dependencies from pyproject.toml"""
+    """Load dependencies from pyproject.toml."""
     try:
         with open("pyproject.toml", "rb") as f:
             data = tomllib.load(f)
@@ -49,6 +50,11 @@ def load_pyproject_dependencies():
 
 
 def main():
+    """Entry point."""
+    # Set cwd for python process
+    script_dir = Path(__file__).parent
+    os.chdir(script_dir)
+
     # Ensure pip is up to date
     print("Ensuring pip is up to date")
     if not run_command(
