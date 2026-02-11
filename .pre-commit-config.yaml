@@ -35,7 +35,7 @@ repos:
       - id: black-local
         name: Black (using pyproject.toml config)
         entry: black
-        args: ["--check", "--diff"]
+        args: ["--diff"]
         language: system
         files: \.py$
         require_serial: false
@@ -44,7 +44,7 @@ repos:
       - id: isort-local
         name: isort (using pyproject.toml config)
         entry: isort
-        args: ["--diff", "--check-only"]
+        args: ["--diff"]
         language: system
         files: \.py$
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Executable creation script for Gambit Pairing using PyInstaller
+Executable creation script for Gambit Pairing using PyInstaller.
 
 Creates single-file or single-directory executables from the Python source.
 
@@ -15,12 +15,13 @@ The onedir build is required for MSI creation, while onefile is more portable.
 
 import argparse
 import subprocess
+import os
 import sys
 from pathlib import Path
 
 
 def run_command(cmd, description):
-    """Run a command with error handling"""
+    """Run a command with error handling."""
     print(f"Running: {description}")
     try:
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)
@@ -41,7 +42,7 @@ def run_command(cmd, description):
 
 
 def ensure_dependencies():
-    """Ensure all dependencies are installed"""
+    """Ensure all dependencies are installed."""
     script_dir = Path(__file__).parent
     dependency_script = script_dir / "ensure_all_dependencies.py"
 
@@ -55,7 +56,7 @@ def ensure_dependencies():
 
 
 def build_executable(spec_file: Path):
-    """Build executable using PyInstaller"""
+    """Build executable using PyInstaller."""
     if not spec_file.exists():
         print(f"Error: Spec file not found: {spec_file}")
         sys.exit(1)
@@ -90,7 +91,9 @@ def build_executable(spec_file: Path):
 
 
 def main():
+    """Entry point."""
     script_dir = Path(__file__).parent
+    os.chdir(script_dir)  # set script cwd
 
     parser = argparse.ArgumentParser(
         description="Build Gambit Pairing executable using PyInstaller",
@@ -148,3 +151,5 @@ Examples:
 
 if __name__ == "__main__":
     main()
+
+#  LocalWords:  onefile onedir MSI

@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 
 import subprocess
+import os
 import sys
 import tomllib
 from pathlib import Path
 
 
 def run_command(cmd, description):
-    """Run a command and handle errors"""
+    """Run a command and handle errors."""
     print(f"Running: {description}")
     try:
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)
@@ -25,7 +26,7 @@ def run_command(cmd, description):
 
 
 def load_pyproject_dependencies():
-    """Load dependencies from pyproject.toml"""
+    """Load dependencies from pyproject.toml."""
     try:
         with open("pyproject.toml", "rb") as f:
             data = tomllib.load(f)
@@ -49,10 +50,16 @@ def load_pyproject_dependencies():
 
 
 def main():
+    """Entry point."""
+    # Set cwd for python process
+    script_dir = Path(__file__).parent
+    os.chdir(script_dir)
+
     # Ensure pip is up to date
     print("Ensuring pip is up to date")
+
     if not run_command(
-        [sys.executable, "-m", "ensurepip", "--upgrade"], "updating pip"
+        [sys.executable, "-m", "pip", "install", "--upgrade", "pip"], "updating pip"
     ):
         sys.exit(1)
 
@@ -63,8 +70,16 @@ def main():
 
     # Install main dependencies
     if dependencies:
-        print("Installing dependencies")
-        cmd = [sys.executable, "-m", "pip", "install"] + dependencies
+        print("Installing dependencies (only if needed)")
+        cmd = [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--upgrade",
+            "--upgrade-strategy",
+            "only-if-needed",
+        ] + dependencies
         if not run_command(cmd, "installing main dependencies"):
             sys.exit(1)
     else:
@@ -72,23 +87,31 @@ def main():
 
     # Install dev dependencies
     if dev_dependencies:
-        print("Installing dev dependencies")
-        cmd = [sys.executable, "-m", "pip", "install"] + dev_dependencies
+        print("Installing dev dependencies (only if needed)")
+        cmd = [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--upgrade",
+            "--upgrade-strategy",
+            "only-if-needed",
+        ] + dev_dependencies
         if not run_command(cmd, "installing dev dependencies"):
             sys.exit(1)
     else:
         print("No dev dependencies found")
 
-    # Set up pre-commit hooks
-    print("Setting up pre-commit hooks")
-    if not run_command(
-        [sys.executable, "-m", "pre_commit", "install"], "setting up pre-commit"
-    ):
-        print(
-            "Warning: pre-commit setup failed (this might be expected if pre-commit isn't installed)"
-        )
+        # Set up pre-commit hooks
+        print("Setting up pre-commit hooks")
+        if not run_command(
+            [sys.executable, "-m", "pre_commit", "install"], "setting up pre-commit"
+        ):
+            print(
+                "Warning: pre-commit setup failed (this might be expected if pre-commit isn't installed)"
+            )
 
-    print("Dependencies setup completed successfully!")
+        print("Dependencies setup completed successfully!")
 
 
 if __name__ == "__main__":
