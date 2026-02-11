@@ -1,15 +1,32 @@
 """Manual adjustments to GP pairings."""
 
+# Gambit Pairing
+# Copyright (C) 2025  Gambit Pairing developers
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import json
 from typing import List, Optional, Tuple
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import QMimeData, Qt, pyqtSignal
 from PyQt6.QtGui import QDrag
-from PyQt6.QtWidgets import QDockWidget, QHBoxLayout, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QApplication, QDockWidget, QHBoxLayout, QVBoxLayout, QWidget
 
 from gambitpairing.pairing.dutch_swiss import create_dutch_swiss_pairings
 from gambitpairing.player import Player
+from gambitpairing.gui.gui_utils import update_widget_style
 
 
 class DraggableListWidget(QtWidgets.QListWidget):
@@ -26,33 +43,10 @@ class DraggableListWidget(QtWidgets.QListWidget):
         # For touch/click pairing functionality
         self.selected_player = None
 
-        self.setStyleSheet("""
-            QListWidget {
-                background-color: #f8f9fa;
-                border: 1px solid #dee2e6;
-                border-radius: 4px;
-                padding: 4px;
-            }
-            QListWidget::item {
-                padding: 6px 8px;
-                margin: 1px;
-                border-radius: 3px;
-                background-color: white;
-                border: 1px solid #e9ecef;
-            }
-            QListWidget::item:hover {
-                background-color: #e3f2fd;
-                border-color: #2196f3;
-            }
-            QListWidget::item:selected {
-                background-color: #1976d2;
-                color: white;
-                border-color: #1565c0;
-            }
-        """)
-
     def startDrag(self, supported_actions):
         """Start drag operation from player pool."""
+        # Set the override cursor, must be unset!
+        QApplicaton.setOverrideCursor(Qt.CursorShape.PointingHandCursor)
         current_item = self.currentItem()
         if not current_item:
             return
@@ -134,18 +128,17 @@ class DraggableListWidget(QtWidgets.QListWidget):
     def dragEnterEvent(self, event):
         """Handle drag enter events for player pool."""
         if event.mimeData().hasText() and event.mimeData().text().startswith("player:"):
+            QApplication.setOverrideCursor(Qt.CursorShape.ClosedHandCursor)
             event.acceptProposedAction()
-            self.setStyleSheet(self.styleSheet() + """
-                QListWidget {
-                    border: 2px dashed #4caf50;
-                    background-color: #e8f5e8;
-                }
-            """)
+            self.setProperty("class", "PairingSelected")
+
         else:
             event.ignore()
 
     def dragLeaveEvent(self, event):
         """Handle drag leave events."""
+        QApplication.restoreOverrideCursor()
+
         self.setStyleSheet("""
             QListWidget {
                 background-color: #f8f9fa;
@@ -173,6 +166,9 @@ class DraggableListWidget(QtWidgets.QListWidget):
 
     def dropEvent(self, event):
         """Handle drop events for player pool - comprehensive handling."""
+        # Restore the cursor
+        QApplication.restoreOverrideCursor()
+
         if not event.mimeData().hasText():
             event.ignore()
             self.dragLeaveEvent(event)
@@ -268,6 +264,9 @@ class DroppableByeListWidget(DraggableListWidget):
         if not player:
             return
 
+        # indicate drag by global setting of cursor
+        QApplication.setOverrideCursor(Qt.CursorShape.PointingHandCursor)
+
         # Create drag for bye player
         drag = QDrag(self)
         mime_data = QMimeData()
@@ -306,57 +305,20 @@ class DroppableByeListWidget(DraggableListWidget):
     def dragEnterEvent(self, event):
         """Handle drag enter events for bye pool."""
         if event.mimeData().hasText() and event.mimeData().text().startswith("player:"):
+            QApplication.setOverrideCursor(Qt.CursorShape.PointingHandCursor)
             event.acceptProposedAction()
             # Visual feedback for drag enter
-            self.setStyleSheet("""
-                QListWidget {
-                    background-color: #e8f5e8;
-                    border: 2px dashed #4caf50;
-                    border-radius: 8px;
-                    padding: 4px;
-                }
-                QListWidget::item {
-                    padding: 6px 8px;
-                    margin: 1px;
-                    border-radius: 3px;
-                    background-color: #fff8e1;
-                    border: 1px solid #e2c290;
-                    color: #8b5c2b;
-                    font-weight: bold;
-                }
-            """)
+            self.setProperty("class", "PairingSelected ManualPairingDialog")
+            update_widget_style(self)
         else:
             event.ignore()
 
     def dragLeaveEvent(self, event):
         """Handle drag leave events."""
         # Reset to normal styling
-        self.setStyleSheet("""
-            QListWidget {
-                background-color: #fff3cd;
-                border: 2px dashed #e2c290;
-                border-radius: 8px;
-                padding: 4px;
-            }
-            QListWidget::item {
-                padding: 6px 8px;
-                margin: 1px;
-                border-radius: 3px;
-                background-color: #fff8e1;
-                border: 1px solid #e2c290;
-                color: #8b5c2b;
-                font-weight: bold;
-            }
-            QListWidget::item:hover {
-                background-color: #ffecb3;
-                border-color: #d4ac0d;
-            }
-            QListWidget::item:selected {
-                background-color: #d4ac0d;
-                color: white;
-                border-color: #b7950b;
-            }
-        """)
+        self.setProperty("class", "ManualPairingDialog")
+        QApplication.restoreOverrideCursor()
+        update_widget_style(self)
 
     def dropEvent(self, event):
         """Handle drop events for bye pool."""
@@ -711,48 +673,15 @@ class ManualPairingDialog(QtWidgets.QDialog):
         super().closeEvent(event)
 
     def _setup_ui(self):
-        """Setup the user interface."""
+        """Init the user interface."""
         # Apply dialog-wide styling using the chess color scheme
-        self.setStyleSheet("""
-            QDialog {
-                background: #f9fafb;
-                color: #23272f;
-            }
-            QGroupBox {
-                border: none;
-                border-radius: 12px;
-                margin-top: 15px;
-                background: #fff;
-                padding: 15px;
-                font-weight: 600;
-                color: #2d5a27;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                subcontrol-position: top left;
-                left: 10px;
-                top: 2px;
-                background: transparent;
-                padding: 2px 8px;
-                color: #2d5a27;
-                font-size: 11pt;
-                font-weight: 700;
-                border-radius: 6px;
-            }
-            QLabel {
-                color: #23272f;
-            }
-        """)
 
         main_layout = QVBoxLayout(self)
 
         # Create a main window widget for proper dock widget support
         self.main_window_widget = QtWidgets.QMainWindow()
-        self.main_window_widget.setStyleSheet("""
-            QMainWindow {
-                background: #f9fafb;
-            }
-        """)
+
+        self.main_window_widget.setProperty("class", "ManualPairingDialog")
 
         # Create detachable player pool
         self._create_detachable_player_pool()
@@ -793,43 +722,8 @@ class ManualPairingDialog(QtWidgets.QDialog):
             | Qt.DockWidgetArea.BottomDockWidgetArea
         )
 
-        # Style the dock widget with chess theme but keep normal title bar
-        self.player_pool_dock.setStyleSheet("""
-            QDockWidget {
-                background: #fff;
-                border: 1px solid #e3e7ee;
-                border-radius: 8px;
-            }
-            QDockWidget::title {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #f0f0f0, stop: 1 #e0e0e0);
-                color: #333;
-                font-weight: normal;
-                font-size: 11pt;
-                padding: 4px;
-                text-align: left;
-                border: 1px solid #ccc;
-                border-bottom: none;
-            }
-            QDockWidget::close-button, QDockWidget::float-button {
-                background: transparent;
-                border: 1px solid transparent;
-                border-radius: 2px;
-                subcontrol-position: top right;
-                subcontrol-origin: margin;
-                position: relative;
-                top: 0px; left: 0px; bottom: 0px; right: 0px;
-                width: 14px;
-                height: 14px;
-            }
-            QDockWidget::close-button:hover, QDockWidget::float-button:hover {
-                background: #d0d0d0;
-                border: 1px solid #999;
-            }
-            QDockWidget::close-button:pressed, QDockWidget::float-button:pressed {
-                background: #b0b0b0;
-            }
-        """)
+        # Style the dock widget with the class ManualPairingDialog
+        self.player_pool_dock.setProperty("class", "ManualPairingDialog")
 
         # Connect dock widget events for reattachment functionality
         self.player_pool_dock.topLevelChanged.connect(self._on_dock_detached)
@@ -1008,41 +902,15 @@ class ManualPairingDialog(QtWidgets.QDialog):
 
         return toolbar_layout
 
-    def _create_button(self, text: str, tooltip: str, callback):
-        """Create a standardized small button using the app's color scheme."""
+    def _create_button(
+        self, text: str, tooltip: str, callback, css_class="ManualPairingDialog"
+    ):
+        """Create a button of some css_class for use in manual pairing dialog."""
         button = QtWidgets.QPushButton(text)
         button.setToolTip(tooltip)
         button.clicked.connect(callback)
 
-        # Style the button using the chess-inspired color scheme from styles.qss
-        button.setStyleSheet("""
-            QPushButton {
-                background: #fff;
-                color: #111;
-                border: 1.5px solid #e3e7ee;
-                border-radius: 7px;
-                padding: 6px 12px;
-                font-weight: 600;
-                font-size: 10pt;
-                min-width: 70px;
-                outline: none;
-            }
-            QPushButton:hover {
-                background: #f5e9da;
-                color: #2d5a27;
-                border-color: #2d5a27;
-            }
-            QPushButton:pressed {
-                background: #e2c290;
-                color: #8b5c2b;
-                border-color: #8b5c2b;
-            }
-            QPushButton:disabled {
-                background: #f3f7fc;
-                color: #a1a7b3;
-                border-color: #e5e7eb;
-            }
-        """)
+        button.setProperty("class", css_class)
 
         return button
 
@@ -1101,7 +969,7 @@ class ManualPairingDialog(QtWidgets.QDialog):
         # If No, do nothing and return to dialog
 
     def _setup_shortcuts(self):
-        """Setup keyboard shortcuts."""
+        """Create keyboard shortcuts."""
         shortcuts = [
             ("Ctrl+A", self._auto_pair_remaining),
             ("Delete", self._delete_selected_pairing),
@@ -1834,7 +1702,7 @@ class ManualPairingDialog(QtWidgets.QDialog):
         """Enable click-to-place mode with the selected player."""
         self._selected_for_placement = player
         # Change cursor to indicate placement mode
-        self.pairings_table.setCursor(Qt.CursorShape.PointingHandCursor)
+        QApplication.setOverrideCursor(Qt.CursorShape.PointingHandCursor)
 
     def _place_selected_player(self, row: int, color: str):
         """Place the selected player in the specified position."""
@@ -2044,3 +1912,6 @@ class ManualPairingDialog(QtWidgets.QDialog):
         # This method provides a hook for future floating window management
         # Currently not needed as Qt handles floating dock widgets automatically
         pass
+
+
+#  LocalWords:  ManualPairingDialog PairingSelected

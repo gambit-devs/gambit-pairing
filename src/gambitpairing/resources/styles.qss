@@ -1231,3 +1231,154 @@ QLabel[class="DialogSubtitle"] {
     font-weight: 500;
     background: transparent;
 }
+
+
+/*  =============================================
+    MANUAL PAIRING STYLES
+    ============================================= */
+
+QDialog[class="ManualPairingDialog"]{
+    background: #f9fafb;
+    color: #23272f;
+}
+QGroupBox[class="ManualPairingDialog"] {
+    border: none;
+    border-radius: 12px;
+    margin-top: 15px;
+    background: #fff;
+    padding: 15px;
+    font-weight: 600;
+    color: #2d5a27;
+}
+QGroupBox[class="ManualPairingDialog"]::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    left: 10px;
+    top: 2px;
+    background: transparent;
+    padding: 2px 8px;
+    color: #2d5a27;
+    font-size: 11pt;
+    font-weight: 700;
+    border-radius: 6px;
+}
+QLabel[class="ManualPairingDialog"] {
+    color: #23272f;
+}
+QPushButton[class="ManualPairingDialog"] {
+    background: #fff;
+    color: #111;
+    border: 1.5px solid #e3e7ee;
+    border-radius: 7px;
+    padding: 6px 12px;
+    font-weight: 600;
+    font-size: 10pt;
+    min-width: 70px;
+    outline: none;
+}
+QPushButton[class="ManualPairingDialog"]:hover {
+    background: #f5e9da;
+    color: #2d5a27;
+    border-color: #2d5a27;
+}
+QPushButton[class="ManualPairingDialog"]:pressed {
+    background: #e2c290;
+    color: #8b5c2b;
+    border-color: #8b5c2b;
+}
+QPushButton[class="ManualPairingDialog"]:disabled {
+    background: #f3f7fc;
+    color: #a1a7b3;
+    border-color: #e5e7eb;
+}
+
+QListWidget[class="ManualPairingDialog"]{
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 4px;
+}
+QListWidget[class="ManualPairingDialog"]::item {
+    padding: 6px 8px;
+    margin: 1px;
+    border-radius: 3px;
+    background-color: white;
+    border: 1px solid #e9ecef;
+}
+QListWidget[class="ManualPairingDialog"]::item:hover {
+    background-color: #e3f2fd;
+    border-color: #2196f3;
+}
+QListWidget[class="ManualPairingDialog"]::item:selected {
+    background-color: #1976d2;
+    color: white;
+    border-color: #1565c0;
+}
+
+QDockWidget[class="ManualPairingDialog"] {
+    background: #fff;
+    border: 1px solid #e3e7ee;
+    border-radius: 8px;
+}
+QDockWidget[class="ManualPairingDialog"]::title {
+    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+        stop: 0 #f0f0f0, stop: 1 #e0e0e0);
+    color: #333;
+    font-weight: normal;
+    font-size: 11pt;
+    padding: 4px;
+    text-align: left;
+    border: 1px solid #ccc;
+    border-bottom: none;
+}
+QDockWidget[class="ManualPairingDialog"]::close-button, QDockWidget[class="ManualPairingDialog"]::float-button {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    subcontrol-position: top right;
+    subcontrol-origin: margin;
+    position: relative;
+    top: 0px; left: 0px; bottom: 0px; right: 0px;
+    width: 14px;
+    height: 14px;
+}
+QDockWidget[class="ManualPairingDialog"]::close-button:hover, QDockWidget[class="ManualPairingDialog"]::float-button:hover {
+    background: #d0d0d0;
+    border: 1px solid #999;
+}
+QDockWidget[class="ManualPairingDialog"]::close-button:pressed, QDockWidget[class="ManualPairingDialog"]::float-button:pressed {
+    background: #b0b0b0;
+}
+
+QLineEdit[class="ManualPairingDialog"] {
+    background: #fff;
+    border: 1.5px solid #e3e7ee;
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: #23272f;
+    font-size: 10pt;
+}
+QLineEdit[class="ManualPairingDialog"]:focus {
+    border-color: #e2c290;
+    background: #f7fafd;
+}
+QLineEdit[class="ManualPairingDialog"]:disabled {
+    background: #f3f7fc;
+    color: #a1a7b3;
+    border-color: #e5e7eb;
+}
+QListWidget[class="PairingSelected"] {
+    background-color: #e8f5e8;
+    border: 2px dashed #4caf50;
+    border-radius: 8px;
+    padding: 4px;
+}
+QListWidget[class="PairingSelected"]::item {
+    padding: 6px 8px;
+    margin: 1px;
+    border-radius: 3px;
+    background-color: #fff8e1;
+    border: 1px solid #e2c290;
+    color: #8b5c2b;
+    font-weight: bold;
+}

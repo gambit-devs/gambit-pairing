@@ -46,3 +46,10 @@ def get_colored_icon(
         painter.end()
         return QtGui.QIcon(pixmap)
     return QtGui.QIcon()
+
+
+def update_widget_style(widget: QWidget) -> None:
+    """Change the style on a widget."""
+    widget.style().unpolish(widget)
+    widget.style().polish(widget)
+    widget.update()
