@@ -18,8 +18,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # gambitpairing/resources/resource_utils.py
 
-import sys
 from pathlib import Path
+import sys
 
 # Use importlib.resources for Python 3.9+ or importlib_resources backport
 if sys.version_info >= (3, 9):

@@ -1,3 +1,21 @@
+"""Dialog for creating new tournament."""
+
+# Gambit Pairing
+# Copyright (C) 2025  Gambit Pairing developers
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 from typing import List, Optional, Tuple
 
 from PyQt6 import QtWidgets
@@ -50,7 +68,7 @@ class NewTournamentDialog(QtWidgets.QDialog):
         self.on_pairing_system_changed()  # Set initial state
 
     def _setup_general_group(self) -> QtWidgets.QGroupBox:
-        """Setup layout options that are common to all tournament types
+        """Layout options that are common to all tournament types.
 
         Side Effects
         ------------
@@ -72,7 +90,7 @@ class NewTournamentDialog(QtWidgets.QDialog):
         return general_group
 
     def _setup_tiebreak_group(self) -> QtWidgets.QGroupBox:
-        """initialize the tiebreak order setting part of the gui
+        """Initialize the tiebreak order setting part of the gui.
 
         Side Effects
         ------------
@@ -83,7 +101,6 @@ class NewTournamentDialog(QtWidgets.QDialog):
         QGroupBox
             containing the general common layout
         """
-
         tiebreak_group = QtWidgets.QGroupBox("Tiebreak Order")
         tiebreak_layout = QtWidgets.QHBoxLayout(tiebreak_group)
         self.tiebreak_list = QtWidgets.QListWidget()
@@ -112,7 +129,7 @@ class NewTournamentDialog(QtWidgets.QDialog):
         return tiebreak_group
 
     def _setup_pairing_system_select_group(self) -> QtWidgets.QGroupBox:
-        """initialize pairing system sector widget
+        """Initialize pairing system sector widget.
 
         Side Effects
         ------------
@@ -149,7 +166,7 @@ class NewTournamentDialog(QtWidgets.QDialog):
         return pairing_group
 
     def _setup_button_group(self) -> QtWidgets.QDialogButtonBox:
-        """Setup group containing: OK and Cancel
+        """Create group containing: OK and Cancel.
 
         Side Effects
         ------------

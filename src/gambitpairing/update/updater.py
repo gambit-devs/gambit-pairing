@@ -17,12 +17,12 @@
 
 import hashlib
 import os
+from pathlib import Path
 import shutil
 import sys
 import tempfile
-import zipfile
-from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
+import zipfile
 
 import httpx
 from packaging.version import parse as parse_version

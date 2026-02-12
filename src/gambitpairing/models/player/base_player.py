@@ -16,8 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import annotations
-
 from datetime import date
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -32,33 +30,48 @@ logger = setup_logger(__name__)
 
 
 class Player:
-    """Represents a player in the tournament.
+    """Represent a chess player participating in a tournament.
 
-    This class provides the core functionality for managing player data
-    in chess tournaments, including history tracking, color balance,
-    and tiebreak calculations.
+    This class encapsulates core player data and tournament-related
+    state, including match history, score tracking, color balance,
+    tiebreak information, and serialization support.
 
-    Attributes:
-        id: Unique identifier for the player
-        name: Player's full name
-        rating: Player's chess rating
-        phone: Contact phone number (validated)
-        email: Contact email address (validated)
-        club: Chess club affiliation
-        gender: Player's gender
-        dob: Date of birth
-        federation: Chess federation
-        is_active: Whether player is actively participating
-        score: Current tournament score
-        color_history: List of colors played (W, B, or None for bye)
-        opponent_ids: List of opponent IDs played against
-        results: List of game results (1.0=win, 0.5=draw, 0.0=loss)
-        running_scores: Cumulative scores after each round
-        has_received_bye: Whether player has received a bye
-        num_black_games: Count of games played as Black
-        float_history: Rounds where player floated down
-        match_history: Detailed match information
-        tiebreakers: Calculated tiebreak values
+    The class is designed as a domain model and contains no UI logic.
+
+    Parameters
+    ----------
+    name : str
+        Full name of the player.
+    rating : int, optional
+        Chess rating of the player. Defaults to 0 if not provided.
+    phone : str, optional
+        Contact phone number. Validated and sanitized if provided.
+    email : str, optional
+        Contact email address. Validated and sanitized if provided.
+    club : Club, optional
+        Chess club affiliation.
+    gender : str, optional
+        Gender of the player.
+    date_of_birth : datetime.date, optional
+        Date of birth of the player.
+    federation : str, optional
+        Chess federation code (e.g., "FIDE", "USCF").
+    **kwargs
+        Additional keyword arguments for forward compatibility.
+
+    Attributes
+    ----------
+    id : str
+        Unique identifier generated for internal use.
+    name : str
+        Player's full name.
+    rating : int
+        Player's rating.
+    phone : str or None
+        Validated phone number.
+    email : str or None
+        Validated email address.
+    club : Club or None
     """
 
     def __init__(
