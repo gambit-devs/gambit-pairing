@@ -26,7 +26,7 @@ from PyQt6.QtWidgets import QApplication, QDockWidget, QHBoxLayout, QVBoxLayout,
 
 from gambitpairing.pairing.dutch_swiss import create_dutch_swiss_pairings
 from gambitpairing.player import Player
-from gambitpairing.gui.gui_utils import update_widget_style
+from gambitpairing.gui.gui_utils import update_widget_style, reset_and_set_cursor
 
 
 class DraggableListWidget(QtWidgets.QListWidget):
@@ -113,6 +113,8 @@ class DraggableListWidget(QtWidgets.QListWidget):
                 ):  # Only allow selection of active players
                     # Select the player for placement
                     self.selected_player = player
+                    # set the cursor to closed hand
+                    reset_and_set_cursor(Qt.CursorShape.ClosedHandCursor)
                     self.setCurrentItem(item)
                     # Enable click-to-place mode on the pairings table
                     self.parent_dialog._enable_click_to_place_mode(player)
@@ -127,10 +129,7 @@ class DraggableListWidget(QtWidgets.QListWidget):
     def dragEnterEvent(self, event):
         """Handle drag enter events for player pool."""
         if event.mimeData().hasText() and event.mimeData().text().startswith("player:"):
-            QApplication.setOverrideCursor(Qt.CursorShape.ClosedHandCursor)
             event.acceptProposedAction()
-            self.setProperty("class", "PairingSelected")
-
         else:
             event.ignore()
 
@@ -264,7 +263,7 @@ class DroppableByeListWidget(DraggableListWidget):
             return
 
         # indicate drag by global setting of cursor
-        QApplication.setOverrideCursor(Qt.CursorShape.PointingHandCursor)
+        QApplication.setOverrideCursor(Qt.CursorShape.ClosedHandCursor)
 
         # Create drag for bye player
         drag = QDrag(self)
@@ -304,7 +303,6 @@ class DroppableByeListWidget(DraggableListWidget):
     def dragEnterEvent(self, event):
         """Handle drag enter events for bye pool."""
         if event.mimeData().hasText() and event.mimeData().text().startswith("player:"):
-            QApplication.setOverrideCursor(Qt.CursorShape.ClosedHandCursor)
             event.acceptProposedAction()
             self.setProperty("class", "PairingSelected")
             update_widget_style(self)
@@ -313,13 +311,13 @@ class DroppableByeListWidget(DraggableListWidget):
 
     def dragLeaveEvent(self, event):
         """Handle drag leave events, restoring completely cursor."""
+        return
         # If there are stacked over ride cursors remove them all.
         while QApplication.overrideCursor():
             QApplication.restoreOverrideCursor()
 
         # Reset to normal styling
         self.setProperty("class", "ManualPairingDialog")
-        QApplication.restoreOverrideCursor()
         update_widget_style(self)
 
     def byePoolDropEvent(self, event):
