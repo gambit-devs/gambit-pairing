@@ -1,6 +1,8 @@
 """Utilities for managing the GUI."""
 
 from PyQt6 import QtGui, QtWidgets
+from PyQt6.QtWidgets import QApplication
+from PyQt6.QtGui import QCursor
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QCursor
 from PyQt6.QtWidgets import QApplication

@@ -1,4 +1,4 @@
-"""Shared type aliases used in Gambit Pairing."""
+"""Enums for use in GP, subclass as string for easy serialization."""
 
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
@@ -16,19 +16,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import List, Optional, Tuple
 
-# Forward reference
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from gambitpairing.player.base_player import Player
+class PairingSystem(str, Enum):
+    DUTCH_SWISS = "dutch_swiss"
+    ROUND_ROBIN = "round_robin"
+    MANUAL = "manual"
 
 
-Players = List["Player"]
-MatchPairing = Tuple[int, int]
-RoundSchedule = Tuple[MatchPairing, ...]
-Pairings = Tuple[List[Tuple["Player", "Player"]], Optional["Player"]]
-MaybePlayer = Optional["Player"]
-
-#  LocalWords:  MatchPairing RoundSchedule
+class Colour(str, Enum):
+    WHITE = "White"
+    BLACK = "Black"

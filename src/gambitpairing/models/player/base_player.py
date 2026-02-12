@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from dateutil.relativedelta import relativedelta
 
 from gambitpairing.club import Club
-from gambitpairing.type_hints import BLACK, WHITE, Colour
+from gambitpairing.models.enums import Colour
 from gambitpairing.utils import generate_id, setup_logger
 from gambitpairing.utils.validation import validate_email, validate_phone
 
@@ -267,16 +267,16 @@ class Player:
             last_color = played_colors[-1]
             second_last_color = played_colors[-2]
             if last_color == second_last_color:
-                return BLACK if last_color == WHITE else WHITE  # type: ignore
+                return Colour.BLACK if last_color == Colour.WHITE else Colour.WHITE  # type: ignore
 
         # Rule 2: Color balance preference
-        white_games_played = sum(1 for c in played_colors if c == WHITE)
-        black_games_played = sum(1 for c in played_colors if c == BLACK)
+        white_games_played = sum(1 for c in played_colors if c == Colour.WHITE)
+        black_games_played = sum(1 for c in played_colors if c == Colour.BLACK)
 
         if white_games_played > black_games_played:
-            return BLACK
+            return Colour.BLACK
         elif black_games_played > white_games_played:
-            return WHITE
+            return Colour.WHITE
 
         return None
 
@@ -381,7 +381,7 @@ class Player:
         """
         # Auto-detect and create FidePlayer if FIDE data present
         if cls.__name__ == "Player" and player_data.get("fide_id") is not None:
-            from gambitpairing.player.fide_player import FidePlayer
+            from gambitpairing.models.player.fide_player import FidePlayer
 
             return FidePlayer.from_dict(player_data)
 
@@ -464,7 +464,7 @@ class Player:
 
         if not hasattr(player, "num_black_games"):
             player.num_black_games = (
-                player.color_history.count("Black") if player.color_history else 0
+                player.color_history.count(Colour.BLACK) if player.color_history else 0
             )
 
         if not hasattr(player, "is_active"):
