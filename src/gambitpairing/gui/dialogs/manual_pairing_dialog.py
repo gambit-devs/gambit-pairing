@@ -46,7 +46,6 @@ class DraggableListWidget(QtWidgets.QListWidget):
     def startDrag(self, supported_actions):
         """Start drag operation from player pool."""
         # Set the override cursor, must be unset!
-        QApplicaton.setOverrideCursor(Qt.CursorShape.PointingHandCursor)
         current_item = self.currentItem()
         if not current_item:
             return
@@ -305,22 +304,25 @@ class DroppableByeListWidget(DraggableListWidget):
     def dragEnterEvent(self, event):
         """Handle drag enter events for bye pool."""
         if event.mimeData().hasText() and event.mimeData().text().startswith("player:"):
-            QApplication.setOverrideCursor(Qt.CursorShape.PointingHandCursor)
+            QApplication.setOverrideCursor(Qt.CursorShape.ClosedHandCursor)
             event.acceptProposedAction()
-            # Visual feedback for drag enter
-            self.setProperty("class", "PairingSelected ManualPairingDialog")
+            self.setProperty("class", "PairingSelected")
             update_widget_style(self)
         else:
             event.ignore()
 
     def dragLeaveEvent(self, event):
-        """Handle drag leave events."""
+        """Handle drag leave events, restoring completely cursor."""
+        # If there are stacked over ride cursors remove them all.
+        while QApplication.overrideCursor():
+            QApplication.restoreOverrideCursor()
+
         # Reset to normal styling
         self.setProperty("class", "ManualPairingDialog")
         QApplication.restoreOverrideCursor()
         update_widget_style(self)
 
-    def dropEvent(self, event):
+    def byePoolDropEvent(self, event):
         """Handle drop events for bye pool."""
         if not event.mimeData().hasText():
             self.dragLeaveEvent(event)
