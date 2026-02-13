@@ -6,13 +6,13 @@ from pathlib import Path
 
 
 def clean_compiled_files(root: Path) -> None:
-    # Remove __pycache__ directories
-    for pycache_dir in root.rglob("__pycache__"):
-        pycache_dir.unlink(missing_ok=True)
-
-    # Remove stray .pyc files
-    for pyc_file in root.rglob("*.pyc"):
-        pyc_file.unlink()
+    for path in root.rglob("*"):
+        if path.is_dir() and path.name == "__pycache__":
+            shutil.rmtree(path)
+            print(f"Removed dir: {path}")
+        elif path.suffix == ".pyc":
+            path.unlink()
+            print(f"Removed file: {path}")
 
 
 def main():
