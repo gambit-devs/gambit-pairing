@@ -5,6 +5,16 @@ import shutil
 from pathlib import Path
 
 
+def clean_compiled_files(root: Path) -> None:
+    # Remove __pycache__ directories
+    for pycache_dir in root.rglob("__pycache__"):
+        pycache_dir.unlink(missing_ok=True)
+
+    # Remove stray .pyc files
+    for pyc_file in root.rglob("*.pyc"):
+        pyc_file.unlink()
+
+
 def main():
     # Get the directory where this script is located
     script_dir = Path(__file__).parent
@@ -14,6 +24,9 @@ def main():
     # Define directories to clean
     built_dir = script_dir / "build"
     dist_dir = script_dir / "dist"
+    src_dir = script_dir / "src"
+
+    clean_compiled_files(src_dir)
 
     # Remove contents of directories if they exist
     for directory in [built_dir, dist_dir]:
