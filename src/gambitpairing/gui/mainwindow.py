@@ -19,8 +19,8 @@
 
 import json
 import logging
-import sys
 from pathlib import Path
+import sys
 from typing import List, Optional, Tuple
 
 from PyQt6 import QtCore, QtGui, QtWidgets

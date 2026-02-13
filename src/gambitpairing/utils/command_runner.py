@@ -5,9 +5,9 @@ with consistent error handling and logging.
 """
 
 import logging
+from pathlib import Path
 import subprocess
 import sys
-from pathlib import Path
 from typing import List, Optional, Union
 
 logger = logging.getLogger(__name__)

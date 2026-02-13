@@ -24,9 +24,9 @@ from PyQt6.QtCore import QMimeData, Qt, pyqtSignal
 from PyQt6.QtGui import QDrag
 from PyQt6.QtWidgets import QApplication, QDockWidget, QHBoxLayout, QVBoxLayout, QWidget
 
+from gambitpairing.gui.gui_utils import update_widget_style
 from gambitpairing.pairing.dutch_swiss import create_dutch_swiss_pairings
 from gambitpairing.player import Player
-from gambitpairing.gui.gui_utils import update_widget_style
 
 
 class DraggableListWidget(QtWidgets.QListWidget):

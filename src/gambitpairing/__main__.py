@@ -16,14 +16,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from pathlib import Path
 import platform
 import sys
-from pathlib import Path
 
-from importlib_resources import files
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import QDir
 from PyQt6.QtGui import QIcon
+from importlib_resources import files
 
 from gambitpairing.exceptions import IconException, StyleException
 from gambitpairing.gui.mainwindow import GambitPairingMainWindow

@@ -12,8 +12,8 @@ requests and BeautifulSoup parsing.
 import re
 from typing import Any, Dict, List
 
-import httpx
 from bs4 import BeautifulSoup
+import httpx
 
 from gambitpairing.utils import setup_logger
 
