@@ -26,8 +26,8 @@ from PyQt6.QtWidgets import QApplication, QDockWidget, QHBoxLayout, QVBoxLayout,
 
 from gambitpairing.gui.gui_utils import reset_and_set_cursor, update_widget_style
 from gambitpairing.gui.widgets.drag_list import DragListWidget
-from gambitpairing.pairing.dutch_swiss import create_dutch_swiss_pairings
-from gambitpairing.player import Player
+from gambitpairing.controllers.pairing.dutch_swiss import create_dutch_swiss_pairings
+from gambitpairing.models.player import Player
 
 
 class DroppableByeListWidget(DragListWidget):

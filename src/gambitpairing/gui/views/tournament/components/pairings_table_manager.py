@@ -36,7 +36,7 @@ from gambitpairing.constants import (
 from gambitpairing.gui.views.tournament.components.tournament_widgets import (
     ResultSelector,
 )
-from gambitpairing.player import Player
+from gambitpairing.models.player import Player
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)

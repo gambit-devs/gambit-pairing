@@ -20,7 +20,7 @@ import functools
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from gambitpairing.constants import LOSS_SCORE, WIN_SCORE
-from gambitpairing.player import Player
+from gambitpairing.models.player import Player
 from gambitpairing.tournament.models import (
     PairingHistory,
     RoundData,
@@ -69,12 +69,12 @@ class Tournament:
     """
 
     def __init__(
-            self,
-            name: str,
-            players: List[Player],
-            num_rounds: int,
-            tiebreak_order: Optional[List[str]] = None,
-            pairing_system: str = "dutch_swiss",
+        self,
+        name: str,
+        players: List[Player],
+        num_rounds: int,
+        tiebreak_order: Optional[List[str]] = None,
+        pairing_system: str = "dutch_swiss",
     ) -> None:
         """Initialize a new tournament.
 
@@ -217,9 +217,9 @@ class Tournament:
     # ========== Round Management ==========
 
     def create_pairings(
-            self,
-            current_round: int,
-            allow_repeat_pairing_callback: Optional[Callable] = None,
+        self,
+        current_round: int,
+        allow_repeat_pairing_callback: Optional[Callable] = None,
     ) -> Pairings:
         """Generate pairings for the next round.
 
@@ -256,10 +256,10 @@ class Tournament:
         return self.round_manager.get_pairings_for_display(round_number, self.players)
 
     def set_manual_pairings(
-            self,
-            round_index: int,
-            pairings: List[Tuple[Player, Player]],
-            bye_player: Optional[Player],
+        self,
+        round_index: int,
+        pairings: List[Tuple[Player, Player]],
+        bye_player: Optional[Player],
     ) -> bool:
         """Set manual pairings for a round.
 
@@ -279,7 +279,7 @@ class Tournament:
     # ========== Result Management ==========
 
     def record_results(
-            self, round_index: int, results_data: List[Tuple[str, str, float]]
+        self, round_index: int, results_data: List[Tuple[str, str, float]]
     ) -> bool:
         """Record results for a round.
 
@@ -382,7 +382,7 @@ class Tournament:
         return self.round_manager.completed_rounds_count
 
     def _get_eligible_bye_player(
-            self, potential_bye_players: List[Player]
+        self, potential_bye_players: List[Player]
     ) -> Optional[Player]:
         """Determine the bye player according to Swiss rules.
 

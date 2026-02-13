@@ -22,8 +22,8 @@ from functools import lru_cache
 from itertools import permutations
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from gambitpairing.player import Player
-from gambitpairing.type_hints import BLACK, WHITE
+from gambitpairing.models.player import Player
+from gambitpairing.models.enums import Colour
 
 
 def _get_lexicographic_key(perm_list: List[Player], N1: int) -> tuple:
@@ -49,14 +49,14 @@ def _colors_satisfy_preferences_unified(
 
     if use_fide_rules:
         # FIDE-compliant logic: satisfied if no preference or preference matches assignment
-        white_satisfied = not white_pref or white_pref == WHITE
-        black_satisfied = not black_pref or black_pref == BLACK
+        white_satisfied = not white_pref or white_pref == Colour.WHITE
+        black_satisfied = not black_pref or black_pref == Colour.BLACK
         return white_satisfied and black_satisfied
     else:
         # Dutch system logic: check for absolute preference violations
-        if _has_absolute_color_preference(white) and white_pref != WHITE:
+        if _has_absolute_color_preference(white) and white_pref != Colour.WHITE:
             return False
-        if _has_absolute_color_preference(black) and black_pref != BLACK:
+        if _has_absolute_color_preference(black) and black_pref != Colour.BLACK:
             return False
         return True
 
@@ -865,7 +865,10 @@ def _try_cross_bracket_pairing(
             if frozenset({high_player.id, low_player.id}) in previous_matches:
                 # They were Round 1 opponents - re-pair with colors switched
                 # High scorer (winner) now gets the color the low scorer (loser) had
-                if high_player.color_history and high_player.color_history[-1] == WHITE:
+                if (
+                    high_player.color_history
+                    and high_player.color_history[-1] == Colour.WHITE
+                ):
                     # High player had White in R1, now gets Black
                     white, black = low_player, high_player
                 else:
@@ -1716,12 +1719,12 @@ def _compute_comprehensive_fide_quality_metrics(config: Dict) -> None:
             if (
                 _has_absolute_color_preference(p1)
                 and _get_color_preference(p1)
-                != (WHITE if p1 == pairings[0][0] else BLACK)
+                != (Colour.WHITE if p1 == pairings[0][0] else Colour.BLACK)
             )
             or (
                 _has_absolute_color_preference(p2)
                 and _get_color_preference(p2)
-                != (BLACK if p1 == pairings[0][0] else WHITE)
+                != (Colour.BLACK if p1 == pairings[0][0] else Colour.WHITE)
             )
         )
         if pairings
@@ -1737,13 +1740,13 @@ def _compute_comprehensive_fide_quality_metrics(config: Dict) -> None:
                 _has_strong_color_preference(p1)
                 and not _has_absolute_color_preference(p1)
                 and _get_color_preference(p1)
-                != (WHITE if p1 == pairings[0][0] else BLACK)
+                != (Colour.WHITE if p1 == pairings[0][0] else Colour.BLACK)
             )
             or (
                 _has_strong_color_preference(p2)
                 and not _has_absolute_color_preference(p2)
                 and _get_color_preference(p2)
-                != (BLACK if p1 == pairings[0][0] else WHITE)
+                != (Colour.BLACK if p1 == pairings[0][0] else Colour.WHITE)
             )
         )
         if pairings
@@ -1947,7 +1950,7 @@ def _assign_colors_fide(
 
     # 5.2.1: Grant both colour preferences (if compatible)
     if pref1 and pref2 and pref1 != pref2:
-        return (p1, p2) if pref1 == WHITE else (p2, p1)
+        return (p1, p2) if pref1 == Colour.WHITE else (p2, p1)
 
     # 5.2.2: Grant the stronger colour preference
     # Priority hierarchy: absolute > strong > mild
@@ -1958,30 +1961,30 @@ def _assign_colors_fide(
         balance2 = _get_color_imbalance(p2)
         # Grant preference to player with wider imbalance
         if abs(balance1) > abs(balance2):
-            return (p1, p2) if pref1 == WHITE else (p2, p1)
+            return (p1, p2) if pref1 == Colour.WHITE else (p2, p1)
         elif abs(balance2) > abs(balance1):
-            return (p2, p1) if pref2 == WHITE else (p1, p2)
+            return (p2, p1) if pref2 == Colour.WHITE else (p1, p2)
         # If equal imbalances, both are absolute preferences that conflict
         # This pairing should have been avoided by absolute criteria check
         # Fall through to next rule
 
     # One absolute vs non-absolute: absolute wins
     elif abs1 and not abs2:
-        return (p1, p2) if pref1 == WHITE else (p2, p1)
+        return (p1, p2) if pref1 == Colour.WHITE else (p2, p1)
     elif abs2 and not abs1:
-        return (p2, p1) if pref2 == WHITE else (p1, p2)
+        return (p2, p1) if pref2 == Colour.WHITE else (p1, p2)
 
     # Both strong (non-absolute): if different preferences, grant both
     elif strong1 and strong2:
         if pref1 and pref2 and pref1 != pref2:
-            return (p1, p2) if pref1 == WHITE else (p2, p1)
+            return (p1, p2) if pref1 == Colour.WHITE else (p2, p1)
         # If same strong preferences, this is a conflict - fall through
 
     # One strong vs mild/none: strong wins
     elif strong1 and not strong2 and not abs2:
-        return (p1, p2) if pref1 == WHITE else (p2, p1)
+        return (p1, p2) if pref1 == Colour.WHITE else (p2, p1)
     elif strong2 and not strong1 and not abs1:
-        return (p2, p1) if pref2 == WHITE else (p1, p2)
+        return (p2, p1) if pref2 == Colour.WHITE else (p1, p2)
 
     # 5.2.3: Alternate colours to most recent time when one had W and other B
     recent_alternating_round = _find_most_recent_alternating_colors(p1, p2)
@@ -1995,7 +1998,7 @@ def _assign_colors_fide(
         ):
             p1_color_then = p1_colors[recent_alternating_round]
             # Alternate: if p1 had W then, give p1 B now (so p2 gets W)
-            return (p2, p1) if p1_color_then == WHITE else (p1, p2)
+            return (p2, p1) if p1_color_then == Colour.WHITE else (p1, p2)
 
     # 5.2.4: Grant colour preference of higher ranked player
     # Higher rank = better score, then better rating, then lower pairing number
@@ -2014,7 +2017,7 @@ def _assign_colors_fide(
     if higher_pref:
         return (
             (higher_ranked, lower_ranked)
-            if higher_pref == WHITE
+            if higher_pref == Colour.WHITE
             else (lower_ranked, higher_ranked)
         )
 
@@ -2308,17 +2311,17 @@ def _evaluate_color_satisfaction(white_player: Player, black_player: Player) -> 
     }
 
     # Check absolute violations
-    if white_abs and white_pref != WHITE:
+    if white_abs and white_pref != Colour.WHITE:
         result["absolute_violation"] = True
-    elif black_abs and black_pref != BLACK:
+    elif black_abs and black_pref != Colour.BLACK:
         result["absolute_violation"] = True
     # Check strong preference violations
-    elif white_pref and white_pref != WHITE and not white_abs:
+    elif white_pref and white_pref != Colour.WHITE and not white_abs:
         result["strong_violation"] = True
-    elif black_pref and black_pref != BLACK and not black_abs:
+    elif black_pref and black_pref != Colour.BLACK and not black_abs:
         result["strong_violation"] = True
     # Check mild preference violations (if neither strong nor absolute)
-    elif white_pref == BLACK or black_pref == WHITE:
+    elif white_pref == Colour.BLACK or black_pref == Colour.WHITE:
         result["mild_violation"] = True
 
     return result
@@ -2410,13 +2413,13 @@ def _colors_would_satisfy_preferences(player1: Player, player2: Player) -> bool:
         return True
 
     # If preferences are compatible (one wants white, other wants black or doesn't care)
-    if pref1 == WHITE and (not pref2 or pref2 == BLACK):
+    if pref1 == Colour.WHITE and (not pref2 or pref2 == Colour.BLACK):
         return True
-    if pref2 == WHITE and (not pref1 or pref1 == BLACK):
+    if pref2 == Colour.WHITE and (not pref1 or pref1 == Colour.BLACK):
         return True
-    if pref1 == BLACK and (not pref2 or pref2 == WHITE):
+    if pref1 == Colour.BLACK and (not pref2 or pref2 == Colour.WHITE):
         return True
-    if pref2 == BLACK and (not pref1 or pref1 == WHITE):
+    if pref2 == Colour.BLACK and (not pref1 or pref1 == Colour.WHITE):
         return True
 
     return False
@@ -2569,21 +2572,21 @@ def _assign_colors_dutch_improved(
     # Rule 1: Absolute preferences have highest priority
     if abs1 and not abs2:
         # Player1 has absolute preference, player2 doesn't
-        if pref1 == WHITE:
+        if pref1 == Colour.WHITE:
             return (player1, player2)
         else:
             return (player2, player1)
     elif abs2 and not abs1:
         # Player2 has absolute preference, player1 doesn't
-        if pref2 == WHITE:
+        if pref2 == Colour.WHITE:
             return (player2, player1)
         else:
             return (player1, player2)
     elif abs1 and abs2:
         # Both have absolute preferences - they should be compatible at this point
-        if pref1 == WHITE and pref2 == BLACK:
+        if pref1 == Colour.WHITE and pref2 == Colour.BLACK:
             return (player1, player2)
-        elif pref1 == BLACK and pref2 == WHITE:
+        elif pref1 == Colour.BLACK and pref2 == Colour.WHITE:
             return (player2, player1)
         else:
             # This shouldn't happen if compatibility was checked properly
@@ -2592,9 +2595,9 @@ def _assign_colors_dutch_improved(
 
     # Rule 2: Strong (non-absolute) preferences
     if pref1 and pref2:
-        if pref1 == WHITE and pref2 == BLACK:
+        if pref1 == Colour.WHITE and pref2 == Colour.BLACK:
             return (player1, player2)
-        elif pref1 == BLACK and pref2 == WHITE:
+        elif pref1 == Colour.BLACK and pref2 == Colour.WHITE:
             return (player2, player1)
         elif pref1 == pref2:
             # Both want same color - use balance to decide
@@ -2602,12 +2605,12 @@ def _assign_colors_dutch_improved(
 
     # Rule 3: Single strong preference
     if pref1 and not pref2:
-        if pref1 == WHITE:
+        if pref1 == Colour.WHITE:
             return (player1, player2)
         else:
             return (player2, player1)
     elif pref2 and not pref1:
-        if pref2 == WHITE:
+        if pref2 == Colour.WHITE:
             return (player2, player1)
         else:
             return (player1, player2)
@@ -2623,8 +2626,12 @@ def _assign_by_color_balance(
     colors1 = [c for c in player1.color_history if c is not None]
     colors2 = [c for c in player2.color_history if c is not None]
 
-    balance1 = colors1.count(WHITE) - colors1.count(BLACK) if colors1 else 0
-    balance2 = colors2.count(WHITE) - colors2.count(BLACK) if colors2 else 0
+    balance1 = (
+        colors1.count(Colour.WHITE) - colors1.count(Colour.BLACK) if colors1 else 0
+    )
+    balance2 = (
+        colors2.count(Colour.WHITE) - colors2.count(Colour.BLACK) if colors2 else 0
+    )
 
     # Prefer to balance colors - give white to player with fewer whites
     if balance1 < balance2:
@@ -2637,13 +2644,13 @@ def _assign_by_color_balance(
     last1 = colors1[-1] if colors1 else None
     last2 = colors2[-1] if colors2 else None
 
-    if last1 == BLACK and last2 != BLACK:
+    if last1 == Colour.BLACK and last2 != BLACK:
         return (player1, player2)  # Give white to player who played black last
-    elif last2 == BLACK and last1 != BLACK:
+    elif last2 == Colour.BLACK and last1 != BLACK:
         return (player2, player1)
-    elif last1 == WHITE and last2 != WHITE:
+    elif last1 == Colour.WHITE and last2 != WHITE:
         return (player2, player1)  # Give white to player who didn't play white last
-    elif last2 == WHITE and last1 != WHITE:
+    elif last2 == Colour.WHITE and last1 != WHITE:
         return (player1, player2)
 
     # Final tiebreaker: use rating and round number for deterministic assignment
@@ -2778,28 +2785,28 @@ def _get_color_preference(player: Player) -> Optional[str]:
     if not valid_colors:
         return None
 
-    white_count = valid_colors.count(WHITE)
-    black_count = valid_colors.count(BLACK)
+    white_count = valid_colors.count(Colour.WHITE)
+    black_count = valid_colors.count(Colour.BLACK)
     color_diff = white_count - black_count
 
     # FIDE 1.6.2.1: Absolute color preference
     if abs(color_diff) > 1:
-        return BLACK if color_diff > 1 else WHITE
+        return Colour.BLACK if color_diff > 1 else Colour.WHITE
 
     # FIDE 1.6.2.1: Absolute - same color in last two rounds
     if len(valid_colors) >= 2 and valid_colors[-1] == valid_colors[-2]:
-        return BLACK if valid_colors[-1] == WHITE else WHITE
+        return Colour.BLACK if valid_colors[-1] == Colour.WHITE else WHITE
 
     # FIDE 1.6.2.2: Strong color preference
     if color_diff == 1:
-        return BLACK
+        return Colour.BLACK
     elif color_diff == -1:
-        return WHITE
+        return Colour.WHITE
 
     # FIDE 1.6.2.3: Mild color preference (color_diff == 0)
     if color_diff == 0 and len(valid_colors) > 0:
         # Prefer to alternate from last game
-        return BLACK if valid_colors[-1] == WHITE else WHITE
+        return Colour.BLACK if valid_colors[-1] == Colour.WHITE else WHITE
 
     return None
 
@@ -2819,8 +2826,8 @@ def _has_absolute_color_preference(player: Player) -> bool:
     if len(valid_colors) < 1:
         return False
 
-    white_count = valid_colors.count(WHITE)
-    black_count = valid_colors.count(BLACK)
+    white_count = valid_colors.count(Colour.WHITE)
+    black_count = valid_colors.count(Colour.BLACK)
     color_diff = white_count - black_count
 
     # Rule 1: Color difference > +1 or < -1
@@ -2843,8 +2850,8 @@ def _has_absolute_color_imbalance(player: Player) -> bool:
     if len(valid_colors) < 2:
         return False
 
-    white_count = valid_colors.count(WHITE)
-    black_count = valid_colors.count(BLACK)
+    white_count = valid_colors.count(Colour.WHITE)
+    black_count = valid_colors.count(Colour.BLACK)
     return (
         abs(white_count - black_count) > 1
     )  # Changed from >= 2 to > 1 for consistency
@@ -2868,8 +2875,8 @@ def _get_color_imbalance(player: Player) -> int:
         return 0
 
     valid_colors = [c for c in player.color_history if c is not None]
-    white_count = valid_colors.count(WHITE)
-    black_count = valid_colors.count(BLACK)
+    white_count = valid_colors.count(Colour.WHITE)
+    black_count = valid_colors.count(Colour.BLACK)
     return white_count - black_count
 
 
@@ -2994,8 +3001,8 @@ def _has_strong_color_preference(player: Player) -> bool:
     if len(valid_colors) < 1:
         return False
 
-    white_count = valid_colors.count(WHITE)
-    black_count = valid_colors.count(BLACK)
+    white_count = valid_colors.count(Colour.WHITE)
+    black_count = valid_colors.count(Colour.BLACK)
     return abs(white_count - black_count) == 1
 
 
@@ -3150,27 +3157,27 @@ def _cached_color_preference(
     if not valid_colors:
         return None
 
-    white_count = valid_colors.count(WHITE)
-    black_count = valid_colors.count(BLACK)
+    white_count = valid_colors.count(Colour.WHITE)
+    black_count = valid_colors.count(Colour.BLACK)
     color_diff = white_count - black_count
 
     # FIDE 1.6.2.1: Absolute color preference
     if abs(color_diff) > 1:
-        return BLACK if color_diff > 1 else WHITE
+        return Colour.BLACK if color_diff > 1 else Colour.WHITE
 
     # FIDE 1.6.2.1: Absolute - same color in last two rounds
     if len(valid_colors) >= 2 and valid_colors[-1] == valid_colors[-2]:
-        return BLACK if valid_colors[-1] == WHITE else WHITE
+        return Colour.BLACK if valid_colors[-1] == Colour.WHITE else WHITE
 
     # FIDE 1.6.2.2: Strong color preference
     if color_diff == 1:
-        return BLACK
+        return Colour.BLACK
     elif color_diff == -1:
-        return WHITE
+        return Colour.WHITE
 
     # FIDE 1.6.2.3: Mild color preference (color_diff == 0)
     if color_diff == 0 and len(valid_colors) > 0:
-        return BLACK if valid_colors[-1] == WHITE else WHITE
+        return Colour.BLACK if valid_colors[-1] == Colour.WHITE else WHITE
 
     return None
 

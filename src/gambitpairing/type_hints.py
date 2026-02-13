@@ -22,7 +22,7 @@ from typing import List, Optional, Tuple
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from gambitpairing.player.base_player import Player
+    from gambitpairing.models.player.base_player import Player
 
 
 Players = List["Player"]

@@ -27,7 +27,7 @@ The Berger tables ensure that:
 - Bye assignments follow FIDE rules (highest number gets bye)
 
 Example:
-    >>> from gambitpairing.player import Player
+    >>> from gambitpairing.models.player import Player
     >>> players = [Player("Alice"), Player("Bob"), Player("Charlie")]
     >>> rr = RoundRobin(players)
     >>> first_round = rr.get_round_pairings(1)
@@ -37,7 +37,7 @@ Example:
 from typing import Iterable, List, Optional, Tuple
 
 from gambitpairing.exceptions import PairingException
-from gambitpairing.player import Player
+from gambitpairing.models.player import Player
 from gambitpairing.type_hints import Pairings, Players, RoundSchedule
 from gambitpairing.utils import setup_logger
 

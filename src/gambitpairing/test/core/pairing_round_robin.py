@@ -17,7 +17,7 @@ from gambitpairing.pairing.round_robin import (
     RoundRobin,
     create_round_robin,
 )
-from gambitpairing.player import Player, create_player
+from gambitpairing.models.player import Player, create_player
 
 
 class TestRoundRobinBasic:

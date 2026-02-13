@@ -7,7 +7,7 @@ from PyQt6.QtCore import QObject, Qt, QThread, pyqtSignal
 
 from gambitpairing.gui.gui_utils import get_colored_icon, set_svg_icon
 from gambitpairing.gui.notification import show_notification
-from gambitpairing.player import Player, create_player_from_dict
+from gambitpairing.models.player import Player, create_player_from_dict
 from gambitpairing.utils.api import (
     get_cfc_player_info,
     get_fide_player_info,
@@ -913,22 +913,8 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         """
         # Placeholder - replace with actual CFC API implementation
         # You'll need to research the CFC's available APIs or web scraping methods
-
-        # Example structure of what this might return:
-        example_results = [
-            {
-                "cfc_id": "123456",
-                "name": "John Smith",
-                "rating": 1850,
-                "province": "ON",
-                "city": "Toronto",
-                "expiry_date": "2024-12-31",
-                "status": "Active",
-            }
-        ]
-
-        # For now, return empty list - implement actual API call here
-        return []
+        # for now, this is not implemented
+        raise NotImplementedError
 
     def _create_tournament_tab(self):
         """Create the tournament players tab."""

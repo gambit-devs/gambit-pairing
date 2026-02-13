@@ -37,7 +37,7 @@ from gambitpairing.constants import (
 )
 from gambitpairing.pairing.dutch_swiss import create_dutch_swiss_pairings
 from gambitpairing.pairing.round_robin import RoundRobin, create_round_robin
-from gambitpairing.player import Player
+from gambitpairing.models.player import Player
 from gambitpairing.type_hints import B, Pairings, W
 
 

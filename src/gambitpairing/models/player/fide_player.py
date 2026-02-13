@@ -21,7 +21,7 @@ from datetime import date
 from typing import Any, Dict, Optional
 
 from gambitpairing.club import Club
-from gambitpairing.player.base_player import Player
+from gambitpairing.models.player import Player
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)

@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from enum import Enum
+
 
 class PairingSystem(str, Enum):
     DUTCH_SWISS = "dutch_swiss"
@@ -26,3 +28,9 @@ class PairingSystem(str, Enum):
 class Colour(str, Enum):
     WHITE = "White"
     BLACK = "Black"
+
+
+class Federation(str, Enum):
+    FIDE = "FIDE"
+    USCF = "USCF"
+    CFC = "CFC"

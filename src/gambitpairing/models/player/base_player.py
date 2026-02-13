@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from dateutil.relativedelta import relativedelta
 
 from gambitpairing.club import Club
-from gambitpairing.models.enums import Colour
+from gambitpairing.models.enums import Colour, Federation
 from gambitpairing.utils import generate_id, setup_logger
 from gambitpairing.utils.validation import validate_email, validate_phone
 
@@ -54,8 +54,8 @@ class Player:
         Gender of the player.
     date_of_birth : datetime.date, optional
         Date of birth of the player.
-    federation : str, optional
-        Chess federation code (e.g., "FIDE", "USCF").
+    federation : Federation, optional
+        Chess federation.
     **kwargs
         Additional keyword arguments for forward compatibility.
 
@@ -418,57 +418,11 @@ class Player:
             if hasattr(player, key) and not key.startswith("_"):
                 setattr(player, key, value)
 
-        # Ensure essential list attributes exist (backward compatibility)
-        cls._ensure_list_attributes(player)
-
-        # Ensure boolean flags exist (backward compatibility)
-        cls._ensure_boolean_attributes(player)
-
         # Ensure tiebreakers dict exists
         if not hasattr(player, "tiebreakers") or player.tiebreakers is None:
             player.tiebreakers = {}
 
         return player
-
-    @staticmethod
-    def _ensure_list_attributes(player: "Player") -> None:
-        """Ensure all list attributes exist for backward compatibility.
-
-        Args:
-            player: Player instance to update
-        """
-        list_attributes = [
-            "color_history",
-            "opponent_ids",
-            "results",
-            "running_scores",
-            "float_history",
-            "match_history",
-        ]
-
-        for attr_name in list_attributes:
-            if not hasattr(player, attr_name) or getattr(player, attr_name) is None:
-                setattr(player, attr_name, [])
-
-    @staticmethod
-    def _ensure_boolean_attributes(player: "Player") -> None:
-        """Ensure all boolean attributes exist for backward compatibility.
-
-        Args:
-            player: Player instance to update
-        """
-        if not hasattr(player, "has_received_bye"):
-            player.has_received_bye = (
-                None in player.opponent_ids if player.opponent_ids else False
-            )
-
-        if not hasattr(player, "num_black_games"):
-            player.num_black_games = (
-                player.color_history.count(Colour.BLACK) if player.color_history else 0
-            )
-
-        if not hasattr(player, "is_active"):
-            player.is_active = True
 
     def __repr__(self) -> str:
         """Return string representation for debugging.
