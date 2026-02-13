@@ -40,7 +40,7 @@ from gambitpairing.constants import (
 from gambitpairing.utils import setup_logger
 
 if TYPE_CHECKING:
-    from gambitpairing.player import Player
+    from gambitpairing.models.player import Player
     from gambitpairing.tournament import Tournament
 
 logger = setup_logger(__name__)

@@ -32,7 +32,7 @@ from gambitpairing.constants import (
     TB_SONNENBORN_BERGER,
     WIN_SCORE,
 )
-from gambitpairing.player import Player
+from gambitpairing.models.player import Player
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)

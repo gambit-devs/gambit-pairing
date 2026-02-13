@@ -8,7 +8,7 @@ using the factory pattern.
 from datetime import date
 from typing import Any, Dict, List, Optional
 
-from gambitpairing.player import create_player
+from gambitpairing.models.player import create_player
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)
@@ -176,7 +176,7 @@ def api_response_to_players(
         >>> players = api_response_to_players(api_results, source="fide")
     """
     # Import here to avoid circular dependency
-    from gambitpairing.player import create_player_from_dict
+    from gambitpairing.models.player import create_player_from_dict
 
     # Select appropriate adapter
     if source.lower() == "fide":
@@ -215,7 +215,7 @@ def create_player_from_fide_search(fide_data: Dict[str, Any]) -> Optional[Any]:
     Returns:
         Player object or None if creation fails
     """
-    from gambitpairing.player import create_player_from_dict
+    from gambitpairing.models.player import create_player_from_dict
 
     try:
         player_dict = fide_api_to_player_dict(fide_data)
@@ -236,7 +236,7 @@ def create_player_from_cfc_data(cfc_data: Dict[str, Any]) -> Optional[Any]:
     Returns:
         Player object or None if creation fails
     """
-    from gambitpairing.player import create_player_from_dict
+    from gambitpairing.models.player import create_player_from_dict
 
     try:
         player_dict = cfc_api_to_player_dict(cfc_data)

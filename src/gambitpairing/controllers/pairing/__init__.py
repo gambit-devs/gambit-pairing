@@ -1,0 +1,3 @@
+from gambitpairing.controllers.pairing.round_robin import RoundRobin, create_round_robin
+
+from gambitpairing.controllers.pairing.dutch_swiss import create_dutch_swiss_pairings

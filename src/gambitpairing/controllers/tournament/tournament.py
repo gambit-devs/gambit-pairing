@@ -1,8 +1,4 @@
-"""Main Tournament class - orchestrates all tournament operations.
-
-This is the primary interface for tournament management, coordinating various
-specialized managers to provide a clean, professional API.
-"""
+"""Tournament controller - orchestrates all tournament operations."""
 
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
@@ -40,15 +36,36 @@ logger = setup_logger(__name__)
 
 
 class Tournament:
-    """Main tournament management class.
+    """
+    Main tournament controller
 
-    This class coordinates all tournament operations through specialized managers:
-    - RoundManager: handles round creation and pairing
-    - ResultRecorder: manages result entry and validation
-    - TiebreakCalculator: computes tiebreak scores
+    Coordinates all tournament operations through specialized managers:
 
-    The Tournament class maintains the overall state and provides a clean API
-    for tournament operations.
+    - RoundManager: Handles round creation and pairing
+    - ResultRecorder: Manages result entry and validation
+    - TiebreakCalculator: Computes tiebreak scores
+
+    Parameters
+    ----------
+    name : str
+        Tournament name.
+    players : list of Player
+        List of participating players.
+    num_rounds : int
+        Number of rounds to play.
+    tiebreak_order : list of str, optional
+        Priority order for tiebreak criteria.
+    pairing_system : str, default="dutch_swiss"
+        Pairing system to use. Supported systems include
+        ``"dutch_swiss"``, ``"round_robin"``, and ``"manual"``.
+
+    Notes
+    -----
+    The class delegates implementation details to:
+
+    - RoundManager
+    - ResultRecorder
+    - TiebreakCalculator
     """
 
     def __init__(

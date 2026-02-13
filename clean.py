@@ -1,59 +1,49 @@
 #!/usr/bin/env python3
 
-from pathlib import Path
+import os
 import shutil
-import sys
-
-PROJECT_ROOT = Path(__file__).resolve().parent
+from pathlib import Path
 
 
-def ensure_safe_root(root: Path) -> None:
-    """Prevent accidental deletion outside project directory."""
-    if not (root / "pyproject.toml").exists():
-        print("Error: clean.py must be run on a python project root.")
-        sys.exit(1)
-
-
-def remove_path(path: Path) -> None:
-    """Remove a file or directory safely."""
-    try:
-        if path.is_dir():
+def clean_compiled_files(root: Path) -> None:
+    print(f"cleaning compiled files in: {root}")
+    for path in root.rglob("*"):
+        if path.is_dir() and path.name == "__pycache__":
             shutil.rmtree(path)
-            print(f"Removed directory: {path}")
-        else:
-            path.unlink(missing_ok=True)
+            print(f"Removed dir: {path}")
+        elif path.suffix == ".pyc":
+            path.unlink()
             print(f"Removed file: {path}")
-    except Exception as e:
-        print(f"Failed to remove {path}: {e}")
 
 
-def main() -> None:
-    ensure_safe_root(PROJECT_ROOT)
+def main():
+    # Get the directory where this script is located
+    script_dir = Path(__file__).parent
 
-    print(f"Cleaning project at: {PROJECT_ROOT}")
-    print("-" * 40)
+    print(f"cleaning: {script_dir}")
 
-    # Build artifacts
-    for folder in ["build", "dist"]:
-        remove_path(PROJECT_ROOT / folder)
+    # Define directories to clean
+    built_dir = script_dir / "build"
+    dist_dir = script_dir / "dist"
+    src_dir = script_dir / "src"
 
-    # Egg metadata
-    for egg_info in PROJECT_ROOT.glob("*.egg-info"):
-        remove_path(egg_info)
+    clean_compiled_files(src_dir)
 
-    # Python bytecode
-    for path in PROJECT_ROOT.rglob("__pycache__"):
-        remove_path(path)
+    # Remove contents of directories if they exist
+    for directory in [built_dir, dist_dir]:
+        if directory.exists():
+            # Remove all contents but keep the directory
+            for item in directory.iterdir():
+                if item.is_dir():
+                    shutil.rmtree(item)
+                    print(f"Removed directory: {item}")
+                else:
+                    item.unlink()
+                    print(f"Removed file: {item}")
+        else:
+            print(f"Directory not found (skipping): {directory}")
 
-    for path in PROJECT_ROOT.rglob("*.py[co]"):
-        remove_path(path)
-
-    # Dev caches
-    for cache in [".pytest_cache", ".mypy_cache"]:
-        remove_path(PROJECT_ROOT / cache)
-
-    print("-" * 40)
-    print("Clean complete.")
+    print("cleaned out all built stuff")
 
 
 if __name__ == "__main__":

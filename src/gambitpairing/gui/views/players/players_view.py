@@ -31,7 +31,7 @@ from gambitpairing.gui.notournament_placeholder import (
     PlayerPlaceholder,
 )
 from gambitpairing.gui.widgets.header import TabHeader
-from gambitpairing.player import Player, create_player, create_player_from_dict
+from gambitpairing.models.player import Player, create_player, create_player_from_dict
 
 
 class NumericTableWidgetItem(QtWidgets.QTableWidgetItem):
@@ -338,7 +338,7 @@ class PlayersView(QtWidgets.QWidget):
         data : dict
             Dictionary containing updated player data
         """
-        from gambitpairing.player import FidePlayer
+        from gambitpairing.models.player import FidePlayer
 
         # Core attributes that all players have
         core_attrs = [

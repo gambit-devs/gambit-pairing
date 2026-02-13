@@ -22,9 +22,12 @@ round progression, and round history management.
 
 from typing import Callable, Dict, List, Optional, Tuple
 
-from gambitpairing.pairing.dutch_swiss import create_dutch_swiss_pairings
-from gambitpairing.pairing.round_robin import RoundRobin, create_round_robin
-from gambitpairing.player import Player
+from gambitpairing.controllers.pairing import (
+    create_dutch_swiss_pairings,
+    RoundRobin,
+    create_round_robin,
+)
+from gambitpairing.models.player import Player
 from gambitpairing.tournament.models import PairingHistory, RoundData
 from gambitpairing.type_hints import Pairings
 from gambitpairing.utils import setup_logger

@@ -108,7 +108,6 @@ venv = ".venv"
 
 # Python settings
 pythonVersion = "3.12"
-pythonPlatform = "All"
 
 # Type checking mode
 typeCheckingMode = "basic"

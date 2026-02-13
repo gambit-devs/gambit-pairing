@@ -26,7 +26,6 @@ class ImportPlayer:
 
     def import_players_from_api(self) -> None:
         """Import players into a tournament for chess a federation API."""
-        breakpoint()
         if not self.main_window.tournament:
             QtWidgets.QMessageBox.warning(
                 self.main_window,

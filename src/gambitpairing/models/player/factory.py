@@ -19,8 +19,8 @@ from gambitpairing.utils.validation import (
 )
 
 if TYPE_CHECKING:
-    from gambitpairing.player.base_player import Player
-    from gambitpairing.player.fide_player import FidePlayer
+    from gambitpairing.models.player.base_player import Player
+    from gambitpairing.models.player.fide_player import FidePlayer
 
 
 class PlayerFactory:
@@ -95,8 +95,8 @@ class PlayerFactory:
             InvalidPlayerDataException: If validation fails and strict=True
         """
         # Import here to avoid circular imports
-        from gambitpairing.player.base_player import Player
-        from gambitpairing.player.fide_player import FidePlayer
+        from gambitpairing.models.player.base_player import Player
+        from gambitpairing.models.player.fide_player import FidePlayer
 
         # Validate data if enabled
         if self.validate:
@@ -166,8 +166,8 @@ class PlayerFactory:
             InvalidPlayerDataException: If required fields are missing
         """
         # Import here to avoid circular imports
-        from gambitpairing.player.base_player import Player
-        from gambitpairing.player.fide_player import FidePlayer
+        from gambitpairing.models.player.base_player import Player
+        from gambitpairing.models.player.fide_player import FidePlayer
 
         if "name" not in data:
             raise InvalidPlayerDataException("Player name is required")
@@ -280,7 +280,7 @@ def create_player(**kwargs) -> "Player":
     Example:
         >>> player = create_player(name="John Doe", rating=1800)
     """
-    from gambitpairing.player.base_player import Player  # noqa: F401
+    from gambitpairing.models.player.base_player import Player  # noqa: F401
 
     return default_factory.create_player(**kwargs)
 
@@ -294,6 +294,6 @@ def create_player_from_dict(data: Dict[str, Any]) -> "Player":
     Returns:
         Player or FidePlayer instance
     """
-    from gambitpairing.player.base_player import Player  # noqa: F401
+    from gambitpairing.models.player.base_player import Player  # noqa: F401
 
     return default_factory.create_from_dict(data)

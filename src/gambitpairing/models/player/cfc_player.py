@@ -66,21 +66,23 @@ class Player(self):
     Players can be both organizers and directors.
     """
 
-    # Identification
-    self.cfc_id = None
-    self.fide_id = None
+    def __init__(self):
+        # Identification
+        self.cfc_id = None
+        self.fide_id = None
 
-    # Personal Information
-    self.name_first = None
-    self.name_last = None
-    self.addr_city = None
-    self.addr_province = None
+        # Personal Information
+        self.name_first = None
+        self.name_last = None
+        self.addr_city = None
+        self.addr_province = None
 
-    # Ratings
-    self.regular_rating = None
-    self.regular_indicator = None
-    self.quick_rating = None
-    self.quick_indicator = None
+        # Ratings
+        self.regular_rating = None
+        self.regular_indicator = None
+        self.quick_rating = None
+        self.quick_indicator = None
+        self.slug = None
 
     def save(self, *args, **kwargs):
         """

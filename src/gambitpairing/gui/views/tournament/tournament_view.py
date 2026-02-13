@@ -72,7 +72,7 @@ from gambitpairing.gui.views.tournament.tournament_state import (
 )
 from gambitpairing.gui.views.tournament.utils.pairings_printer import PairingsPrinter
 from gambitpairing.gui.widgets.header import TabHeader
-from gambitpairing.player import Player
+from gambitpairing.models.player import Player
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)

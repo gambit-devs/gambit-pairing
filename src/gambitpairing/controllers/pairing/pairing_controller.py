@@ -1,4 +1,4 @@
-"""Shared type aliases used in Gambit Pairing."""
+"""Pairing controller that handles pairing logic."""
 
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
@@ -14,21 +14,4 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-from typing import List, Optional, Tuple
-
-# Forward reference
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from gambitpairing.models.player.base_player import Player
-
-
-Players = List["Player"]
-MatchPairing = Tuple[int, int]
-RoundSchedule = Tuple[MatchPairing, ...]
-Pairings = Tuple[List[Tuple["Player", "Player"]], Optional["Player"]]
-MaybePlayer = Optional["Player"]
-
-#  LocalWords:  MatchPairing RoundSchedule
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.

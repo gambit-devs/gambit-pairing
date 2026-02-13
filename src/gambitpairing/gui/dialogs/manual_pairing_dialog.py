@@ -24,202 +24,13 @@ from PyQt6.QtCore import QMimeData, Qt, pyqtSignal
 from PyQt6.QtGui import QDrag
 from PyQt6.QtWidgets import QApplication, QDockWidget, QHBoxLayout, QVBoxLayout, QWidget
 
-from gambitpairing.gui.gui_utils import update_widget_style
-from gambitpairing.pairing.dutch_swiss import create_dutch_swiss_pairings
-from gambitpairing.player import Player
+from gambitpairing.gui.gui_utils import reset_and_set_cursor, update_widget_style
+from gambitpairing.gui.widgets.drag_list import DragListWidget
+from gambitpairing.controllers.pairing.dutch_swiss import create_dutch_swiss_pairings
+from gambitpairing.models.player import Player
 
 
-class DraggableListWidget(QtWidgets.QListWidget):
-    """Custom list widget that supports drag and drop operations."""
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.parent_dialog = parent
-        self.setAcceptDrops(True)
-        self.setDragDropMode(QtWidgets.QAbstractItemView.DragDropMode.DragDrop)
-        self.setDefaultDropAction(Qt.DropAction.MoveAction)
-        self.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
-
-        # For touch/click pairing functionality
-        self.selected_player = None
-
-    def startDrag(self, supported_actions):
-        """Start drag operation from player pool."""
-        # Set the override cursor, must be unset!
-        current_item = self.currentItem()
-        if not current_item:
-            return
-
-        player = current_item.data(Qt.ItemDataRole.UserRole)
-        if not player:
-            return
-
-        # Prevent dragging withdrawn players for pairing purposes
-        if not player.is_active:
-            # Show a message that withdrawn players cannot be paired
-            QtWidgets.QToolTip.showText(
-                QtGui.QCursor.pos(),
-                "Withdrawn players cannot be paired. Right-click to reactivate.",
-                self,
-                QtCore.QRect(),
-                2000,  # Show for 2 seconds
-            )
-            return
-
-        drag = QDrag(self)
-        mime_data = QMimeData()
-        mime_data.setText(f"player:{player.id}")
-        drag.setMimeData(mime_data)
-
-        # Create better drag pixmap
-        pixmap = QtGui.QPixmap(250, 35)
-        pixmap.fill(QtGui.QColor(255, 255, 255, 200))
-        painter = QtGui.QPainter(pixmap)
-        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
-
-        # Draw border
-        painter.setPen(QtGui.QPen(QtGui.QColor(33, 150, 243), 2))
-        painter.setBrush(QtGui.QBrush(QtGui.QColor(227, 242, 253, 180)))
-        painter.drawRoundedRect(1, 1, 248, 33, 4, 4)
-
-        # Draw text
-        painter.setPen(QtGui.QColor(0, 0, 0))
-        font = painter.font()
-        font.setPointSize(10)
-        painter.setFont(font)
-        painter.drawText(
-            pixmap.rect(),
-            Qt.AlignmentFlag.AlignCenter,
-            f"{player.name} ({player.rating})",
-        )
-        painter.end()
-
-        drag.setPixmap(pixmap)
-        drag.setHotSpot(QtCore.QPoint(125, 17))
-
-        # Execute drag
-        drag.exec(supported_actions)
-
-    def mousePressEvent(self, event):
-        """Handle mouse press for click-to-select functionality."""
-        super().mousePressEvent(event)
-
-        if event.button() == Qt.MouseButton.LeftButton:
-            item = self.itemAt(event.pos())
-            if item:
-                player = item.data(Qt.ItemDataRole.UserRole)
-                if (
-                    player and player.is_active
-                ):  # Only allow selection of active players
-                    # Select the player for placement
-                    self.selected_player = player
-                    self.setCurrentItem(item)
-                    # Enable click-to-place mode on the pairings table
-                    self.parent_dialog._enable_click_to_place_mode(player)
-
-    def dragMoveEvent(self, event):
-        """Ensure player pool always accepts drag move events with correct mime type."""
-        if event.mimeData().hasText() and event.mimeData().text().startswith("player:"):
-            event.acceptProposedAction()
-        else:
-            event.ignore()
-
-    def dragEnterEvent(self, event):
-        """Handle drag enter events for player pool."""
-        if event.mimeData().hasText() and event.mimeData().text().startswith("player:"):
-            QApplication.setOverrideCursor(Qt.CursorShape.ClosedHandCursor)
-            event.acceptProposedAction()
-            self.setProperty("class", "PairingSelected")
-
-        else:
-            event.ignore()
-
-    def dragLeaveEvent(self, event):
-        """Handle drag leave events."""
-        QApplication.restoreOverrideCursor()
-
-        self.setStyleSheet("""
-            QListWidget {
-                background-color: #f8f9fa;
-                border: 1px solid #dee2e6;
-                border-radius: 4px;
-                padding: 4px;
-            }
-            QListWidget::item {
-                padding: 6px 8px;
-                margin: 1px;
-                border-radius: 3px;
-                background-color: white;
-                border: 1px solid #e9ecef;
-            }
-            QListWidget::item:hover {
-                background-color: #e3f2fd;
-                border-color: #2196f3;
-            }
-            QListWidget::item:selected {
-                background-color: #1976d2;
-                color: white;
-                border-color: #1565c0;
-            }
-        """)
-
-    def dropEvent(self, event):
-        """Handle drop events for player pool - comprehensive handling."""
-        # Restore the cursor
-        QApplication.restoreOverrideCursor()
-
-        if not event.mimeData().hasText():
-            event.ignore()
-            self.dragLeaveEvent(event)
-            return
-
-        data = event.mimeData().text()
-        if not data.startswith("player:"):
-            event.ignore()
-            self.dragLeaveEvent(event)
-            return
-
-        player_id = data.split(":", 1)[1]
-        player_found = False
-
-        # Save state before any modifications
-        self.parent_dialog._save_state_for_undo()
-
-        # Check if player is in bye position
-        for bye_player in self.parent_dialog.bye_players:
-            if bye_player.id == player_id:
-                self.parent_dialog.bye_players.remove(bye_player)
-                player_found = True
-                break
-
-        # Find and remove player from all pairings
-        for i, (white, black) in enumerate(self.parent_dialog.pairings):
-            if white and white.id == player_id:
-                self.parent_dialog.pairings[i] = (None, black)
-                player_found = True
-            if black and black.id == player_id:
-                self.parent_dialog.pairings[i] = (white, None)
-                player_found = True
-
-        # Remove empty pairings
-        self.parent_dialog.pairings = [
-            (w, b)
-            for w, b in self.parent_dialog.pairings
-            if w is not None or b is not None
-        ]
-
-        # Update all displays
-        self.parent_dialog._populate_player_pool()
-        self.parent_dialog._update_pairings_display()
-        self.parent_dialog._update_bye_display()
-        self.parent_dialog._update_stats()
-        self.parent_dialog._update_validation()
-
-        event.acceptProposedAction()
-        self.dragLeaveEvent(event)
-
-
-class DroppableByeListWidget(DraggableListWidget):
+class DroppableByeListWidget(DragListWidget):
     """Custom list widget for bye players that supports drag and drop operations."""
 
     def __init__(self, parent=None):
@@ -264,7 +75,7 @@ class DroppableByeListWidget(DraggableListWidget):
             return
 
         # indicate drag by global setting of cursor
-        QApplication.setOverrideCursor(Qt.CursorShape.PointingHandCursor)
+        QApplication.setOverrideCursor(Qt.CursorShape.ClosedHandCursor)
 
         # Create drag for bye player
         drag = QDrag(self)
@@ -304,7 +115,6 @@ class DroppableByeListWidget(DraggableListWidget):
     def dragEnterEvent(self, event):
         """Handle drag enter events for bye pool."""
         if event.mimeData().hasText() and event.mimeData().text().startswith("player:"):
-            QApplication.setOverrideCursor(Qt.CursorShape.ClosedHandCursor)
             event.acceptProposedAction()
             self.setProperty("class", "PairingSelected")
             update_widget_style(self)
@@ -313,13 +123,13 @@ class DroppableByeListWidget(DraggableListWidget):
 
     def dragLeaveEvent(self, event):
         """Handle drag leave events, restoring completely cursor."""
+        return
         # If there are stacked over ride cursors remove them all.
         while QApplication.overrideCursor():
             QApplication.restoreOverrideCursor()
 
         # Reset to normal styling
         self.setProperty("class", "ManualPairingDialog")
-        QApplication.restoreOverrideCursor()
         update_widget_style(self)
 
     def byePoolDropEvent(self, event):
@@ -1429,7 +1239,7 @@ class ManualPairingDialog(QtWidgets.QDialog):
 
         # Use actual Dutch algorithm
         def get_eligible_bye_player(players):
-            """Simple bye player selection - pick lowest rated player who hasn't had bye."""
+            """Bye player selection - pick lowest rated player who hasn't had bye."""
             for player in sorted(players, key=lambda p: p.rating):
                 if not hasattr(player, "has_had_bye") or not player.has_had_bye:
                     return player

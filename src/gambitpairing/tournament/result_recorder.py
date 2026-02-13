@@ -22,9 +22,9 @@ This module handles recording match results with proper validation and error che
 from typing import Dict, List, Tuple
 
 from gambitpairing.constants import BYE_SCORE, WIN_SCORE
-from gambitpairing.player import Player
+from gambitpairing.models.player import Player
 from gambitpairing.tournament.models import MatchResult, RoundData
-from gambitpairing.type_hints import BLACK, WHITE
+from gambitpairing.models.enums import Colour
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)
@@ -168,8 +168,8 @@ class ResultRecorder:
         round_data.results.append(match_result)
 
         # Update player records
-        white.add_round_result(opponent=black, result=white_score, color=WHITE)
-        black.add_round_result(opponent=white, result=black_score, color=BLACK)
+        white.add_round_result(opponent=black, result=white_score, color=Colour.WHITE)
+        black.add_round_result(opponent=white, result=black_score, color=Colour.BLACK)
 
         logger.debug(
             f"Recorded: {white.name} ({white_score}) vs {black.name} ({black_score})"
@@ -277,7 +277,7 @@ class ResultRecorder:
                 player.running_scores.pop()
 
             # Update black game count if needed
-            if player.color_history and player.color_history[-1] == BLACK:
+            if player.color_history and player.color_history[-1] == Colour.BLACK:
                 player.num_black_games = max(0, player.num_black_games - 1)
 
             # Update bye status if this was a bye

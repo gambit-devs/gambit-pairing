@@ -1,8 +1,4 @@
-"""Main Tournament class - orchestrates all tournament operations.
-
-This is the primary interface for tournament management, coordinating various
-specialized managers to provide a clean, professional API.
-"""
+"""Tournament controller - orchestrates all tournament operations."""
 
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
@@ -39,16 +35,9 @@ from gambitpairing.utils import setup_logger
 logger = setup_logger(__name__)
 
 
-class Tournament:
-    """Main tournament management class.
-
-    This class coordinates all tournament operations through specialized managers:
-    - RoundManager: handles round creation and pairing
-    - ResultRecorder: manages result entry and validation
-    - TiebreakCalculator: computes tiebreak scores
-
-    The Tournament class maintains the overall state and provides a clean API
-    for tournament operations.
+class TournamentController:
+    """Main tournament controller.
+    TODO
     """
 
     def __init__(
@@ -427,6 +416,64 @@ class Tournament:
 
     # ========== Serialization ==========
 
+    @classmethod
+    def searialize_tournament(cls) -> Dict[str, Any]:
+        """Serialize tournament to dictionary.
+
+        Returns:
+            Dictionary containing all tournament data
+        """
+        return {
+            "config": self.config.to_dict(),
+            "players": [p.to_dict() for p in self.players.values()],
+            "pairing_history": self.pairing_history.to_dict(),
+            "rounds": [r.to_dict() for r in self.round_manager.rounds],
+        }
+
+    @classmethod
+    def deserialize_tournament(cls, data: Dict[str, Any]) -> "Tournament":
+        """Deserialize tournament from dictionary.
+
+        Args:
+            data: Dictionary containing tournament data
+
+        Returns:
+            Reconstructed Tournament object
+        """
+        # Load config
+        config = TournamentConfig.from_dict(data.get("config", data))
+
+        # Load players
+        players = [Player.from_dict(p_data) for p_data in data["players"]]
+
+        # Create tournament
+        tournament = cls(
+            name=config.name,
+            players=players,
+            num_rounds=config.num_rounds,
+            tiebreak_order=config.tiebreak_order,
+            pairing_system=config.pairing_system,
+        )
+
+        # Load pairing history
+        if "pairing_history" in data:
+            tournament.pairing_history = PairingHistory.from_dict(
+                data["pairing_history"]
+            )
+
+        # Load rounds
+        if "rounds" in data:
+            tournament.round_manager.rounds = [
+                RoundData.from_dict(r) for r in data["rounds"]
+            ]
+
+        # Clear player caches
+        for player in tournament.players.values():
+            player._opponents_played_cache = []
+
+        logger.info(f"Loaded tournament: {tournament.name}")
+        return tournament
+
     def to_dict(self) -> Dict[str, Any]:
         """Serialize tournament to dictionary.
 
@@ -483,26 +530,3 @@ class Tournament:
 
         logger.info(f"Loaded tournament: {tournament.name}")
         return tournament
-
-    # ========== Backwards Compatibility Properties ==========
-    # These maintain compatibility with old code during transition
-
-    @property
-    def rounds_pairings_ids(self) -> List[List[Tuple[str, str]]]:
-        """Legacy property for round pairings."""
-        return [round_data.pairings for round_data in self.round_manager.rounds]
-
-    @property
-    def rounds_byes_ids(self) -> List[Optional[str]]:
-        """Legacy property for round byes."""
-        return [round_data.bye_player_id for round_data in self.round_manager.rounds]
-
-    @property
-    def previous_matches(self):
-        """Legacy property for previous matches."""
-        return self.pairing_history.previous_matches
-
-    @property
-    def manual_pairings(self):
-        """Legacy property for manual pairings."""
-        return self.pairing_history.manual_adjustments
