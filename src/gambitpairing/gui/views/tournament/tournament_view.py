@@ -769,12 +769,12 @@ class TournamentView(QtWidgets.QWidget):
 
     def get_results_from_table(
         self,
-    ) -> Tuple[Optional[List[Tuple[str, str, float]]], bool]:
+    ) -> Tuple[Optional[List[Tuple[str, str, float, str]]], bool]:
         return self.pairings_table.get_results()
 
     def log_results_details(self, results_data, round_index_recorded):
         # Log paired game results
-        for w_id, b_id, score_w in results_data:
+        for w_id, b_id, score_w, outcome_type in results_data:
             w = self.tournament.players.get(w_id)  # Assume player exists
             b = self.tournament.players.get(b_id)
             score_b_display = (

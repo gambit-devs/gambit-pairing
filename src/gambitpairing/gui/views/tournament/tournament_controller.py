@@ -298,7 +298,7 @@ class TournamentController:
         return pairings, bye_player
 
     def record_results(
-        self, round_index: int, results_data: List[Tuple[str, str, float]]
+        self, round_index: int, results_data: List[Tuple[str, str, float, str]]
     ) -> ResultRecordingResult:
         """
         Record results for a round.
@@ -308,7 +308,7 @@ class TournamentController:
         round_index : int
             The 0-based round index
         results_data : list
-            List of (white_id, black_id, white_score) tuples
+            List of (white_id, black_id, white_score, outcome_type) tuples
 
         Returns
         -------

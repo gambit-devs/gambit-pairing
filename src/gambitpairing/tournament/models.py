@@ -22,7 +22,13 @@ This module defines the fundamental data structures used throughout the tourname
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from gambitpairing.constants import DEFAULT_TIEBREAK_SORT_ORDER
+from gambitpairing.constants import (
+    DEFAULT_FIDE_TIEBREAK_ORDER,
+    DEFAULT_MODE,
+    DEFAULT_USCF_TIEBREAK_ORDER,
+    MODE_FIDE,
+    MODE_USCF,
+)
 
 
 @dataclass
@@ -33,6 +39,7 @@ class TournamentConfig:
         name: str - Tournament name
         num_rounds: int - Number of rounds in the tournament
         pairing_system: str - Pairing system to use ('dutch_swiss', 'round_robin', 'manual')
+        tournament_mode: str - Chess federation ('USCF' or 'FIDE') for tiebreaker rules
         fide_strict: bool - Use stricter FIDE compliance search
         tiebreak_order: List[str] - List of tiebreak criteria in priority order
         tournament_over: bool - Is the tournament complete, default False
@@ -41,12 +48,19 @@ class TournamentConfig:
     name: str
     num_rounds: int
     pairing_system: str = "dutch_swiss"
+    tournament_mode: str = DEFAULT_MODE
     fide_strict: bool = False
-    tiebreak_order: List[str] = field(
-        default_factory=lambda: list(DEFAULT_TIEBREAK_SORT_ORDER)
-    )
+    tiebreak_order: Optional[List[str]] = None
     # Is the tournament complete?
     tournament_over: bool = False
+
+    def __post_init__(self):
+        """Set default tiebreak order based on chess federation if not specified."""
+        if self.tiebreak_order is None:
+            if self.tournament_mode == MODE_FIDE:
+                self.tiebreak_order = list(DEFAULT_FIDE_TIEBREAK_ORDER)
+            else:
+                self.tiebreak_order = list(DEFAULT_USCF_TIEBREAK_ORDER)
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize configuration to dictionary."""
@@ -54,6 +68,7 @@ class TournamentConfig:
             "name": self.name,
             "num_rounds": self.num_rounds,
             "pairing_system": self.pairing_system,
+            "tournament_mode": self.tournament_mode,
             "fide_strict": self.fide_strict,
             "tiebreak_order": self.tiebreak_order,
             "tournament_over": self.tournament_over,
@@ -62,14 +77,26 @@ class TournamentConfig:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TournamentConfig":
         """Deserialize configuration from dictionary."""
+        tournament_mode = data.get("tournament_mode", DEFAULT_MODE)
+
+        # Determine default tiebreak order based on mode if not specified
+        if "tiebreak_order" in data:
+            tiebreak_order = data["tiebreak_order"]
+        else:
+            # For backward compatibility with old saves
+            tiebreak_order = (
+                list(DEFAULT_FIDE_TIEBREAK_ORDER)
+                if tournament_mode == MODE_FIDE
+                else list(DEFAULT_USCF_TIEBREAK_ORDER)
+            )
+
         return cls(
             name=data.get("name", "Untitled Tournament"),
             num_rounds=data["num_rounds"],
             pairing_system=data.get("pairing_system", "dutch_swiss"),
+            tournament_mode=tournament_mode,
             fide_strict=data.get("fide_strict", False),
-            tiebreak_order=data.get(
-                "tiebreak_order", list(DEFAULT_TIEBREAK_SORT_ORDER)
-            ),
+            tiebreak_order=tiebreak_order,
             tournament_over=data.get("tournament_over", False),
         )
 
@@ -82,12 +109,14 @@ class MatchResult:
         white_id: ID of the white player
         black_id: ID of the black player
         white_score: Score for white (1.0 = win, 0.5 = draw, 0.0 = loss)
+        outcome_type: Type of outcome - "normal", "forfeit_win", "forfeit_loss", "double_forfeit"
         black_score: Score for black (computed as 1.0 - white_score)
     """
 
     white_id: str
     black_id: str
     white_score: float
+    outcome_type: str = "normal"  # Default for backward compatibility
 
     @property
     def black_score(self) -> float:
@@ -100,6 +129,7 @@ class MatchResult:
             "white_id": self.white_id,
             "black_id": self.black_id,
             "white_score": self.white_score,
+            "outcome_type": self.outcome_type,
         }
 
     @classmethod

@@ -368,10 +368,11 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self.start_action.setVisible(can_start)
         self.record_results_action.setVisible(can_record)
         self.prepare_round_action.setVisible(can_prepare)
-        self.file_separator.setVisible(
-            True
-        )  # Always show separator between file actions and info
-        self.tournament_separator.setVisible(tournament_exists)
+
+        # Show separators only when there are tournament action buttons visible
+        any_tournament_actions_visible = can_start or can_record or can_prepare
+        self.file_separator.setVisible(any_tournament_actions_visible)
+        self.tournament_separator.setVisible(any_tournament_actions_visible)
 
         # File operations
         self.save_action.setEnabled(tournament_exists)
@@ -499,7 +500,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         if dialog.exec():
             data = dialog.get_data()
             if data:
-                name, num_rounds, tiebreak_order, pairing_system = data
+                name, num_rounds, tiebreak_order, pairing_system, tournament_mode = data
                 self.reset_tournament_state()
                 self.tournament = Tournament(
                     name=name,
@@ -507,11 +508,12 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
                     num_rounds=num_rounds,
                     tiebreak_order=tiebreak_order,
                     pairing_system=pairing_system,
+                    tournament_mode=tournament_mode,
                 )
                 # Store pairing_system as an attribute if needed:
                 self.pairing_system = pairing_system
                 self.update_history_log(
-                    f"--- New Tournament '{name}' Created (Rounds: {num_rounds}, Pairing: {pairing_system}) ---"
+                    f"--- New Tournament '{name}' Created (Mode: {tournament_mode}, Rounds: {num_rounds}, Pairing: {pairing_system}) ---"
                 )
                 self.mark_dirty()
                 self._set_tournament_on_tabs()
@@ -532,7 +534,10 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             return False
 
         dialog = SettingsDialog(
-            self.tournament.num_rounds, self.tournament.tiebreak_order, self
+            self.tournament.num_rounds,
+            self.tournament.tiebreak_order,
+            self.tournament.config.tournament_mode,
+            self,
         )
         tournament_started = len(self.tournament.rounds_pairings_ids) > 0
         # Hide rounds spinbox if round robin, disable if tournament started
@@ -567,7 +572,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             dialog.spin_num_rounds.setToolTip("")
 
         if dialog.exec():
-            new_rounds, new_tiebreaks = dialog.get_settings()
+            new_rounds, new_tiebreaks, new_mode = dialog.get_settings()
             if (
                 self.tournament.num_rounds != new_rounds
                 and not tournament_started
@@ -582,6 +587,12 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
                 self.update_history_log("Tiebreak order updated.")
                 self.mark_dirty()
                 self.standings_tab.update_standings_table_headers()
+                self.standings_tab.update_standings_table()
+
+            if self.tournament.config.tournament_mode != new_mode:
+                self.tournament.config.tournament_mode = new_mode
+                self.update_history_log(f"Chess federation changed to {new_mode}.")
+                self.mark_dirty()
                 self.standings_tab.update_standings_table()
 
             self._update_ui_state()
@@ -731,15 +742,13 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         msgbox.addButton(btn_cancel, QtWidgets.QMessageBox.ButtonRole.RejectRole)
 
         # I do not know enough about pyQT but in line does not seem ideal
-        msgbox.setStyleSheet(
-            """
+        msgbox.setStyleSheet("""
             QPushButton {
                 padding: 6px 14px;
                 font-size: 10pt;
                 min-width: 140px;
             }
-        """
-        )
+        """)
 
         msgbox.exec()
         clicked = msgbox.clickedButton()

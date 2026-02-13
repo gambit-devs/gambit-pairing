@@ -3,7 +3,14 @@ from typing import List, Optional, Tuple
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
 
-from gambitpairing.constants import DEFAULT_TIEBREAK_SORT_ORDER, TIEBREAK_NAMES
+from gambitpairing.constants import (
+    DEFAULT_FIDE_TIEBREAK_ORDER,
+    DEFAULT_MODE,
+    DEFAULT_USCF_TIEBREAK_ORDER,
+    MODE_FIDE,
+    MODE_USCF,
+    TIEBREAK_NAMES,
+)
 from gambitpairing.utils import resize_list_to_show_all_items
 
 
@@ -12,7 +19,12 @@ class NewTournamentDialog(QtWidgets.QDialog):
         super().__init__(parent)
         self.setWindowTitle("New Tournament")
         self.setMinimumWidth(550)
-        self.current_tiebreak_order = list(DEFAULT_TIEBREAK_SORT_ORDER)
+        self.tournament_mode = DEFAULT_MODE
+        self.current_tiebreak_order = (
+            list(DEFAULT_FIDE_TIEBREAK_ORDER)
+            if self.tournament_mode == MODE_FIDE
+            else list(DEFAULT_USCF_TIEBREAK_ORDER)
+        )
 
         self.common_layout = QtWidgets.QVBoxLayout(self)
 
@@ -21,6 +33,8 @@ class NewTournamentDialog(QtWidgets.QDialog):
         # setup general to all options
         general_group = self._setup_general_group()
         self.common_layout.addWidget(general_group)
+        mode_group = self._setup_mode_group()
+        self.common_layout.addWidget(mode_group)
         tiebreak_group = self._setup_tiebreak_group()
         self.common_layout.addWidget(tiebreak_group)
         pairing_group = self._setup_pairing_system_select_group()
@@ -29,7 +43,7 @@ class NewTournamentDialog(QtWidgets.QDialog):
         # -------------------------
         # Ensure all group boxes have same minimum width
         MIN_GROUP_WIDTH = 450
-        for group in (general_group, tiebreak_group, pairing_group):
+        for group in (general_group, mode_group, tiebreak_group, pairing_group):
             group.setMinimumWidth(MIN_GROUP_WIDTH)
 
         # -------------------------
@@ -70,6 +84,42 @@ class NewTournamentDialog(QtWidgets.QDialog):
         form_layout.addRow("Tournament Name:", self.name_edit)
         form_layout.addRow("Number of Rounds:", self.rounds_spin)
         return general_group
+
+    def _setup_mode_group(self) -> QtWidgets.QGroupBox:
+        """Setup chess federation selection (FIDE vs USCF).
+
+        Returns
+        -------
+        QGroupBox
+            containing the mode selection layout
+        """
+        mode_group = QtWidgets.QGroupBox("Chess Federation")
+        mode_layout = QtWidgets.QHBoxLayout(mode_group)
+
+        self.mode_combo = QtWidgets.QComboBox()
+        self.mode_combo.addItem("USCF", MODE_USCF)
+        self.mode_combo.addItem("FIDE", MODE_FIDE)
+        self.mode_combo.setToolTip(
+            "Select USCF or FIDE federation. This determines the default tiebreaker rules."
+        )
+        self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
+
+        mode_layout.addWidget(self.mode_combo, stretch=1)
+
+        return mode_group
+
+    def on_mode_changed(self) -> None:
+        """Handle chess federation change, updating default tiebreakers."""
+        new_mode = self.mode_combo.currentData()
+        if new_mode != self.tournament_mode:
+            self.tournament_mode = new_mode
+            # Update tiebreak order to mode defaults
+            if self.tournament_mode == MODE_FIDE:
+                self.current_tiebreak_order = list(DEFAULT_FIDE_TIEBREAK_ORDER)
+            else:
+                self.current_tiebreak_order = list(DEFAULT_USCF_TIEBREAK_ORDER)
+            self.populate_tiebreak_list()
+            resize_list_to_show_all_items(self.tiebreak_list)
 
     def _setup_tiebreak_group(self) -> QtWidgets.QGroupBox:
         """initialize the tiebreak order setting part of the gui
@@ -283,7 +333,7 @@ class NewTournamentDialog(QtWidgets.QDialog):
         update_details(default_idx)
         dialog.exec()
 
-    def get_data(self) -> Optional[Tuple[str, int, List[str], str]]:
+    def get_data(self) -> Optional[Tuple[str, int, List[str], str, str]]:
         name = self.name_edit.text().strip()
         if not name:
             QtWidgets.QMessageBox.warning(
@@ -291,11 +341,13 @@ class NewTournamentDialog(QtWidgets.QDialog):
             )
             return None
         pairing_system = self.pairing_combo.currentData()
+        tournament_mode = self.mode_combo.currentData()
         return (
             name,
             self.rounds_spin.value(),
             self.current_tiebreak_order,
             pairing_system,
+            tournament_mode,
         )
 
     def on_pairing_system_changed(self):

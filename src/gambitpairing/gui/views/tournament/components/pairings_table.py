@@ -8,8 +8,14 @@ from gambitpairing.constants import (
     BYE_SCORE,
     DRAW_SCORE,
     LOSS_SCORE,
+    OUTCOME_DOUBLE_FORFEIT,
+    OUTCOME_FORFEIT_WIN,
+    OUTCOME_NORMAL_GAME,
+    RESULT_BLACK_FORFEIT_WIN,
     RESULT_BLACK_WIN,
+    RESULT_DOUBLE_FORFEIT,
     RESULT_DRAW,
+    RESULT_WHITE_FORFEIT_WIN,
     RESULT_WHITE_WIN,
     WIN_SCORE,
 )
@@ -195,7 +201,7 @@ class PairingsTable(QtWidgets.QWidget):
             self.lbl_bye.setText("No bye this round")
             self.bye_container.hide()
 
-    def get_results(self) -> Tuple[Optional[List[Tuple[str, str, float]]], bool]:
+    def get_results(self) -> Tuple[Optional[List[Tuple[str, str, float, str]]], bool]:
         results_data = []
         all_entered = True
         if (
@@ -218,15 +224,30 @@ class PairingsTable(QtWidgets.QWidget):
                     break
 
                 white_score = -1.0
+                outcome_type = OUTCOME_NORMAL_GAME
+
+                # Map result constants to scores and outcome types
                 if result_const == RESULT_WHITE_WIN:
                     white_score = WIN_SCORE
+                    outcome_type = OUTCOME_NORMAL_GAME
                 elif result_const == RESULT_DRAW:
                     white_score = DRAW_SCORE
+                    outcome_type = OUTCOME_NORMAL_GAME
                 elif result_const == RESULT_BLACK_WIN:
                     white_score = LOSS_SCORE
+                    outcome_type = OUTCOME_NORMAL_GAME
+                elif result_const == RESULT_WHITE_FORFEIT_WIN:
+                    white_score = WIN_SCORE
+                    outcome_type = OUTCOME_FORFEIT_WIN  # White wins by forfeit
+                elif result_const == RESULT_BLACK_FORFEIT_WIN:
+                    white_score = LOSS_SCORE
+                    outcome_type = OUTCOME_FORFEIT_WIN  # Black wins by forfeit
+                elif result_const == RESULT_DOUBLE_FORFEIT:
+                    white_score = LOSS_SCORE  # Both get 0
+                    outcome_type = OUTCOME_DOUBLE_FORFEIT
 
                 if white_score >= 0 and white_id and black_id:
-                    results_data.append((white_id, black_id, white_score))
+                    results_data.append((white_id, black_id, white_score, outcome_type))
                 else:
                     logger.error(
                         f"Invalid result data in table row {row}: Result='{result_const}', W_ID='{white_id}', B_ID='{black_id}'"

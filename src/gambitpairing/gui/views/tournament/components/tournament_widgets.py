@@ -19,7 +19,7 @@ Reusable UI widgets for the Tournament tab.
 
 This module contains custom Qt widgets used in the tournament management interface:
 - CheckableButton: A toggle button with a visual checkmark indicator
-- ResultSelector: A widget for selecting game results (1-0, ½-½, 0-1)
+- ResultSelector: A widget for selecting game results (1-0, ½-½, 0-1) with forfeit options
 - RoundProgressIndicator: Visual indicator showing tournament progress
 """
 
@@ -29,8 +29,11 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt
 
 from gambitpairing.constants import (
+    RESULT_BLACK_FORFEIT_WIN,
     RESULT_BLACK_WIN,
+    RESULT_DOUBLE_FORFEIT,
     RESULT_DRAW,
+    RESULT_WHITE_FORFEIT_WIN,
     RESULT_WHITE_WIN,
 )
 from gambitpairing.gui.gui_utils import get_colored_icon, set_svg_icon
@@ -92,7 +95,7 @@ class RoundProgressIndicator(QtWidgets.QWidget):
         phase : TournamentPhase
             Current phase of the tournament
         """
-        from gambitpairing.gui.tabs.tournament_state import TournamentPhase
+        from gambitpairing.gui.views.tournament.tournament_state import TournamentPhase
 
         self._current_round = current_round
         self._total_rounds = total_rounds
@@ -170,7 +173,7 @@ class CheckableButton(QtWidgets.QPushButton):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setCheckable(True)
-        self.check_icon = get_colored_icon("checkmark-white.svg", "white", 12)
+        # Icon color chosen dynamically in paintEvent so it contrasts with the selected background
         self.setProperty("class", "ResultSelectorButton")
 
     def paintEvent(self, a0):
@@ -187,11 +190,24 @@ class CheckableButton(QtWidgets.QPushButton):
             else:
                 offset = 18
             checkmark_rect = QtCore.QRect(rect.right() - offset, rect.top() + 2, 12, 12)
-            if not self.check_icon.isNull():
-                self.check_icon.paint(painter, checkmark_rect)
+
+            # Choose a checkmark color that contrasts with the selected button background:
+            # - For white-result buttons, use chess green so it remains visible on a light background.
+            # - For other buttons, use white to stand out on darker backgrounds.
+            result_type = self.property("result_type")
+            if result_type == "white":
+                icon_color = "#2d5a27"
+                fallback_qcolor = QtGui.QColor("#2d5a27")
             else:
-                # Fallback
-                painter.setPen(QtGui.QPen(QtGui.QColor("white"), 2))
+                icon_color = "white"
+                fallback_qcolor = QtGui.QColor("white")
+
+            icon = get_colored_icon("checkmark-white.svg", icon_color, 12)
+            if not icon.isNull():
+                icon.paint(painter, checkmark_rect)
+            else:
+                # Fallback: draw a simple tick with contrasting color
+                painter.setPen(QtGui.QPen(fallback_qcolor, 2))
                 font = QtGui.QFont(painter.font())
                 font.setPointSize(10)
                 font.setBold(True)
@@ -201,12 +217,16 @@ class CheckableButton(QtWidgets.QPushButton):
 
 class ResultSelector(QtWidgets.QWidget):
     """
-    A widget for selecting chess game results.
+    A widget for selecting chess game results with a cleaner UX.
 
-    Displays three mutually exclusive buttons for:
+    Normal mode displays:
     - White wins (1-0)
     - Draw (½-½)
     - Black wins (0-1)
+    - Menu button (⋮) for forfeit options
+
+    When a forfeit is selected, the widget switches to display mode showing
+    the selected forfeit outcome with an option to change it.
 
     The selected result can be retrieved via selectedResult() and
     programmatically set via setResult().
@@ -216,23 +236,38 @@ class ResultSelector(QtWidgets.QWidget):
         super().__init__(parent)
         self.setProperty("class", "ResultSelector")
 
-        layout = QtWidgets.QHBoxLayout(self)
-        # Add margins to prevent clipping of borders/shadows
-        # Increased margins to fix clipping on bottom/right
-        layout.setContentsMargins(2, 2, 8, 16)
-        layout.setSpacing(0)
+        # Main layout
+        self.main_layout = QtWidgets.QStackedLayout(self)
+        self.main_layout.setContentsMargins(2, 2, 8, 16)
 
-        # Enforce minimum size to prevent squashing in table
-        self.setMinimumWidth(150)
+        # Enforce minimum size
+        self.setMinimumWidth(180)
         self.setMinimumHeight(40)
         self.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Fixed
         )
 
+        # Create two widgets: selector mode and display mode
+        self._create_selector_widget()
+        self._create_display_widget()
+
+        # Track current selection
+        self._current_result = ""
+
+        # Start in selector mode
+        self.main_layout.setCurrentWidget(self.selector_widget)
+
+    def _create_selector_widget(self):
+        """Create the selector widget with 3 main buttons + menu."""
+        self.selector_widget = QtWidgets.QWidget()
+        layout = QtWidgets.QHBoxLayout(self.selector_widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(2)
+
         self.button_group = QtWidgets.QButtonGroup(self)
         self.button_group.setExclusive(True)
 
-        # Create buttons with clear, readable labels
+        # Create main result buttons with color-coded styling
         self.btn_white_win = CheckableButton("1-0")
         self.btn_white_win.setProperty("result_const", RESULT_WHITE_WIN)
         self.btn_white_win.setProperty("result_type", "white")
@@ -248,10 +283,161 @@ class ResultSelector(QtWidgets.QWidget):
         self.btn_black_win.setProperty("result_type", "black")
         self.btn_black_win.setToolTip("Black wins")
 
-        buttons = [self.btn_white_win, self.btn_draw, self.btn_black_win]
-        for btn in buttons:
+        # Add buttons to layout and button group
+        for btn in [self.btn_white_win, self.btn_draw, self.btn_black_win]:
             self.button_group.addButton(btn)
             layout.addWidget(btn)
+
+        # Create menu button for forfeit options - styled like copy buttons
+        self.menu_button = QtWidgets.QPushButton()
+        self.menu_button.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self.menu_button.setFlat(True)
+        self.menu_button.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.menu_button.setFixedSize(32, 32)
+        self.menu_button.setToolTip("More options (forfeits)")
+        self.menu_button.setProperty("class", "OptionsButton")
+
+        # Use three-dot (ellipsis) icon
+        icon = get_colored_icon("ellipsis-vertical.svg", "#555", 16)
+        if icon and not icon.isNull():
+            self.menu_button.setIcon(icon)
+            self.menu_button.setIconSize(QtCore.QSize(16, 16))
+        else:
+            # Fallback to text if icon not found
+            self.menu_button.setText("⋮")
+
+        self.menu_button.setStyleSheet("""
+            QPushButton {
+                font-size: 16px;
+                color: #555;
+                background: transparent;
+                border: none;
+                border-radius: 6px;
+                padding: 0;
+            }
+            QPushButton:hover {
+                background: #e0e4ea;
+                color: #222;
+            }
+            QPushButton:pressed {
+                background: #d0d4da;
+            }
+            QPushButton::menu-indicator {
+                width: 0;
+                height: 0;
+            }
+        """)
+
+        # Create menu for forfeit options
+        self.forfeit_menu = QtWidgets.QMenu(self)
+        self.forfeit_menu.addAction(
+            "White wins by forfeit (FF W)",
+            lambda: self._select_forfeit(RESULT_WHITE_FORFEIT_WIN),
+        )
+        self.forfeit_menu.addAction(
+            "Black wins by forfeit (FF B)",
+            lambda: self._select_forfeit(RESULT_BLACK_FORFEIT_WIN),
+        )
+        self.forfeit_menu.addAction(
+            "Double forfeit (FF X)", lambda: self._select_forfeit(RESULT_DOUBLE_FORFEIT)
+        )
+
+        self.menu_button.setMenu(self.forfeit_menu)
+        layout.addWidget(self.menu_button)
+
+        self.main_layout.addWidget(self.selector_widget)
+
+    def _create_display_widget(self):
+        """Create the display widget for showing selected forfeit."""
+        self.display_widget = QtWidgets.QWidget()
+        layout = QtWidgets.QHBoxLayout(self.display_widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+
+        # Label to show the selected forfeit
+        self.display_label = QtWidgets.QLabel()
+        self.display_label.setProperty("class", "ForfeitDisplay")
+        self.display_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        font = self.display_label.font()
+        font.setBold(True)
+        self.display_label.setFont(font)
+        layout.addWidget(self.display_label, 1)
+
+        # Button to change selection - styled like copy buttons
+        self.change_button = QtWidgets.QPushButton()
+        self.change_button.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self.change_button.setFlat(True)
+        self.change_button.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.change_button.setFixedSize(28, 28)
+        self.change_button.setToolTip("Change result")
+        self.change_button.setProperty("class", "ChangeButton")
+
+        # Use edit icon
+        icon = get_colored_icon("edit.svg", "#555", 14)
+        if icon and not icon.isNull():
+            self.change_button.setIcon(icon)
+            self.change_button.setIconSize(QtCore.QSize(14, 14))
+        else:
+            # Fallback to text if icon not found
+            self.change_button.setText("✎")
+
+        self.change_button.setStyleSheet("""
+            QPushButton {
+                font-size: 14px;
+                color: #555;
+                background: transparent;
+                border: none;
+                border-radius: 6px;
+                padding: 0;
+            }
+            QPushButton:hover {
+                background: #e0e4ea;
+                color: #222;
+            }
+            QPushButton:pressed {
+                background: #d0d4da;
+            }
+        """)
+        self.change_button.clicked.connect(self._return_to_selector)
+        layout.addWidget(self.change_button)
+
+        self.main_layout.addWidget(self.display_widget)
+
+    def _select_forfeit(self, result_const: str):
+        """Handle forfeit selection from menu."""
+        self._current_result = result_const
+
+        # Update display label
+        display_text = {
+            RESULT_WHITE_FORFEIT_WIN: "1-0 (Forfeit)",
+            RESULT_BLACK_FORFEIT_WIN: "0-1 (Forfeit)",
+            RESULT_DOUBLE_FORFEIT: "0-0 (Double Forfeit)",
+        }.get(result_const, result_const)
+
+        self.display_label.setText(display_text)
+
+        # Switch to display mode
+        self.main_layout.setCurrentWidget(self.display_widget)
+
+    def _return_to_selector(self):
+        """Return to selector mode."""
+        # Clear any button selections
+        checked_button = self.button_group.checkedButton()
+        if checked_button:
+            self.button_group.setExclusive(False)
+            checked_button.setChecked(False)
+            self.button_group.setExclusive(True)
+
+        # Clear current result if it's a forfeit
+        if self._current_result in [
+            RESULT_WHITE_FORFEIT_WIN,
+            RESULT_BLACK_FORFEIT_WIN,
+            RESULT_DOUBLE_FORFEIT,
+        ]:
+            self._current_result = ""
+
+        # Switch back to selector mode
+        self.main_layout.setCurrentWidget(self.selector_widget)
 
     def selectedResult(self) -> str:
         """
@@ -260,9 +446,15 @@ class ResultSelector(QtWidgets.QWidget):
         Returns
         -------
         str
-            The result constant (RESULT_WHITE_WIN, RESULT_DRAW, or RESULT_BLACK_WIN),
+            The result constant (RESULT_WHITE_WIN, RESULT_DRAW, RESULT_BLACK_WIN,
+            RESULT_WHITE_FORFEIT_WIN, RESULT_BLACK_FORFEIT_WIN, or RESULT_DOUBLE_FORFEIT),
             or empty string if no result is selected.
         """
+        # Check if a forfeit is selected
+        if self._current_result:
+            return self._current_result
+
+        # Otherwise check the button group
         checked_button = self.button_group.checkedButton()
         return checked_button.property("result_const") if checked_button else ""
 
@@ -273,16 +465,32 @@ class ResultSelector(QtWidgets.QWidget):
         Parameters
         ----------
         result_constant : str
-            One of RESULT_WHITE_WIN, RESULT_DRAW, or RESULT_BLACK_WIN.
-            If the value doesn't match any button, the selection is cleared.
+            One of RESULT_WHITE_WIN, RESULT_DRAW, RESULT_BLACK_WIN,
+            RESULT_WHITE_FORFEIT_WIN, RESULT_BLACK_FORFEIT_WIN, or RESULT_DOUBLE_FORFEIT.
+            If the value doesn't match, the selection is cleared.
         """
+        # Check if it's a forfeit result
+        if result_constant in [
+            RESULT_WHITE_FORFEIT_WIN,
+            RESULT_BLACK_FORFEIT_WIN,
+            RESULT_DOUBLE_FORFEIT,
+        ]:
+            self._select_forfeit(result_constant)
+            return
+
+        # Check if it's a normal result
         for button in self.button_group.buttons():
             if button.property("result_const") == result_constant:
                 button.setChecked(True)
+                self._current_result = ""
+                self.main_layout.setCurrentWidget(self.selector_widget)
                 return
-        # If no match, clear selection
+
+        # No match, clear selection
+        self._current_result = ""
         checked_button = self.button_group.checkedButton()
         if checked_button:
             self.button_group.setExclusive(False)
             checked_button.setChecked(False)
             self.button_group.setExclusive(True)
+        self.main_layout.setCurrentWidget(self.selector_widget)

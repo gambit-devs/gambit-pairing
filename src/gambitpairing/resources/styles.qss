@@ -191,30 +191,100 @@ QPushButton[class="ResultSelectorButton"]:disabled {
     border-color: #f3f4f6;
 }
 
-/* Color-coded result buttons when checked */
+/* Color-coded result buttons when checked - chess themed colors */
+/* White wins - Enhanced visibility when selected */
 QPushButton[class="ResultSelectorButton"][result_type="white"]:checked {
-    background-color: #1e40af;
-    border-color: #1e40af;
+    /* subtle green tint for higher contrast when selected */
+    background-color: #f0fbf3;
+    /* slightly stronger border to make the selected state more visible */
+    border: 2px solid #2d5a27;
+    color: #2d5a27;
+    font-weight: 700;
 }
 QPushButton[class="ResultSelectorButton"][result_type="white"]:checked:hover {
-    background-color: #1d4ed8;
-    border-color: #1d4ed8;
+    background-color: #e8f7e8;
+    border-color: #3d7a37;
+    color: #3d7a37;
 }
+
+/* Draw - Chess green (neutral, matching app theme) */
 QPushButton[class="ResultSelectorButton"][result_type="draw"]:checked {
-    background-color: #6b7280;
-    border-color: #6b7280;
+    background-color: #2d5a27;
+    border-color: #2d5a27;
+    color: #ffffff;
 }
 QPushButton[class="ResultSelectorButton"][result_type="draw"]:checked:hover {
-    background-color: #4b5563;
-    border-color: #4b5563;
+    background-color: #3d7a37;
+    border-color: #3d7a37;
+    color: #ffffff;
 }
+
+/* Black wins - Deep black (representing the dark pieces) */
 QPushButton[class="ResultSelectorButton"][result_type="black"]:checked {
-    background-color: #111827;
-    border-color: #111827;
+    background-color: #000000;
+    border-color: #2d5a27;
+    color: #ffffff;
 }
 QPushButton[class="ResultSelectorButton"][result_type="black"]:checked:hover {
-    background-color: #1f2937;
-    border-color: #1f2937;
+    background-color: #1a1a1a;
+    border-color: #3d7a37;
+    color: #ffffff;
+}
+
+/* --- Forfeit Display Label --- */
+QLabel[class="ForfeitDisplay"] {
+    background: #f8fafc;
+    color: #8b5a2b;
+    border: 1px solid #2d5a27;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: 600;
+    font-size: 10pt;
+    min-height: 28px;
+}
+
+/* --- Change/Edit Button for Forfeit Display --- */
+QPushButton[class="ChangeButton"] {
+    background: transparent;
+    color: #555;
+    border: none;
+    border-radius: 6px;
+    padding: 0 4px;
+    font-size: 14px;
+    min-width: 28px;
+    max-width: 28px;
+    min-height: 28px;
+    max-height: 28px;
+}
+QPushButton[class="ChangeButton"]:hover {
+    background: #e0e4ea;
+    color: #222;
+}
+QPushButton[class="ChangeButton"]:pressed {
+    background: #d0d4da;
+}
+
+/* --- Menu Button for Forfeit Options --- */
+QPushButton[class="MenuButton"] {
+    background: transparent;
+    color: #6b7280;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 2px;
+    font-size: 12pt;
+    min-width: 28px;
+    max-width: 28px;
+    min-height: 28px;
+    max-height: 28px;
+}
+QPushButton[class="MenuButton"]:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+    color: #374151;
+}
+QPushButton[class="MenuButton"]:pressed {
+    background: #e5e7eb;
+    border-color: #6b7280;
 }
 
 /* =============================================

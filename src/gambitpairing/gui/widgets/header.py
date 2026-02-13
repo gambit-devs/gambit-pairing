@@ -70,8 +70,7 @@ class TabHeader(QtWidgets.QWidget):
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
 
         # Basic styling for icon button if class not defined
-        btn.setStyleSheet(
-            """
+        btn.setStyleSheet("""
             QPushButton {
                 background-color: transparent;
                 border: none;
@@ -84,8 +83,7 @@ class TabHeader(QtWidgets.QWidget):
             QPushButton:pressed {
                 background-color: #d0d4da;
             }
-        """
-        )
+        """)
 
         self.actions_layout.addWidget(btn)
         return btn

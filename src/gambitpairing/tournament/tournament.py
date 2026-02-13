@@ -58,6 +58,7 @@ class Tournament:
         num_rounds: int,
         tiebreak_order: Optional[List[str]] = None,
         pairing_system: str = "dutch_swiss",
+        tournament_mode: Optional[str] = None,
         fide_strict: bool = False,
     ) -> None:
         """Initialize a new tournament.
@@ -68,6 +69,7 @@ class Tournament:
             num_rounds: Number of rounds to play
             tiebreak_order: Priority order for tiebreak criteria
             pairing_system: Pairing system ('dutch_swiss', 'round_robin', 'manual')
+            tournament_mode: Chess federation ('USCF' or 'FIDE')
             fide_strict: Use stricter FIDE compliance search for Dutch Swiss
         """
         # Configuration
@@ -75,6 +77,7 @@ class Tournament:
             name=name,
             num_rounds=num_rounds,
             pairing_system=pairing_system,
+            tournament_mode=tournament_mode or "USCF",
             fide_strict=fide_strict,
             tiebreak_order=tiebreak_order,
         )
@@ -266,13 +269,13 @@ class Tournament:
     # ========== Result Management ==========
 
     def record_results(
-        self, round_index: int, results_data: List[Tuple[str, str, float]]
+        self, round_index: int, results_data: List[Tuple[str, str, float, str]]
     ) -> bool:
         """Record results for a round.
 
         Args:
             round_index: Round index (0-indexed)
-            results_data: List of (white_id, black_id, white_score) tuples
+            results_data: List of (white_id, black_id, white_score, outcome_type) tuples
 
         Returns:
             True if all results recorded successfully

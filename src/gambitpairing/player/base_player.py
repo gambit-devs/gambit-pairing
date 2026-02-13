@@ -98,6 +98,7 @@ class Player:
         self.color_history: List[Optional[Colour]] = []
         self.opponent_ids: List[Optional[str]] = []
         self.results: List[Optional[float]] = []
+        self.outcome_types: List[Optional[str]] = []  # Track outcome type per round
         self.running_scores: List[float] = []
         self.has_received_bye: bool = False
         self.num_black_games: int = 0
@@ -268,7 +269,11 @@ class Player:
         return None
 
     def add_round_result(
-        self, opponent: Optional["Player"], result: float, color: Optional[str]
+        self,
+        opponent: Optional["Player"],
+        result: float,
+        color: Optional[str],
+        outcome_type: str = "normal",
     ) -> None:
         """Record the outcome of a round for this player.
 
@@ -279,6 +284,8 @@ class Player:
             opponent: Opponent player object (None for bye)
             result: Game result (1.0=win, 0.5=draw, 0.0=loss, 1.0 for bye)
             color: Color played ("White", "Black", or None for bye)
+            outcome_type: Type of outcome - "normal", "forfeit_win", "forfeit_loss",
+                         "double_forfeit", or "bye" (affects tiebreaker calculations)
 
         Side Effects:
             - Updates score, results, and history for both players
@@ -288,6 +295,7 @@ class Player:
         opponent_id = opponent.id if opponent else None
         self.opponent_ids.append(opponent_id)
         self.results.append(result)
+        self.outcome_types.append(outcome_type)
 
         # Record match details before updating scores
         player_score_before = self.score
@@ -428,6 +436,7 @@ class Player:
             "color_history",
             "opponent_ids",
             "results",
+            "outcome_types",
             "running_scores",
             "float_history",
             "match_history",
