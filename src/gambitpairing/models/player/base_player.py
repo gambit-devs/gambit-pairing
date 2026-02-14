@@ -21,7 +21,6 @@ from typing import Optional, List
 
 from gambitpairing.models.enums import Colour
 from gambitpairing.models.federation import Federation
-from gambitpairing.models.club import Club
 
 
 @dataclass(slots=True)
@@ -51,8 +50,6 @@ class Player(PlayerABC):
         Validated phone number, if available.
     email : str or None
         Validated email address, if available.
-    club : Club or None
-        Club the player is affiliated with, if any.
     score : float
         Current tournament score.
     pairing_number : int or None
@@ -96,7 +93,6 @@ class Player(PlayerABC):
             name="Nicolas Vaagen",
             rating=1850,
             federation=Federation.FIDE,
-            club=None,
         )
 
     Updating tournament state::
@@ -127,7 +123,6 @@ class Player(PlayerABC):
 
     phone: Optional[str] = None
     email: Optional[str] = None
-    club: Optional[Club] = None
 
     # Tournament state (mutable)
     score: float = 0.0

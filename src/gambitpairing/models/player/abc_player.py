@@ -49,8 +49,6 @@ class PlayerABC(ABC):
         Validated phone number, if available.
     email : str or None
         Validated email address, if available.
-    club : Club or None
-        Club the player is affiliated with, if any.
 
     Notes
     -----
@@ -73,7 +71,6 @@ class PlayerABC(ABC):
             federation: Federation
             phone: str | None = None
             email: str | None = None
-            club: Club | None = None
 
             @property
             def id(self) -> str:
@@ -90,8 +87,6 @@ class PlayerABC(ABC):
     --------
     Federation
         Federation type associated with a player. Is an enum in models/enums.py
-    Club
-        Club type associated with a player.
     """
 
     @property
@@ -128,12 +123,6 @@ class PlayerABC(ABC):
     @abstractmethod
     def email(self) -> Optional[str]:
         """Validated email address."""
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def club(self):
-        """Club association (or None)."""
         raise NotImplementedError
 
     # concrete implementations so all inhered classes have a string representation
