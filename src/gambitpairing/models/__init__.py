@@ -1,4 +1,4 @@
-from gambitpairing.models.player import (
+from .player import (
     Player,
     FidePlayer,
     PlayerFactory,

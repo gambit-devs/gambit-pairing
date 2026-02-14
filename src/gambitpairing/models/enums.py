@@ -24,11 +24,3 @@ class Colour(str, Enum):
 
     WHITE = "White"
     BLACK = "Black"
-
-
-class Federation(str, Enum):
-    """A chess federation."""
-
-    FIDE = "FIDE"
-    USCF = "USCF"
-    CFC = "CFC"

@@ -16,67 +16,135 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from dataclasses import dataclass, field
+from typing import Optional, List
 
-from abc import ABC, abstractmethod
-from typing import Optional
+from gambitpairing.models.enums import Colour
+from gambitpairing.models.federation import Federation
+from gambitpairing.models.club import Club
 
 
-class PlayerABC(ABC):
-    """Abstract interface for a Player."""
+@dataclass(slots=True)
+class Player(PlayerABC):
+    """
+    Concrete player implementation used by tournament pairing systems.
+
+    This class represents the canonical, mutable player entity used internally
+    by pairing algorithms (e.g. FIDE Dutch Swiss). It implements the
+    :class:`PlayerABC` interface and stores all tournament-related state
+    required for pairing, color assignment, floating, and result tracking.
+
+    The player identifier (``id``) is immutable by design, while all other
+    attributes may be updated as the tournament progresses.
+
+    Attributes
+    ----------
+    id : str
+        Immutable unique identifier for the player.
+    name : str
+        Player's full name.
+    rating : int
+        Player's rating used for initial seeding and tie-breaking.
+    federation : Federation
+        Federation the player belongs to (e.g. FIDE, national federation).
+    phone : str or None
+        Validated phone number, if available.
+    email : str or None
+        Validated email address, if available.
+    club : Club or None
+        Club the player is affiliated with, if any.
+    score : float
+        Current tournament score.
+    pairing_number : int or None
+        Pairing number assigned for the tournament. Used for deterministic
+        ordering and tie-breaking.
+    is_active : bool
+        Whether the player is currently active in the tournament.
+    color_history : list of Colour or None
+        Chronological list of colors played by the player in each round.
+        ``None`` entries indicate byes.
+    match_history : list of dict
+        Per-round match metadata, including opponent IDs and scores.
+    results : list of float or None
+        Per-round results from the player's perspective.
+    is_moved_down : bool
+        Indicates whether the player was moved down from a higher score
+        bracket in the current pairing computation.
+    float_history : list of int
+        Rounds in which the player floated (up or down), used to minimize
+        repeat floats.
+    has_received_bye : bool
+        Whether the player has already received a bye.
+    bsn : int or None
+        Bracket Sequential Number (BSN) assigned during pairing computations
+        to ensure FIDE-compliant ordering.
+
+    Notes
+    -----
+    - This class is intentionally **free of pairing logic**.
+    - All pairing decisions are handled by pairing system
+      implementations, not by the player object itself.
+    - Instances are lightweight and memory-efficient due to `slots=True`.
+    - New attributes cannot be added dynamically.
+
+    Examples
+    --------
+    Creating a player::
+
+        player = Player(
+            _id="p-001",
+            name="Nicolas Vaagen",
+            rating=1850,
+            federation=Federation.FIDE,
+            club=None,
+        )
+
+    Updating tournament state::
+
+        player.score += 1.0
+        player.color_history.append(Colour.WHITE)
+        player.results.append(1.0)
+
+    Using polymorphically::
+
+        def print_player(p: PlayerABC) -> None:
+            print(p)
+
+        print_player(player)
+
+    See Also
+    --------
+    PlayerABC
+        Abstract interface implemented by all player types.
+    PairingSystemABC
+        Interface used by pairing algorithms operating on players.
+    """
+
+    _id: str
+    name: str
+    rating: int
+    federation: Federation
+
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    club: Optional[Club] = None
+
+    # Tournament state (mutable)
+    score: float = 0.0
+    pairing_number: Optional[int] = None
+    is_active: bool = True
+
+    # History tracking (used heavily by Dutch Swiss)
+    colour_history: List[Optional[Colour]] = field(default_factory=list)
+    match_history: List[dict] = field(default_factory=list)
+    results: List[Optional[float]] = field(default_factory=list)
+
+    # Float tracking
+    is_moved_down: bool = False
+    float_history: List[int] = field(default_factory=list)
+    has_received_bye: bool = False
 
     @property
-    @abstractmethod
     def id(self) -> str:
-        """Unique identifier generated for internal use."""
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """Player's full name."""
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def rating(self) -> int:
-        """Player's rating."""
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def federation(self) -> Federation:
-        """Player's rating."""
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def phone(self) -> Optional[str]:
-        """Validated phone number."""
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def email(self) -> Optional[str]:
-        """Validated email address."""
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def club(self):
-        """Club association (or None)."""
-        raise NotImplementedError
-
-    #
-    def __repr__(self) -> str:
-        """Return string representation for debugging."""
-        return f"Player(name='{self.name}', rating={self.rating}, id='{self.id}')"
-
-    def __str__(self) -> str:
-        """Return human-readable string representation.
-
-        Example
-        -------
-            Nicolas (90001)
-            Player name and rating
-        """
-        return f"{self.name} ({self.rating})"
+        """Immutable player identifier."""
+        return self._id
