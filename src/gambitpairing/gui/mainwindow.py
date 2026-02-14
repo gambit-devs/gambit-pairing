@@ -45,10 +45,10 @@ from gambitpairing.gui.views.players.players_view import PlayersView
 from gambitpairing.gui.views.standings.standings_view import StandingsView
 from gambitpairing.gui.views.tournament.tournament_view import TournamentView
 from gambitpairing.controllers.tournament import TournamentController
-from gambitpairing.models.tournament import Tournament
 from gambitpairing.update import Updater, UpdateWorker
 from gambitpairing.utils import setup_logger
 
+from __future__ import annotation
 logger = setup_logger(__name__)
 
 
@@ -704,11 +704,11 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
                     duration=3000,
                     notification_type="info",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                message = ("exception: '%s' excepted in an `except Exception`. This is bad practice." % str(e))
+                logging.exception(message)
+                raise RuntimeError(message)
 
-        except Exception as e:
-            logging.exception("Error loading tournament:")
             self.reset_tournament_state()
             try:
                 show_notification(
@@ -717,10 +717,14 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
                     duration=6000,
                     notification_type="error",
                 )
-            except Exception:
+            except Exception as e:
+                message = ("Error loading tournament: '%s' excepted in an `except Exception`. This is bad practice." % str(e))
+                logging.exception(message)
                 QtWidgets.QMessageBox.critical(
                     self, "Load Error", f"Could not load tournament file:\n{e}"
                 )
+
+                raise RuntimeError(message)
 
         self._update_ui_state()
 
@@ -974,4 +978,4 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         return False
 
 
-#  LocalWords:  bbb px
+#  LocalWords:  bbb px msgbox
