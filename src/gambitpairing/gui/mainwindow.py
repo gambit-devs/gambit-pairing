@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
 
 import json
 import logging
@@ -48,7 +49,6 @@ from gambitpairing.controllers.tournament import TournamentController
 from gambitpairing.update import Updater, UpdateWorker
 from gambitpairing.utils import setup_logger
 
-from __future__ import annotation
 logger = setup_logger(__name__)
 
 
@@ -532,9 +532,11 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
                     )
 
                 except Exception as e:
-                    message = ("exception: '%s' excepted in an `except Exception`. This is bad practice." % str(e))
+                    message = (
+                        "exception: '%s' excepted in an `except Exception`. This is bad practice."
+                        % str(e)
+                    )
                     raise RuntimeError(message)
-
 
     def show_settings_dialog(self) -> bool:
         if not self.tournament:
@@ -640,7 +642,10 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             )
             return True
         except Exception as e:
-            message = ("exception: '%s' excepted in an `except Exception`. This is bad practice." % str(e))
+            message = (
+                "exception: '%s' excepted in an `except Exception`. This is bad practice."
+                % str(e)
+            )
             logging.exception("Error saving tournament:")
             QtWidgets.QMessageBox.critical(
                 self, "Save Error", f"Could not save tournament:\n{e}"
@@ -657,79 +662,84 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         if not filename:
             return
 
+        with open(filename, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        self.reset_tournament_state()
+        self.tournament = Tournament.from_dict(data)
+
+        gui_state = data.get("gui_state", {})
+        self.current_round_index = gui_state.get("current_round_index", 0)
+        self.last_recorded_results_data = gui_state.get(
+            "last_recorded_results_data", []
+        )
+        self._current_filepath = filename
+
+        self._set_tournament_on_tabs()
+
+        # Refresh all views
+        self.players_tab.refresh_player_list()
+        self.standings_tab.update_standings_table_headers()
+        self.standings_tab.update_standings_table()
+        self.crosstable_tab.update_crosstable()
+
+        # Display pairings for the current round if they exist
+        if self.tournament and 0 <= self.current_round_index < len(
+            self.tournament.rounds_pairings_ids
+        ):
+            pairings, bye_player = self.tournament.get_pairings_for_round(
+                self.current_round_index
+            )
+            self.rounds_tab.display_pairings_for_input(
+                pairings, [bye_player] if bye_player else []
+            )
+        else:
+            self.rounds_tab.clear_pairings_display()
+
+        self.mark_clean()
+        self.update_history_log(
+            f"--- Tournament loaded from {QFileInfo(filename).fileName()} ---"
+        )
+        self.statusBar().showMessage(f"Loaded tournament: {self.tournament.name}")
         try:
-            with open(filename, "r", encoding="utf-8") as f:
-                data = json.load(f)
-
-            self.reset_tournament_state()
-            self.tournament = Tournament.from_dict(data)
-
-            gui_state = data.get("gui_state", {})
-            self.current_round_index = gui_state.get("current_round_index", 0)
-            self.last_recorded_results_data = gui_state.get(
-                "last_recorded_results_data", []
+            show_notification(
+                self,
+                f"Loaded tournament: {self.tournament.name}",
+                duration=3000,
+                notification_type="info",
             )
-            self._current_filepath = filename
-
-            self._set_tournament_on_tabs()
-
-            # Refresh all views
-            self.players_tab.refresh_player_list()
-            self.standings_tab.update_standings_table_headers()
-            self.standings_tab.update_standings_table()
-            self.crosstable_tab.update_crosstable()
-
-            # Display pairings for the current round if they exist
-            if self.tournament and 0 <= self.current_round_index < len(
-                self.tournament.rounds_pairings_ids
-            ):
-                pairings, bye_player = self.tournament.get_pairings_for_round(
-                    self.current_round_index
-                )
-                self.rounds_tab.display_pairings_for_input(
-                    pairings, [bye_player] if bye_player else []
-                )
-            else:
-                self.rounds_tab.clear_pairings_display()
-
-            self.mark_clean()
-            self.update_history_log(
-                f"--- Tournament loaded from {QFileInfo(filename).fileName()} ---"
+        except Exception as e:
+            message = (
+                "exception: '%s' excepted in an `except Exception`. This is bad practice."
+                % str(e)
             )
-            self.statusBar().showMessage(f"Loaded tournament: {self.tournament.name}")
-            try:
-                show_notification(
-                    self,
-                    f"Loaded tournament: {self.tournament.name}",
-                    duration=3000,
-                    notification_type="info",
-                )
-            except Exception as e:
-                message = ("exception: '%s' excepted in an `except Exception`. This is bad practice." % str(e))
-                logging.exception(message)
-                raise RuntimeError(message)
+            logging.exception(message)
+            raise RuntimeError(message)
 
-            self.reset_tournament_state()
-            try:
-                show_notification(
-                    self,
-                    f"Could not load tournament: {e}",
-                    duration=6000,
-                    notification_type="error",
-                )
-            except Exception as e:
-                message = ("Error loading tournament: '%s' excepted in an `except Exception`. This is bad practice." % str(e))
-                logging.exception(message)
-                QtWidgets.QMessageBox.critical(
-                    self, "Load Error", f"Could not load tournament file:\n{e}"
-                )
+        self.reset_tournament_state()
+        try:
+            show_notification(
+                self,
+                f"Could not load tournament: {e}",
+                duration=6000,
+                notification_type="error",
+            )
+        except Exception as e:
+            message = (
+                "Error loading tournament: '%s' excepted in an `except Exception`. This is bad practice."
+                % str(e)
+            )
+            logging.exception(message)
+            QtWidgets.QMessageBox.critical(
+                self, "Load Error", f"Could not load tournament file:\n{e}"
+            )
 
-                raise RuntimeError(message)
+            raise RuntimeError(message)
 
         self._update_ui_state()
 
     def check_save_before_proceeding(self) -> bool:
-       """Check if progress is saved before proceeding, if not prompt user."""
+        """Check if progress is saved before proceeding, if not prompt user."""
         if not self._dirty:
             return True
 
