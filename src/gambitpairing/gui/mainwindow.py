@@ -44,6 +44,7 @@ from gambitpairing.gui.views.history.history_view import HistoryView
 from gambitpairing.gui.views.players.players_view import PlayersView
 from gambitpairing.gui.views.standings.standings_view import StandingsView
 from gambitpairing.gui.views.tournament.tournament_view import TournamentView
+from gambitpairing.controllers.tournament import TournamentController
 from gambitpairing.models.tournament import Tournament
 from gambitpairing.update import Updater, UpdateWorker
 from gambitpairing.utils import setup_logger
@@ -233,12 +234,17 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
     ) -> QAction:
         """Create and configure a QAction.
 
-        Arguments
-        ---------
-            text: The text to display for the action.
-            slot: The function to call when the action is triggered.
-            shortcut: Optional keyboard shortcut (e.g., "Ctrl+N").
-            tooltip: Optional tooltip to show on hover.
+        Parameters
+        ----------
+        text : str
+            The text to display for the action.
+        slot : callable
+            The function to call when the action is triggered.
+        shortcut : str, optional
+            Optional keyboard shortcut (e.g., "Ctrl+N"),
+            must be understood by QtGui.QKeySequence
+        tooltip : str, optional
+            Optional tooltip to show on hover. The default is ""
 
         Returns
         -------
@@ -524,8 +530,11 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
                         duration=3500,
                         notification_type="success",
                     )
-                except Exception:
-                    pass
+
+                except Exception as e:
+                    message = ("exception: '%s' excepted in an `except Exception`. This is bad practice." % str(e))
+                    raise RuntimeError(message)
+
 
     def show_settings_dialog(self) -> bool:
         if not self.tournament:
@@ -611,6 +620,8 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             }
             # check to see if file exists, and confirm prior to overwrite
             if Path(self._current_filepath).exists():
+
+                logger.warning("save_tournament is trying to right over a file.")
                 # confirm before over write
                 if not self.get_confirmation(
                     action="will overwrite tournament", message="Is that what you want?"
@@ -629,10 +640,12 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             )
             return True
         except Exception as e:
+            message = ("exception: '%s' excepted in an `except Exception`. This is bad practice." % str(e))
             logging.exception("Error saving tournament:")
             QtWidgets.QMessageBox.critical(
                 self, "Save Error", f"Could not save tournament:\n{e}"
             )
+            raise RuntimeError(message)
             return False
 
     def load_tournament(self):
@@ -712,6 +725,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self._update_ui_state()
 
     def check_save_before_proceeding(self) -> bool:
+       """Check if progress is saved before proceeding, if not prompt user."""
         if not self._dirty:
             return True
 
@@ -729,15 +743,6 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         msgbox.addButton(btn_save, QtWidgets.QMessageBox.ButtonRole.AcceptRole)
         msgbox.addButton(btn_discard, QtWidgets.QMessageBox.ButtonRole.DestructiveRole)
         msgbox.addButton(btn_cancel, QtWidgets.QMessageBox.ButtonRole.RejectRole)
-
-        # I do not know enough about pyQT but in line does not seem ideal
-        msgbox.setStyleSheet("""
-            QPushButton {
-                padding: 6px 14px;
-                font-size: 10pt;
-                min-width: 140px;
-            }
-        """)
 
         msgbox.exec()
         clicked = msgbox.clickedButton()
@@ -897,6 +902,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         QtCore.QTimer.singleShot(100, self.close)
 
     def closeEvent(self, event: QCloseEvent):
+        """Handle a close Event, checking if needed."""
         if self.is_updating:
             event.accept()
             return
@@ -953,6 +959,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
     def get_confirmation(
         self, action="", message="Are you sure you want to proceed?"
     ) -> bool:
+        """Get confirmation from user before proceeding."""
         reply = QMessageBox.question(
             self,
             action,

@@ -21,6 +21,7 @@ from enum import Enum
 from functools import lru_cache
 from itertools import permutations
 from typing import Any, Dict, List, Optional, Set, Tuple
+from __future__ import annotation
 
 from gambitpairing.models.player import Player
 from gambitpairing.models.enums import Colour

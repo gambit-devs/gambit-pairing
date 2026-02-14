@@ -36,6 +36,8 @@ from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)
 
+from __future__ import annotation
+
 
 class TournamentController:
     """Main tournament controller.
@@ -433,64 +435,7 @@ class TournamentController:
         }
 
     @classmethod
-    def deserialize_tournament(cls, data: Dict[str, Any]) -> "Tournament":
-        """Deserialize tournament from dictionary.
-
-        Args:
-            data: Dictionary containing tournament data
-
-        Returns:
-            Reconstructed Tournament object
-        """
-        # Load config
-        config = TournamentConfig.from_dict(data.get("config", data))
-
-        # Load players
-        players = [Player.from_dict(p_data) for p_data in data["players"]]
-
-        # Create tournament
-        tournament = cls(
-            name=config.name,
-            players=players,
-            num_rounds=config.num_rounds,
-            tiebreak_order=config.tiebreak_order,
-            pairing_system=config.pairing_system,
-        )
-
-        # Load pairing history
-        if "pairing_history" in data:
-            tournament.pairing_history = PairingHistory.from_dict(
-                data["pairing_history"]
-            )
-
-        # Load rounds
-        if "rounds" in data:
-            tournament.round_manager.rounds = [
-                RoundData.from_dict(r) for r in data["rounds"]
-            ]
-
-        # Clear player caches
-        for player in tournament.players.values():
-            player._opponents_played_cache = []
-
-        logger.info(f"Loaded tournament: {tournament.name}")
-        return tournament
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Serialize tournament to dictionary.
-
-        Returns:
-            Dictionary containing all tournament data
-        """
-        return {
-            "config": self.config.to_dict(),
-            "players": [p.to_dict() for p in self.players.values()],
-            "pairing_history": self.pairing_history.to_dict(),
-            "rounds": [r.to_dict() for r in self.round_manager.rounds],
-        }
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Tournament":
+    def deserialize_tournament(Tournament, data: Dict[str, Any]) -> "Tournament":
         """Deserialize tournament from dictionary.
 
         Args:

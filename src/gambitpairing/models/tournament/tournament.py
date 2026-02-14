@@ -140,7 +140,7 @@ class Tournament:
 
     @tiebreak_order.setter
     def tournament_over(self, value: bool) -> None:
-        """Set tournament over"""
+        """Set tournament over."""
         self.config.tournament_over = value
 
     # ========== Player Management ==========

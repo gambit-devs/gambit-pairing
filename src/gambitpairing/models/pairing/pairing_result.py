@@ -1,4 +1,4 @@
-"""Enums for use in GP, subclass as string for easy serialization."""
+"""PairingResult data class."""
 
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
@@ -16,19 +16,23 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from enum import Enum
+
+from typing import List, Optional, Tuple
+from dataclasses import dataclass
+from __future__ import annotation
+
+from gambitpairing.models.player import Player
+from gambitpairing.type_hints import Pairing, PairingIDs
 
 
-class Colour(str, Enum):
-    """A chess colour."""
+@dataclass(slots=True)
+class PairingResult:
+    """Result of a pairing computation for a single round."""
 
-    WHITE = "White"
-    BLACK = "Black"
+    pairings: List[Pairing]
+    bye_player: Optional[Player]
+    pairing_ids: List[PairingIDs]
+    bye_player_id: Optional[str]
 
 
-class Federation(str, Enum):
-    """A chess federation."""
-
-    FIDE = "FIDE"
-    USCF = "USCF"
-    CFC = "CFC"
+#  LocalWords:  PairingResult

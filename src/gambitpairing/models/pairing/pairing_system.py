@@ -1,4 +1,4 @@
-"""Enums for use in GP, subclass as string for easy serialization."""
+"""A chess tournament pairing system."""
 
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
@@ -16,19 +16,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from enum import Enum
+from abc import ABC, abstractmethod
+from typing import Iterable, List, Tuple
+from dataclasses import dataclass
 
-
-class Colour(str, Enum):
-    """A chess colour."""
-
-    WHITE = "White"
-    BLACK = "Black"
-
-
-class Federation(str, Enum):
-    """A chess federation."""
-
-    FIDE = "FIDE"
-    USCF = "USCF"
-    CFC = "CFC"
+PlayerId = int
+Pairing = Tuple[PlayerId, PlayerId]

@@ -144,6 +144,11 @@ QTableWidget:focus, QTableView:focus {
 QWidget[class="ResultSelector"] {
     background: transparent;
 }
+QPushButton {
+    padding: 6px 14px;
+    font-size: 10pt;
+    min-width: 140px;
+}
 
 QPushButton[class="ResultSelectorButton"] {
     background-color: #ffffff;
