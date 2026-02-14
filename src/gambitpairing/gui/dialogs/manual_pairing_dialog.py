@@ -604,7 +604,7 @@ class ManualPairingDialog(QtWidgets.QDialog):
 
     def _create_player_list(self):
         """Create the player pool list widget."""
-        player_pool = DraggableListWidget(self)
+        player_pool = DragListWidget(self)
         player_pool.setSelectionMode(
             QtWidgets.QAbstractItemView.SelectionMode.SingleSelection
         )
