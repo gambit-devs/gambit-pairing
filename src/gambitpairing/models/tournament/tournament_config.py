@@ -21,6 +21,7 @@ from typing import Any, Dict, List
 
 from gambitpairing.constants import DEFAULT_TIEBREAK_SORT_ORDER
 
+
 @dataclass
 class TournamentConfig:
     """Tournament configuration settings.
@@ -71,3 +72,6 @@ class TournamentConfig:
             ),
             tournament_over=data.get("tournament_over", False),
         )
+
+
+#  LocalWords:  TournamentConfig

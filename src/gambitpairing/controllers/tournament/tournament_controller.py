@@ -1,5 +1,7 @@
 """Tournament controller - orchestrates all tournament operations."""
 
+# !!! The documentation is BAD
+
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
 #
@@ -21,14 +23,14 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from gambitpairing.constants import LOSS_SCORE, WIN_SCORE
 from gambitpairing.models.player import Player
-from gambitpairing.tournament.models import (
+from gambitpairing.models.tournament import (
     PairingHistory,
     RoundData,
     TournamentConfig,
 )
-from gambitpairing.tournament.result_recorder import ResultRecorder
-from gambitpairing.tournament.round_manager import RoundManager
-from gambitpairing.tournament.tiebreak_calculator import TiebreakCalculator
+from .round_manager import RoundManager
+from .result_recorder import ResultRecorder
+from .tiebreak_calculator import TiebreakCalculator
 from gambitpairing.type_hints import Pairings
 from gambitpairing.utils import setup_logger
 

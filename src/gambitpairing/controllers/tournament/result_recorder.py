@@ -23,7 +23,7 @@ from typing import Dict, List, Tuple
 
 from gambitpairing.constants import BYE_SCORE, WIN_SCORE
 from gambitpairing.models.player import Player
-from gambitpairing.tournament.models import MatchResult, RoundData
+from gambitpairing.models.tournament import MatchResult, RoundData
 from gambitpairing.models.enums import Colour
 from gambitpairing.utils import setup_logger
 

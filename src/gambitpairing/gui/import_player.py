@@ -10,7 +10,7 @@ from gambitpairing.gui.dialogs import (
     PlayerManagementDialog,
 )
 from gambitpairing.gui.notification import show_notification
-from gambitpairing.tournament import Tournament
+from gambitpairing.models.tournament import Tournament
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)

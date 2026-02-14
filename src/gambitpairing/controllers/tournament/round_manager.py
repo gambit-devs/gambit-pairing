@@ -28,7 +28,7 @@ from gambitpairing.controllers.pairing import (
     create_round_robin,
 )
 from gambitpairing.models.player import Player
-from gambitpairing.tournament.models import PairingHistory, RoundData
+from gambitpairing.models.tournament import PairingHistory, RoundData
 from gambitpairing.type_hints import Pairings
 from gambitpairing.utils import setup_logger
 

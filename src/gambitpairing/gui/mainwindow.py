@@ -44,7 +44,7 @@ from gambitpairing.gui.views.history.history_view import HistoryView
 from gambitpairing.gui.views.players.players_view import PlayersView
 from gambitpairing.gui.views.standings.standings_view import StandingsView
 from gambitpairing.gui.views.tournament.tournament_view import TournamentView
-from gambitpairing.tournament import Tournament
+from gambitpairing.models.tournament import Tournament
 from gambitpairing.update import Updater, UpdateWorker
 from gambitpairing.utils import setup_logger
 

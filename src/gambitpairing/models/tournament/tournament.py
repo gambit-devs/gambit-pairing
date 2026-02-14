@@ -1,4 +1,8 @@
-"""Tournament controller - orchestrates all tournament operations."""
+"""Main Tournament class - orchestrates all tournament operations.
+
+This is the primary interface for tournament management, coordinating various
+specialized managers to provide a clean, professional API.
+"""
 
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
@@ -21,14 +25,16 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from gambitpairing.constants import LOSS_SCORE, WIN_SCORE
 from gambitpairing.models.player import Player
-from gambitpairing.tournament.models import (
-    PairingHistory,
-    RoundData,
-    TournamentConfig,
+from .pairing_history import PairingHistory
+from .round_data import RoundData
+from .tournament_config import TournamentConfig
+
+from gambitpairing.controllers.tournament import (
+    ResultRecorder,
+    RoundManager,
+    TiebreakCalculator,
 )
-from gambitpairing.tournament.result_recorder import ResultRecorder
-from gambitpairing.tournament.round_manager import RoundManager
-from gambitpairing.tournament.tiebreak_calculator import TiebreakCalculator
+
 from gambitpairing.type_hints import Pairings
 from gambitpairing.utils import setup_logger
 
@@ -36,36 +42,15 @@ logger = setup_logger(__name__)
 
 
 class Tournament:
-    """
-    Main tournament controller
+    """Main tournament management class.
 
-    Coordinates all tournament operations through specialized managers:
+    This class coordinates all tournament operations through specialized managers:
+    - RoundManager: handles round creation and pairing
+    - ResultRecorder: manages result entry and validation
+    - TiebreakCalculator: computes tiebreak scores
 
-    - RoundManager: Handles round creation and pairing
-    - ResultRecorder: Manages result entry and validation
-    - TiebreakCalculator: Computes tiebreak scores
-
-    Parameters
-    ----------
-    name : str
-        Tournament name.
-    players : list of Player
-        List of participating players.
-    num_rounds : int
-        Number of rounds to play.
-    tiebreak_order : list of str, optional
-        Priority order for tiebreak criteria.
-    pairing_system : str, default="dutch_swiss"
-        Pairing system to use. Supported systems include
-        ``"dutch_swiss"``, ``"round_robin"``, and ``"manual"``.
-
-    Notes
-    -----
-    The class delegates implementation details to:
-
-    - RoundManager
-    - ResultRecorder
-    - TiebreakCalculator
+    The Tournament class maintains the overall state and provides a clean API
+    for tournament operations.
     """
 
     def __init__(
@@ -78,12 +63,13 @@ class Tournament:
     ) -> None:
         """Initialize a new tournament.
 
-        Args:
-            name: Tournament name
-            players: List of participating players
-            num_rounds: Number of rounds to play
-            tiebreak_order: Priority order for tiebreak criteria
-            pairing_system: Pairing system ('dutch_swiss', 'round_robin', 'manual')
+        Args
+        ----
+        name: Tournament name
+        players: List of participating players
+        num_rounds: Number of rounds to play
+        tiebreak_order: Priority order for tiebreak criteria
+        pairing_system: Pairing system ('dutch_swiss', 'round_robin', 'manual')
         """
         # Configuration
         self.config = TournamentConfig(
@@ -500,26 +486,3 @@ class Tournament:
 
         logger.info(f"Loaded tournament: {tournament.name}")
         return tournament
-
-    # ========== Backwards Compatibility Properties ==========
-    # These maintain compatibility with old code during transition
-
-    @property
-    def rounds_pairings_ids(self) -> List[List[Tuple[str, str]]]:
-        """Legacy property for round pairings."""
-        return [round_data.pairings for round_data in self.round_manager.rounds]
-
-    @property
-    def rounds_byes_ids(self) -> List[Optional[str]]:
-        """Legacy property for round byes."""
-        return [round_data.bye_player_id for round_data in self.round_manager.rounds]
-
-    @property
-    def previous_matches(self):
-        """Legacy property for previous matches."""
-        return self.pairing_history.previous_matches
-
-    @property
-    def manual_pairings(self):
-        """Legacy property for manual pairings."""
-        return self.pairing_history.manual_adjustments
