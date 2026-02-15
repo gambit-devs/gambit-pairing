@@ -24,3 +24,17 @@ class Colour(str, Enum):
 
     WHITE = "White"
     BLACK = "Black"
+
+
+class TournamentPhase(str, Enum):
+    """
+    Represents the current phase of a tournament.
+
+    Used to determine which UI elements and actions should be available.
+    """
+
+    NO_TOURNAMENT = "NT"  # No tournament loaded
+    NOT_STARTED = "NS"  # Tournament exists but hasn't started
+    AWAITING_RESULTS = "AR"  # Pairings generated, waiting for results
+    AWAITING_NEXT_ROUND = "AN"  # Results recorded, ready for next round
+    FINISHED = "DN"  # All rounds completed

@@ -21,6 +21,7 @@ from typing import Optional, List
 
 from gambitpairing.models.enums import Colour
 from gambitpairing.models.federation import Federation
+from .abc_player import PlayerABC
 
 
 @dataclass(slots=True)

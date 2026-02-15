@@ -16,9 +16,32 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from abc import ABC, abstractmethod
-from typing import Iterable, List, Tuple
-from dataclasses import dataclass
-
 PlayerId = int
 Pairing = Tuple[PlayerId, PlayerId]
+
+from abc import ABC, abstractmethod
+from typing import List, Set
+
+from gambitpairing.models.player import PlayerABC
+
+
+class PairingSystemABC(ABC):
+    """Abstract interface for tournament pairing systems."""
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Human-readable name of the pairing system."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def pair_round(
+        self,
+        players: List[PlayerABC],
+        *,
+        current_round: int,
+        previous_matches: Set[frozenset[str]],
+        total_rounds: int | None = None,
+    ):
+        """Generate pairings for a round."""
+        raise NotImplementedError

@@ -17,9 +17,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+from __future__ import annotation
 from typing import List, Optional, Tuple
 from dataclasses import dataclass
-from __future__ import annotation
 
 from gambitpairing.models.player import Player
 from gambitpairing.type_hints import Pairing, PairingIDs
@@ -33,6 +33,8 @@ class PairingResult:
     bye_player: Optional[Player]
     pairing_ids: List[PairingIDs]
     bye_player_id: Optional[str]
+
+
 
 
 #  LocalWords:  PairingResult

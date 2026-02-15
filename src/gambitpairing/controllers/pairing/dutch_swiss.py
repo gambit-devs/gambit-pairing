@@ -16,12 +16,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
 
 from enum import Enum
 from functools import lru_cache
 from itertools import permutations
 from typing import Any, Dict, List, Optional, Set, Tuple
-from __future__ import annotation
 
 from gambitpairing.models.player import Player
 from gambitpairing.models.enums import Colour

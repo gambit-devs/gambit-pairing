@@ -18,29 +18,15 @@
 Tournament state management.
 
 This module provides data structures for tracking and computing tournament state,
-including what actions are available at any given point in the tournament lifecycle.
+including what actions are available at any given point in the tournament life cycle.
 """
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Optional
-
-if TYPE_CHECKING:
-    from gambitpairing.tournament import Tournament
-
-
-class TournamentPhase(Enum):
-    """
-    Represents the current phase of a tournament.
-
-    Used to determine which UI elements and actions should be available.
-    """
-
-    NO_TOURNAMENT = auto()  # No tournament loaded
-    NOT_STARTED = auto()  # Tournament exists but hasn't started
-    AWAITING_RESULTS = auto()  # Pairings generated, waiting for results
-    AWAITING_NEXT_ROUND = auto()  # Results recorded, ready for next round
-    FINISHED = auto()  # All rounds completed
+from typing import Optional
+from gambitpairing.models.enums import TournamentPhase
 
 
 @dataclass
@@ -98,8 +84,8 @@ class TournamentState:
 
     @classmethod
     def compute(
-        cls, tournament: Optional["Tournament"], current_round_index: int
-    ) -> "TournamentState":
+        cls, tournament: Optional[Tournament], current_round_index: int
+    ) -> TournamentState:
         """
         Compute the current tournament state.
 
@@ -307,3 +293,6 @@ class TournamentState:
         elif self.phase == TournamentPhase.AWAITING_NEXT_ROUND:
             return f"Generate pairings for Round {self.display_round_number}"
         return ""
+
+
+#  LocalWords:  TournamentState
