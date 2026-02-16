@@ -16,8 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
 
-import logging
 from typing import List, Optional, Tuple
 
 from PyQt6 import QtCore, QtGui, QtWidgets
@@ -42,14 +42,40 @@ logger = setup_logger(__name__)
 
 
 class PairingsTable(QtWidgets.QWidget):
-    """Widget for displaying pairings and entering results.
+    """Widget for displaying pairings and entering round results.
 
-    Includes the pairings table and the bye player information bar.
+    Combines a ``QTableWidget`` showing board assignments with a bye
+    information bar beneath it. The result column embeds a
+    ``ResultSelector`` widget per row. Inactive players are visually
+    distinguished and receive automatic forfeit results.
+
+    Signals
+    -------
+    context_menu_requested : pyqtSignal(QtCore.QPoint)
+        Re-emitted from the inner table's ``customContextMenuRequested``
+        signal, forwarding the cursor position in table-local coordinates.
+
+    Attributes
+    ----------
+    table : QtWidgets.QTableWidget
+        Four-column table with headers: Board, White, Black, Result.
+    bye_container : QtWidgets.QWidget
+        Info bar shown below the table when one or more players receive a bye.
+    lbl_bye : QtWidgets.QLabel
+        Label inside ``bye_container`` describing the bye player(s) and
+        their awarded points.
     """
 
     context_menu_requested = pyqtSignal(QtCore.QPoint)
 
     def __init__(self, parent=None):
+        """Initialise the widget and build the table and bye bar UI.
+
+        Parameters
+        ----------
+        parent : QtWidgets.QWidget, optional
+            Parent widget, by default ``None``.
+        """
         super().__init__(parent)
         self.setProperty("class", "PairingsTableContainer")
 
@@ -112,6 +138,35 @@ class PairingsTable(QtWidgets.QWidget):
         bye_players: List[Player],
         current_round_index: int,
     ):
+        """Populate the table with pairings and update the bye info bar.
+
+        Clears any existing rows before inserting new ones. Each pairing
+        tuple may be a 2-tuple ``(white, black)`` or a 3-tuple
+        ``(p1, p2, color)`` where *color* is ``"W"`` or ``"B"`` indicating
+        which player has the white pieces.
+
+        Inactive players are marked with ``" (I)"`` in their cell and
+        rendered in grey. Forfeit results are pre-selected automatically:
+
+        - Both inactive → draw (0–0).
+        - White inactive → black wins by forfeit.
+        - Black inactive → white wins by forfeit.
+
+        The bye bar is shown when ``bye_players`` is non-empty, displaying
+        each player's name, rating, and awarded points (``BYE_SCORE`` for
+        active players, 0 for inactive). It is hidden otherwise.
+
+        Parameters
+        ----------
+        pairings : list of tuple
+            Sequence of ``(Player, Player)`` or ``(Player, Player, str)``
+            tuples representing each board's pairing.
+        bye_players : list of Player
+            Players who receive a bye this round. May be empty.
+        current_round_index : int
+            Zero-based index of the round being displayed. Currently
+            unused internally but accepted for interface consistency.
+        """
         self.table.clearContents()
         self.table.setRowCount(len(pairings))
 
@@ -215,6 +270,25 @@ class PairingsTable(QtWidgets.QWidget):
             self.bye_container.hide()
 
     def get_results(self) -> Tuple[Optional[List[Tuple[str, str, float]]], bool]:
+        """Collect results from every ``ResultSelector`` in the table.
+
+        Iterates all rows and reads the selected result from each
+        ``ResultSelector`` cell widget. Converts the result constant to a
+        numeric white score (``WIN_SCORE``, ``DRAW_SCORE``, or
+        ``LOSS_SCORE``).
+
+        Returns
+        -------
+        results : list of (str, str, float) or None
+            Each element is ``(white_id, black_id, white_score)``.
+            Returns ``None`` if a ``ResultSelector`` is missing from a row
+            or if a player ID cannot be read, indicating a configuration
+            error.
+        all_entered : bool
+            ``True`` if every row has a result selected, ``False`` if any
+            row is still pending. Always ``True`` when the table is empty
+            and the bye bar is hidden.
+        """
         results_data = []
         all_entered = True
         if (
@@ -262,23 +336,83 @@ class PairingsTable(QtWidgets.QWidget):
         return results_data, all_entered
 
     def clear(self):
+        """Remove all rows and reset the bye bar to its hidden default state."""
         self.table.setRowCount(0)
         self.lbl_bye.setText("No bye this round")
         self.bye_container.hide()
 
     def rowCount(self):
+        """Return the number of rows in the inner table.
+
+        Returns
+        -------
+        int
+            Current row count of ``self.table``.
+        """
         return self.table.rowCount()
 
     def itemAt(self, pos):
+        """Return the item at the given viewport position.
+
+        Delegates to ``self.table.itemAt``.
+
+        Parameters
+        ----------
+        pos : QtCore.QPoint
+            Position in the table's viewport coordinates.
+
+        Returns
+        -------
+        QtWidgets.QTableWidgetItem or None
+        """
         return self.table.itemAt(pos)
 
     def cellWidget(self, row, col):
+        """Return the widget in the given cell, if any.
+
+        Delegates to ``self.table.cellWidget``.
+
+        Parameters
+        ----------
+        row : int
+            Row index.
+        col : int
+            Column index.
+
+        Returns
+        -------
+        QtWidgets.QWidget or None
+        """
         return self.table.cellWidget(row, col)
 
     def viewport(self):
+        """Return the inner table's viewport widget.
+
+        Useful for mapping coordinates or installing event filters on the
+        scrollable area.
+
+        Returns
+        -------
+        QtWidgets.QWidget
+        """
         return self.table.viewport()
 
     def item(self, row, col):
+        """Return the item at the given cell, if any.
+
+        Delegates to ``self.table.item``.
+
+        Parameters
+        ----------
+        row : int
+            Row index.
+        col : int
+            Column index.
+
+        Returns
+        -------
+        QtWidgets.QTableWidgetItem or None
+        """
         return self.table.item(row, col)
 
 

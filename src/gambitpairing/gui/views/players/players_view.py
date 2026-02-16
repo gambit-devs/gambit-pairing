@@ -15,6 +15,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+from __future__ import annotations
+
 import csv
 from datetime import datetime
 import logging
@@ -30,25 +32,58 @@ from gambitpairing.gui.notournament_placeholder import (
     NoTournamentPlaceholder,
     PlayerPlaceholder,
 )
-from gambitpairing.gui.widgets.header import TabHeader
+from gambitpairing.gui.widgets import TabHeader, NumericTableWidgetItem
 from gambitpairing.models.player import Player, create_player, create_player_from_dict
 
 
-class NumericTableWidgetItem(QtWidgets.QTableWidgetItem):
-    """Custom QTableWidgetItem for numerical sorting."""
-
-    def __lt__(self, other):
-        try:
-            # Handle empty strings or non-numeric data gracefully
-            self_val = float(self.text())
-            other_val = float(other.text())
-            return self_val < other_val
-        except (ValueError, TypeError):
-            # Fallback to string comparison if conversion fails
-            return super().__lt__(other)
 
 
 class PlayersView(QtWidgets.QWidget):
+    """A QWidget tab for managing tournament players.
+
+    Provides a table-based UI for viewing, adding, editing, withdrawing,
+    reactivating, removing, importing, and exporting players. Displays
+    contextual placeholders when no tournament exists or no players have
+    been added yet.
+
+    Signals
+    -------
+    status_message : pyqtSignal(str)
+        Emitted to display a short status bar message.
+    history_message : pyqtSignal(str)
+        Emitted to log an action to the tournament history.
+    dirty : pyqtSignal()
+        Emitted when tournament data has been modified and needs saving.
+    request_reset_tournament : pyqtSignal()
+        Emitted to request that a new tournament be created.
+    standings_update_requested : pyqtSignal()
+        Emitted when standings may need to be recalculated (e.g. after
+        a player is withdrawn or reactivated).
+
+    Attributes
+    ----------
+    tournament : Tournament or None
+        The currently loaded tournament. ``None`` if no tournament is open.
+    main_layout : QtWidgets.QVBoxLayout
+        The top-level vertical layout of the widget.
+    header : TabHeader
+        The header widget displaying the tab title "Players".
+    player_group : QtWidgets.QGroupBox
+        Group box containing the player table and add-player button.
+    table_players : QtWidgets.QTableWidget
+        Table displaying all registered players with columns:
+        Name, Rating, Age, Status.
+    btn_add_player_detail : QtWidgets.QPushButton
+        Button to open the add-player dialog.
+    list_players : QtWidgets.QListWidget
+        Legacy widget kept for compatibility with ``reset_tournament_state()``.
+        Not visible or actively used.
+    no_tournament_placeholder : NoTournamentPlaceholder
+        Placeholder widget shown when no tournament is loaded.
+    no_players_placeholder : PlayerPlaceholder
+        Placeholder widget shown when a tournament exists but has no players.
+    """
+
     status_message = pyqtSignal(str)
     history_message = pyqtSignal(str)
     dirty = pyqtSignal()
@@ -56,6 +91,13 @@ class PlayersView(QtWidgets.QWidget):
     standings_update_requested = pyqtSignal()
 
     def __init__(self, parent=None):
+        """Initialize the PlayersView widget and build the UI.
+
+        Parameters
+        ----------
+        parent : QtWidgets.QWidget, optional
+            The parent widget, by default ``None``.
+        """
         super().__init__(parent)
         self.tournament = None
         self.main_layout = QtWidgets.QVBoxLayout(self)
@@ -157,6 +199,17 @@ class PlayersView(QtWidgets.QWidget):
         self.main_layout.addWidget(self.no_players_placeholder)
 
     def on_player_context_menu(self, point: QtCore.QPoint) -> None:
+       """Display a context menu for the row under the cursor.
+
+        Offers Edit, Withdraw/Reactivate, and Remove actions. Edit and
+        Remove are disabled once the tournament has started. Executes the
+        chosen action immediately.
+
+        Parameters
+        ----------
+        point : QtCore.QPoint
+            The position of the right-click in table-local coordinates.
+        """
         row = self.table_players.rowAt(point.y())
         if row < 0 or not self.tournament:
             return
@@ -207,7 +260,7 @@ class PlayersView(QtWidgets.QWidget):
                     )
                     return
 
-                # Update player attributes using intelligent update method
+                # Update player attributes
                 self._update_player_from_data(player, data)
 
                 self.update_player_table_row(player)
@@ -241,7 +294,15 @@ class PlayersView(QtWidgets.QWidget):
         self.update_ui_state()
 
     def add_player_detailed(self):
-        # This method's logic remains largely the same, but it will call add_player_to_table
+        """Open the player management dialog to add or edit a player.
+
+        Blocks adding players once the tournament has started. If no
+        tournament exists, emits ``request_reset_tournament`` and prompts
+        the user to create one first. On successful dialog acceptance,
+        either creates a new player (via ``create_player_from_dict``) or
+        updates an existing one, then refreshes the table row and emits
+        ``dirty``.
+        """
         tournament_started = (
             self.tournament and len(self.tournament.rounds_pairings_ids) > 0
         )
@@ -324,12 +385,12 @@ class PlayersView(QtWidgets.QWidget):
             self.update_ui_state()
 
     def _update_player_from_data(self, player: Player, data: dict) -> None:
-        """
-        Intelligently update a player object from dictionary data.
+        """Update a player object in-place from a data dictionary.
 
-        This method handles the complexity of updating player attributes,
-        including FIDE-specific data for FidePlayer instances. It uses
-        reflection to avoid hardcoding attribute names.
+        Applies core attributes to all player types and additionally
+        applies FIDE-specific attributes when the player is a
+        ``FidePlayer`` instance. Uses ``setattr`` to avoid hardcoding
+        individual field assignments.
 
         Parameters
         ----------
@@ -372,7 +433,17 @@ class PlayersView(QtWidgets.QWidget):
                     setattr(player, attr, data[attr])
 
     def update_player_table_row(self, player: Player):
-        """Finds and updates the QTableWidget row for a given player."""
+        """Find the table row for the given player and refresh its contents.
+
+        Searches all rows for a matching ``UserRole`` data value. Updates
+        the Name, Rating, Age, and Status cells, and sets the foreground
+        colour to grey for inactive players.
+
+        Parameters
+        ----------
+        player : Player
+            The player whose row should be refreshed.
+        """
         for i in range(self.table_players.rowCount()):
             item = self.table_players.item(i, 0)
             if item and item.data(Qt.ItemDataRole.UserRole) == player.id:
@@ -408,6 +479,19 @@ class PlayersView(QtWidgets.QWidget):
                 break
 
     def add_player_to_table(self, player: Player):
+        """Append a new row for the given player to the table.
+
+        Temporarily disables sorting during insertion to prevent row
+        index shifting. Builds a tooltip from all available player
+        fields (including FIDE metadata when present) and applies it to
+        every cell. Inactive players are rendered in grey.
+
+        Parameters
+        ----------
+        player : Player
+            The player to append. Uses ``player.id`` as ``UserRole``
+            data on the Name cell for later lookup.
+        """
         self.table_players.setSortingEnabled(False)  # Disable sorting during insert
         row_position = self.table_players.rowCount()
         self.table_players.insertRow(row_position)
@@ -478,7 +562,26 @@ class PlayersView(QtWidgets.QWidget):
         self.table_players.setSortingEnabled(True)
 
     def import_players_csv(self):
-        # This method's logic remains the same
+        """Import players from a CSV file chosen via a file dialog.
+
+        Expects a CSV with at minimum a ``Name`` column. Optionally reads
+        ``Rating``, ``Gender``, ``Date of Birth``, ``Phone``, ``Email``,
+        ``Club``, and ``Federation`` columns. Skips rows with empty names
+        or names that already exist in the tournament. Uses
+        ``create_player`` to construct each player object.
+
+        Emits ``dirty`` and calls ``refresh_player_list`` if at least one
+        player was added. Shows a success notification via
+        ``show_notification`` if available, otherwise falls back to a
+        ``QMessageBox``.
+
+        Raises
+        ------
+        Exception
+            Any file I/O or parsing error is caught, logged via
+            ``logging.exception``, and reported to the user through a
+            notification or ``QMessageBox``.
+        """
         if self.tournament and len(self.tournament.rounds_pairings_ids) > 0:
             QtWidgets.QMessageBox.warning(
                 self,
@@ -524,7 +627,6 @@ class PlayersView(QtWidgets.QWidget):
                         date_of_birth=row.get("Date of Birth"),
                         phone=row.get("Phone"),
                         email=row.get("Email"),
-                        club=row.get("Club"),
                         federation=row.get("Federation"),
                     )
 
@@ -555,115 +657,136 @@ class PlayersView(QtWidgets.QWidget):
                     "Import Notice",
                     "No new players were imported. Check for empty names or duplicates.",
                 )
-        except Exception as e:
-            logging.exception("Error importing players:")
-            try:
-                show_notification(
-                    self,
-                    f"Error importing players: {e}",
-                    duration=6000,
-                    notification_type="error",
-                )
-            except Exception:
-                QtWidgets.QMessageBox.critical(
-                    self, "Import Error", f"Could not import players:\n{e}"
-                )
 
     def export_players_csv(self):
-        # This method's logic remains the same
+        """Export all players to a CSV file chosen via a save dialog.
+
+        Writes one row per player sorted alphabetically by name, with
+        columns: Name, Rating, Gender, Date of Birth, Phone, Email, Club,
+        Federation, Active, ID.
+
+        Raises
+        ------
+        Exception
+            Any file I/O error is caught, logged via
+            ``logging.exception``, and reported to the user through a
+            ``QMessageBox``.
+        """
         if not self.tournament or not self.tournament.players:
             QtWidgets.QMessageBox.information(
                 self, "Export Error", "No players available to export."
             )
+
             return
         filename, _ = QtWidgets.QFileDialog.getSaveFileName(
             self, "Export Players", "", "CSV Files (*.csv)"
         )
         if not filename:
             return
-        try:
-            with open(filename, "w", encoding="utf-8", newline="") as f:
-                writer = csv.writer(f)
+        with open(filename, "w", encoding="utf-8", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(
+                [
+                    "Name",
+                    "Rating",
+                    "Gender",
+                    "Date of Birth",
+                    "Phone",
+                    "Email",
+                    "Club",
+                    "Federation",
+                    "Active",
+                    "ID",
+                ]
+            )
+            for player in sorted(
+                list(self.tournament.players.values()), key=lambda p: p.name
+            ):
                 writer.writerow(
                     [
-                        "Name",
-                        "Rating",
-                        "Gender",
-                        "Date of Birth",
-                        "Phone",
-                        "Email",
-                        "Club",
-                        "Federation",
-                        "Active",
-                        "ID",
+                        player.name,
+                        player.rating if player.rating is not None else "",
+                        player.gender or "",
+                        player.dob or "",
+                        player.phone or "",
+                        player.email or "",
+                        player.club or "",
+                        player.federation or "",
+                        "Yes" if player.is_active else "No",
+                        player.id,
                     ]
                 )
-                for player in sorted(
-                    list(self.tournament.players.values()), key=lambda p: p.name
-                ):
-                    writer.writerow(
-                        [
-                            player.name,
-                            player.rating if player.rating is not None else "",
-                            player.gender or "",
-                            player.dob or "",
-                            player.phone or "",
-                            player.email or "",
-                            player.club or "",
-                            player.federation or "",
-                            "Yes" if player.is_active else "No",
-                            player.id,
-                        ]
-                    )
-            self.status_message.emit(f"Players exported to {filename}")
-        except Exception as e:
-            logging.exception("Error exporting players:")
-            QtWidgets.QMessageBox.critical(
-                self, "Export Error", f"Could not export players:\n{e}"
-            )
+        self.status_message.emit(f"Players exported to {filename}")
 
     def set_tournament(self, tournament):
+        """Set or replace the currently loaded tournament and refresh the view.
+
+        Parameters
+        ----------
+        tournament : Tournament or None
+            The new tournament to display, or ``None`` to clear the view.
+        """
         self.tournament = tournament
         self.refresh_player_list()
         self._update_visibility()
 
     def _update_visibility(self):
-        """Show/hide content based on tournament existence."""
+        """Synchronize widget visibility with the current application state.
+
+        Three possible states are handled:
+
+        - No tournament: shows ``no_tournament_placeholder`` only.
+        - Tournament with no players: shows ``no_players_placeholder`` only.
+        - Tournament with players: shows the player table and add button;
+          disables the add button if the tournament has already started.
+        """
         if not self.tournament:
             # No tournament: show only the placeholder
             self.no_tournament_placeholder.show()
             self.no_players_placeholder.hide()
             self.table_players.hide()
-            self.btn_add_player_detail.hide()  # Completely hide the button
-            self.player_group.hide()  # Hide the group box title for perfect wall
+            self.btn_add_player_detail.hide()
+            self.player_group.hide()
+
+            return # avoid nested else
+
+        # Tournament exists: hide placeholder and show appropriate content
+        self.no_tournament_placeholder.hide()
+        self.player_group.show()
+        if not self.tournament.players:
+            # Tournament but no players: show player placeholder
+            self.no_players_placeholder.show()
+            self.table_players.hide()
+            self.btn_add_player_detail.hide()
+            # Hide the group box frame/title to create seamless wall look
+            self.player_group.hide()
         else:
-            # Tournament exists: hide placeholder and show appropriate content
-            self.no_tournament_placeholder.hide()
+            # Tournament with players: show table and add button
+            self.no_players_placeholder.hide()
             self.player_group.show()
-            if not self.tournament.players:
-                # Tournament but no players: show player placeholder
-                self.no_players_placeholder.show()
-                self.table_players.hide()
-                self.btn_add_player_detail.hide()  # Hide until first player is added
-                # Hide the group box frame/title to create seamless wall look
-                self.player_group.hide()
-            else:
-                # Tournament with players: show table and add button
-                self.no_players_placeholder.hide()
-                self.player_group.show()
-                self.table_players.show()
-                self.btn_add_player_detail.show()
-                tournament_started = len(self.tournament.rounds_pairings_ids) > 0
-                self.btn_add_player_detail.setEnabled(not tournament_started)
+            self.table_players.show()
+            self.btn_add_player_detail.show()
+            tournament_started = len(self.tournament.rounds_pairings_ids) > 0
+            self.btn_add_player_detail.setEnabled(not tournament_started)
 
     def update_ui_state(self):
+        """Refresh the UI to reflect the current tournament state.
+
+        Delegates entirely to ``_update_visibility``.
+        """
         self._update_visibility()
 
     def refresh_player_list(self):
+        """Clear and repopulate the player table from the current tournament.
+
+        Clears all existing rows, calls ``_update_visibility`` to set the
+        correct placeholder/table state, then (if players exist) inserts
+        them sorted alphabetically by name via ``add_player_to_table``.
+        """
         self.table_players.setSortingEnabled(False)
         self.table_players.setRowCount(0)
 
-        # Use the visibility method to handle all states
+        # Update visibility
         self._update_visibility()
 
         # Only populate table if tournament exists and has players
@@ -675,7 +798,7 @@ class PlayersView(QtWidgets.QWidget):
             self.table_players.setSortingEnabled(True)
 
     def _trigger_create_tournament(self):
-        # Walk up the parent chain to find the main window
+        """Walk the parent widget chain to finds one with ``prompt_new_tournament`` method and calls it."""
         parent = self.parent()
         while parent is not None:
             if hasattr(parent, "prompt_new_tournament"):
@@ -684,10 +807,13 @@ class PlayersView(QtWidgets.QWidget):
             parent = parent.parent()
 
     def _trigger_import_tournament(self):
-        # Walk up the parent chain to find the main window
+        """Walk the parent chain and call ``load_tournament`` on the first match."""
         parent = self.parent()
         while parent is not None:
             if hasattr(parent, "load_tournament"):
                 parent.load_tournament()
                 return
             parent = parent.parent()
+
+
+#  LocalWords:  PlayerPlaceholder NoTournamentPlaceholder TabHeader

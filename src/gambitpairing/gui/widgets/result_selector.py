@@ -107,4 +107,4 @@ class ResultSelector(QtWidgets.QWidget):
             self.button_group.setExclusive(True)
 
 
-#  LocalWords:  setResult
+#  LocalWords:  setResult ResultSelector

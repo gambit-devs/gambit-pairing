@@ -1,4 +1,4 @@
-"""Results of pairing generation. IE: The pairings."""
+"""A pair of paired chess players."""
 
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
@@ -17,18 +17,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from __future__ import annotations
 from dataclasses import dataclass
-from typing import List, Optional
-from .pair import Pair
+
 from gambitpairing.models.player import Player
 
 
 @dataclass
-class PairingGenerationResult:
-    """Result of a pairing generation operation."""
+class Pair:
+    """Two paired Players."""
 
-    success: bool
-    pairings: List[Pair]
-    bye_player: Optional[Player]
-    error_message: Optional[str] = None
+    white: Player
+    black: Player

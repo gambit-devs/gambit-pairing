@@ -1,4 +1,4 @@
-"""Results of pairing generation. IE: The pairings."""
+"""Custom QTableWidgetItem for numerical sorting."""
 
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
@@ -17,18 +17,19 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from __future__ import annotations
-from dataclasses import dataclass
-from typing import List, Optional
-from .pair import Pair
-from gambitpairing.models.player import Player
+from PyQt6 import QtWidgets
 
 
-@dataclass
-class PairingGenerationResult:
-    """Result of a pairing generation operation."""
+class NumericTableWidgetItem(QtWidgets.QTableWidgetItem):
+    """Custom QTableWidgetItem for numerical sorting."""
 
-    success: bool
-    pairings: List[Pair]
-    bye_player: Optional[Player]
-    error_message: Optional[str] = None
+    def __lt__(self, other):
+        """Less than via converting text to a float with string comp. as backup."""
+        try:
+            # Handle empty strings or non-numeric data gracefully
+            self_val = float(self.text())
+            other_val = float(other.text())
+            return self_val < other_val
+        except (ValueError, TypeError):
+            # Fallback to string comparison if conversion fails
+            return super().__lt__(other)

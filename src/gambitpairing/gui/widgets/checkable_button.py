@@ -16,6 +16,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
+
+from PyQt6 import QtCore, QtGui, QtWidgets
+from PyQt6.QtCore import Qt
+
+from gambitpairing.gui.gui_utils import get_colored_icon
+
 
 class CheckableButton(QtWidgets.QPushButton):
     """

@@ -1,3 +1,24 @@
+"""Header for displaying tabs."""
+
+# Gambit Pairing
+# Copyright (C) 2025  Gambit Pairing developers
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+from __future__ import annotations
+
+
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
 
@@ -5,8 +26,8 @@ from gambitpairing.gui.gui_utils import get_colored_icon, set_svg_icon
 
 
 class TabHeader(QtWidgets.QWidget):
-    """
-    A universal header widget for all tabs.
+    """A universal header widget for all tabs.
+
     Displays a title, an optional icon, and a container for action buttons.
     """
 
@@ -22,13 +43,11 @@ class TabHeader(QtWidgets.QWidget):
         top_row = QtWidgets.QHBoxLayout()
         top_row.setSpacing(12)
 
-        # Icon (optional)
         if icon_name:
             self.icon_label = QtWidgets.QLabel()
             set_svg_icon(self.icon_label, icon_name, "#2d5a27", 24)
             top_row.addWidget(self.icon_label)
 
-        # Title
         self.title_label = QtWidgets.QLabel(title)
         self.title_label.setProperty("class", "TabTitle")
         font = self.title_label.font()
@@ -55,12 +74,13 @@ class TabHeader(QtWidgets.QWidget):
         layout.addWidget(line)
 
     def set_title(self, title: str):
+        """Set the title."""
         self.title_label.setText(title)
 
     def add_action_button(
         self, icon_name: str, tooltip: str, callback
     ) -> QtWidgets.QPushButton:
-        """Adds an action button to the header."""
+        """Add action button to the header."""
         btn = QtWidgets.QPushButton()
         icon = get_colored_icon(icon_name, "#2d5a27", 24)
         btn.setIcon(icon)
@@ -68,22 +88,6 @@ class TabHeader(QtWidgets.QWidget):
         btn.setToolTip(tooltip)
         btn.clicked.connect(callback)
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
-
-        # Basic styling for icon button if class not defined
-        btn.setStyleSheet("""
-            QPushButton {
-                background-color: transparent;
-                border: none;
-                border-radius: 4px;
-                padding: 4px;
-            }
-            QPushButton:hover {
-                background-color: #e0e4ea;
-            }
-            QPushButton:pressed {
-                background-color: #d0d4da;
-            }
-        """)
 
         self.actions_layout.addWidget(btn)
         return btn

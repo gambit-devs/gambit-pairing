@@ -99,7 +99,9 @@ def validate_email_strict(email: str) -> None:
 # ========== Phone Validation ==========
 
 
-def validate_phone(phone: Optional[str], required: bool = False) -> ValidationResult:
+def validate_phone(
+    phone_num: Optional[str], required: bool = False
+) -> ValidationResult:
     """Validate a phone number.
 
     Accepts various formats:
@@ -116,7 +118,7 @@ def validate_phone(phone: Optional[str], required: bool = False) -> ValidationRe
     Returns:
         ValidationResult with validation status and sanitized number
     """
-    if not phone or not phone.strip():
+    if not phone_num or not phone_num.strip():
         if required:
             return ValidationResult(
                 is_valid=False,
@@ -124,7 +126,7 @@ def validate_phone(phone: Optional[str], required: bool = False) -> ValidationRe
             )
         return ValidationResult(is_valid=True, sanitized_value=None)
 
-    phone = phone.strip()
+    phone = phone_num.strip()
 
     # Remove common formatting characters
     digits_only = re.sub(r"[\s\-\.\(\)\+]", "", phone)
@@ -146,19 +148,24 @@ def validate_phone(phone: Optional[str], required: bool = False) -> ValidationRe
     return ValidationResult(is_valid=True, sanitized_value=digits_only)
 
 
-def validate_phone_strict(phone: str) -> str:
+def validate_phone_strict(phone_num: str) -> str:
     """Validate phone and return sanitized number or raise exception.
 
-    Args:
-        phone: Phone number to validate
+    Parameters
+    ----------
+    phone_num : str
+        Phone number to validate
 
-    Returns:
+    Returns
+    -------
+    str
         Sanitized phone number (digits only)
 
-    Raises:
-        PhoneValidationException: If phone is invalid
+    Raises
+    ------
+        PhoneValidationException: If phone number is invalid
     """
-    result = validate_phone(phone, required=True)
+    result = validate_phone(phone_num, required=True)
     if not result.is_valid:
         raise PhoneValidationException(result.error_message)
     return result.sanitized_value or ""

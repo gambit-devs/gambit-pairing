@@ -1430,3 +1430,6 @@ QPushButton:pressed {
     background-color: #8b5c2b;
     color: #fff;
 }
+
+/* LocalWords:  NoTournamentLabel NoTournamentIconLabel NoTournamentButton- NoTournamentTitle
+*/
