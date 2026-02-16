@@ -17,6 +17,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+from PyQt6 import QtWidgets
+
+from gambitpairing.constants import RESULT_BLACK_WIN, RESULT_DRAW, RESULT_WHITE_WIN
+
+from .checkable_button import CheckableButton
+
+
 class ResultSelector(QtWidgets.QWidget):
     """
     A widget for selecting chess game results.

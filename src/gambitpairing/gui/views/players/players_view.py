@@ -1,3 +1,5 @@
+"""Organize and display Player info."""
+
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
 #
@@ -33,9 +35,12 @@ from gambitpairing.gui.notournament_placeholder import (
     PlayerPlaceholder,
 )
 from gambitpairing.gui.widgets import TabHeader, NumericTableWidgetItem
-from gambitpairing.models.player import Player, create_player, create_player_from_dict
-
-
+from gambitpairing.models.player import (
+    Player,
+    create_player,
+    create_player_from_dict,
+    FidePlayer,
+)
 
 
 class PlayersView(QtWidgets.QWidget):
@@ -199,7 +204,7 @@ class PlayersView(QtWidgets.QWidget):
         self.main_layout.addWidget(self.no_players_placeholder)
 
     def on_player_context_menu(self, point: QtCore.QPoint) -> None:
-       """Display a context menu for the row under the cursor.
+        """Display a context menu for the row under the cursor.
 
         Offers Edit, Withdraw/Reactivate, and Remove actions. Edit and
         Remove are disabled once the tournament has started. Executes the
@@ -399,7 +404,6 @@ class PlayersView(QtWidgets.QWidget):
         data : dict
             Dictionary containing updated player data
         """
-        from gambitpairing.models.player import FidePlayer
 
         # Core attributes that all players have
         core_attrs = [
@@ -407,7 +411,6 @@ class PlayersView(QtWidgets.QWidget):
             "rating",
             "phone",
             "email",
-            "club",
             "gender",
             "dob",
             "federation",
@@ -521,8 +524,6 @@ class PlayersView(QtWidgets.QWidget):
             tooltip_parts.append(f"Phone: {player.phone}")
         if player.email:
             tooltip_parts.append(f"Email: {player.email}")
-        if player.club:
-            tooltip_parts.append(f"Club: {player.club}")
         if player.federation:
             tooltip_parts.append(f"Federation: {player.federation}")
         # FIDE metadata if present
@@ -602,61 +603,58 @@ class PlayersView(QtWidgets.QWidget):
         )
         if not filename:
             return
-        try:
-            with open(
-                filename, "r", encoding="utf-8-sig"
-            ) as f:  # Use utf-8-sig for BOM
-                reader = csv.DictReader(f)
-                added_count = 0
-                for row in reader:
-                    name = row.get("Name")
-                    if not name or any(
-                        p.name == name for p in self.tournament.players.values()
-                    ):
-                        continue  # Skip empty names or duplicates
-                    rating_str = row.get("Rating")
-                    rating = (
-                        int(rating_str) if rating_str and rating_str.isdigit() else None
-                    )
-
-                    # Use factory to create player
-                    player = create_player(
-                        name=name,
-                        rating=rating,
-                        gender=row.get("Gender"),
-                        date_of_birth=row.get("Date of Birth"),
-                        phone=row.get("Phone"),
-                        email=row.get("Email"),
-                        federation=row.get("Federation"),
-                    )
-
-                    self.tournament.players[player.id] = player
-                    added_count += 1
-            if added_count > 0:
-                self.history_message.emit(
-                    f"Imported {added_count} players from {filename}."
+        with open(filename, "r", encoding="utf-8-sig") as f:  # Use utf-8-sig for BOM
+            reader = csv.DictReader(f)
+            added_count = 0
+            for row in reader:
+                name = row.get("Name")
+                if not name or any(
+                    p.name == name for p in self.tournament.players.values()
+                ):
+                    continue  # Skip empty names or duplicates
+                rating_str = row.get("Rating")
+                rating = (
+                    int(rating_str) if rating_str and rating_str.isdigit() else None
                 )
-                self.dirty.emit()
-                self.refresh_player_list()
-                self.update_ui_state()
-                # Show notification
-                try:
-                    show_notification(
-                        self,
-                        f"Imported {added_count} players from {Path(filename).name}",
-                        duration=3500,
-                        notification_type="success",
-                    )
-                except Exception:
-                    QtWidgets.QMessageBox.information(
-                        self, "Import Successful", f"Imported {added_count} players."
-                    )
-            else:
-                QtWidgets.QMessageBox.warning(
+
+                # Use factory to create player
+                player = create_player(
+                    name=name,
+                    rating=rating,
+                    gender=row.get("Gender"),
+                    date_of_birth=row.get("Date of Birth"),
+                    phone=row.get("Phone"),
+                    email=row.get("Email"),
+                    federation=row.get("Federation"),
+                )
+
+                self.tournament.players[player.id] = player
+                added_count += 1
+        if added_count > 0:
+            self.history_message.emit(
+                f"Imported {added_count} players from {filename}."
+            )
+            self.dirty.emit()
+            self.refresh_player_list()
+            self.update_ui_state()
+            # Show notification
+            try:
+                show_notification(
                     self,
-                    "Import Notice",
-                    "No new players were imported. Check for empty names or duplicates.",
+                    f"Imported {added_count} players from {Path(filename).name}",
+                    duration=3500,
+                    notification_type="success",
                 )
+            except Exception:
+                QtWidgets.QMessageBox.information(
+                    self, "Import Successful", f"Imported {added_count} players."
+                )
+        else:
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Import Notice",
+                "No new players were imported. Check for empty names or duplicates.",
+            )
 
     def export_players_csv(self):
         """Export all players to a CSV file chosen via a save dialog.
@@ -693,7 +691,6 @@ class PlayersView(QtWidgets.QWidget):
                     "Date of Birth",
                     "Phone",
                     "Email",
-                    "Club",
                     "Federation",
                     "Active",
                     "ID",
@@ -710,71 +707,12 @@ class PlayersView(QtWidgets.QWidget):
                         player.dob or "",
                         player.phone or "",
                         player.email or "",
-                        player.club or "",
                         player.federation or "",
                         "Yes" if player.is_active else "No",
                         player.id,
                     ]
                 )
         self.status_message.emit(f"Players exported to {filename}")
-
-    def set_tournament(self, tournament):
-        """Set or replace the currently loaded tournament and refresh the view.
-
-        Parameters
-        ----------
-        tournament : Tournament or None
-            The new tournament to display, or ``None`` to clear the view.
-        """
-        self.tournament = tournament
-        self.refresh_player_list()
-        self._update_visibility()
-
-    def _update_visibility(self):
-        """Synchronize widget visibility with the current application state.
-
-        Three possible states are handled:
-
-        - No tournament: shows ``no_tournament_placeholder`` only.
-        - Tournament with no players: shows ``no_players_placeholder`` only.
-        - Tournament with players: shows the player table and add button;
-          disables the add button if the tournament has already started.
-        """
-        if not self.tournament:
-            # No tournament: show only the placeholder
-            self.no_tournament_placeholder.show()
-            self.no_players_placeholder.hide()
-            self.table_players.hide()
-            self.btn_add_player_detail.hide()
-            self.player_group.hide()
-
-            return # avoid nested else
-
-        # Tournament exists: hide placeholder and show appropriate content
-        self.no_tournament_placeholder.hide()
-        self.player_group.show()
-        if not self.tournament.players:
-            # Tournament but no players: show player placeholder
-            self.no_players_placeholder.show()
-            self.table_players.hide()
-            self.btn_add_player_detail.hide()
-            # Hide the group box frame/title to create seamless wall look
-            self.player_group.hide()
-        else:
-            # Tournament with players: show table and add button
-            self.no_players_placeholder.hide()
-            self.player_group.show()
-            self.table_players.show()
-            self.btn_add_player_detail.show()
-            tournament_started = len(self.tournament.rounds_pairings_ids) > 0
-            self.btn_add_player_detail.setEnabled(not tournament_started)
-
-    def update_ui_state(self):
-        """Refresh the UI to reflect the current tournament state.
-
-        Delegates entirely to ``_update_visibility``.
-        """
-        self._update_visibility()
 
     def refresh_player_list(self):
         """Clear and repopulate the player table from the current tournament.
@@ -796,24 +734,6 @@ class PlayersView(QtWidgets.QWidget):
             ):
                 self.add_player_to_table(player)
             self.table_players.setSortingEnabled(True)
-
-    def _trigger_create_tournament(self):
-        """Walk the parent widget chain to finds one with ``prompt_new_tournament`` method and calls it."""
-        parent = self.parent()
-        while parent is not None:
-            if hasattr(parent, "prompt_new_tournament"):
-                parent.prompt_new_tournament()
-                return
-            parent = parent.parent()
-
-    def _trigger_import_tournament(self):
-        """Walk the parent chain and call ``load_tournament`` on the first match."""
-        parent = self.parent()
-        while parent is not None:
-            if hasattr(parent, "load_tournament"):
-                parent.load_tournament()
-                return
-            parent = parent.parent()
 
 
 #  LocalWords:  PlayerPlaceholder NoTournamentPlaceholder TabHeader

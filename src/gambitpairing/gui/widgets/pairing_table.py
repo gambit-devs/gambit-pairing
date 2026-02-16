@@ -32,7 +32,7 @@ from gambitpairing.constants import (
     RESULT_WHITE_WIN,
     WIN_SCORE,
 )
-from gambitpairing.gui.views.tournament.components.tournament_widgets import (
+from .result_selector import (
     ResultSelector,
 )
 from gambitpairing.models.player import Player
