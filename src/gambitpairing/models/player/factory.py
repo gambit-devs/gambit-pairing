@@ -5,10 +5,10 @@ providing a single point of entry for creating players with
 proper validation and error handling.
 """
 
+from __future__ import annotations
 from datetime import date
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
-from gambitpairing.club import Club
 from gambitpairing.exceptions import InvalidPlayerDataException
 from gambitpairing.utils.validation import (
     validate_email,
@@ -18,10 +18,6 @@ from gambitpairing.utils.validation import (
     validate_rating,
 )
 
-if TYPE_CHECKING:
-    from gambitpairing.models.player.base_player import Player
-    from gambitpairing.models.player.fide_player import FidePlayer
-
 
 class PlayerFactory:
     """Factory for creating Player and FidePlayer instances.
@@ -30,7 +26,8 @@ class PlayerFactory:
     and error handling. It encapsulates the complexity of determining
     whether to create a Player or FidePlayer based on the provided data.
 
-    Example:
+    Example
+    -------
         >>> factory = PlayerFactory()
         >>> player = factory.create_player(name="John Doe", rating=1800)
         >>> fide_player = factory.create_player(
@@ -56,7 +53,6 @@ class PlayerFactory:
         rating: Optional[int] = None,
         phone: Optional[str] = None,
         email: Optional[str] = None,
-        club: Optional[Club] = None,
         gender: Optional[str] = None,
         date_of_birth: Optional[date] = None,
         federation: Optional[str] = None,
