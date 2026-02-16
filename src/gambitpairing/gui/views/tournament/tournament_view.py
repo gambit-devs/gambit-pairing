@@ -60,7 +60,7 @@ from gambitpairing.gui.views.tournament.components.pre_tournament_widget import 
 from gambitpairing.gui.views.tournament.components.round_controls import (
     RoundControlsWidget,
 )
-from gambitpairing.gui.views.tournament.components.tournament_widgets import (
+from gambitpairing.gui.widgets import (
     ResultSelector,
 )
 from gambitpairing.gui.views.tournament.tournament_controller import (

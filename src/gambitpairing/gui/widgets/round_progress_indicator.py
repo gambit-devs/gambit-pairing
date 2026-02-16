@@ -1,3 +1,12 @@
+"""
+Reusable UI widgets for the Tournament tab.
+
+This module contains custom Qt widgets used in the tournament management interface:
+- CheckableButton: A toggle button with a visual checkmark indicator
+- ResultSelector: A widget for selecting game results (1-0, ½-½, 0-1)
+- RoundProgressIndicator: Visual indicator showing tournament progress
+"""
+
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
 #
@@ -13,15 +22,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-"""
-Reusable UI widgets for the Tournament tab.
-
-This module contains custom Qt widgets used in the tournament management interface:
-- CheckableButton: A toggle button with a visual checkmark indicator
-- ResultSelector: A widget for selecting game results (1-0, ½-½, 0-1)
-- RoundProgressIndicator: Visual indicator showing tournament progress
-"""
 
 from __future__ import annotations  # this removes the need for " around types
 

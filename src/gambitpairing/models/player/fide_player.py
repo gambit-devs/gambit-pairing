@@ -20,7 +20,6 @@
 from datetime import date
 from typing import Any, Dict, Optional
 
-from gambitpairing.club import Club
 from gambitpairing.models.player import Player
 from gambitpairing.utils import setup_logger
 
@@ -36,7 +35,6 @@ class FidePlayer(Player):
         rating: Optional[int] = None,
         phone: Optional[str] = None,
         email: Optional[str] = None,
-        club: Optional[Club] = None,
         gender: Optional[str] = None,
         date_of_birth: Optional[date] = None,
         federation: Optional[str] = None,

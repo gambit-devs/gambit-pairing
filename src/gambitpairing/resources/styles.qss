@@ -1387,3 +1387,46 @@ QListWidget[class="PairingSelected"]::item {
     color: #8b5c2b;
     font-weight: bold;
 }
+
+/*  =============================================
+    EMPTY TOURNAMENT PLACEHOLDER
+    ============================================= */
+
+QLabel[class="NoTournamentTitle"] {
+    font-size: 20pt;
+    font-weight: 700;
+    color: #2d5a27;
+    margin-bottom: 10px;
+    letter-spacing: 0.01em;
+}
+
+
+QLabel[class="NoTournamentLabel"]{
+    font-size: 13pt;
+    color: #8b5c2b;
+    margin-bottom: 32px;
+    line-height: 1.5;
+    font-weight: 500;
+}
+QLabel[class="NoTournamentIconLabel"]{
+    margin-bottom: 18px;
+}
+QPushButton[class="NoTournamentButton"] {
+    background-color: #2d5a27;
+    color: #fff;
+    font-size: 13pt;
+    font-weight: 700;
+    padding: 13px 32px;
+    border: none;
+    border-radius: 10px;
+    min-width: 170px;
+    letter-spacing: 0.01em;
+}
+QPushButton:hover {
+    background-color: #e2c290;
+    color: #2d5a27;
+}
+QPushButton:pressed {
+    background-color: #8b5c2b;
+    color: #fff;
+}
