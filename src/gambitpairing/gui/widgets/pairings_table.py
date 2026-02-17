@@ -1,4 +1,4 @@
-"""Table for displaying pairings."""
+"""Table widget for displaying pairings and entering round results."""
 
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers

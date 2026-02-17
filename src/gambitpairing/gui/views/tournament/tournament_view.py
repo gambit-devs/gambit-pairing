@@ -1,3 +1,5 @@
+"""Tournament tab UI for managing tournament rounds and pairings."""
+
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
 #
@@ -14,27 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-Tournament tab UI for managing tournament rounds and pairings.
-
-This module provides the TournamentTab widget which handles:
-- Tournament start and round preparation
-- Pairings display and result entry
-- Manual pairing adjustments
-- Result recording and undo
-
-The business logic is separated into:
-- tournament_controller.py: Core tournament operations
-- tournament_widgets.py: Reusable UI widgets
-- tournament_state.py: State management
-- pairings_printer.py: Printing functionality
-
-UI Design Philosophy:
-- Clear visual hierarchy with distinct sections
-- Round Card container for focused pairing management
-- Intuitive workflow: View Pairings → Enter Results → Advance
-- Professional styling with consistent spacing
-"""
 
 import logging
 from typing import List, Optional, Tuple
@@ -53,20 +34,20 @@ from gambitpairing.constants import (
 )
 from gambitpairing.gui.dialogs import ManualPairingDialog
 from gambitpairing.gui.notournament_placeholder import NoTournamentPlaceholder
-from gambitpairing.gui.views.tournament.components.pairings_table import PairingsTable
-from gambitpairing.gui.views.tournament.components.pre_tournament_widget import (
+from gambitpairing.gui.widgets.pairings_table import PairingsTable
+from gambitpairing.gui.widgets.pre_tournament_widget import (
     PreTournamentWidget,
 )
-from gambitpairing.gui.views.tournament.components.round_controls import (
+from gambitpairing.gui.widgets.round_controls import (
     RoundControlsWidget,
 )
 from gambitpairing.gui.widgets import (
     ResultSelector,
 )
-from gambitpairing.gui.views.tournament.tournament_controller import (
+from gambitpairing.controllers.tournament_controller import (
     TournamentController,
 )
-from gambitpairing.gui.views.tournament.tournament_state import (
+from gambitpairing.models.tournament_state import (
     TournamentPhase,
     TournamentState,
 )
