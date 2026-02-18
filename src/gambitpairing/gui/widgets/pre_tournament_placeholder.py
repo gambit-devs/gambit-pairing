@@ -1,4 +1,4 @@
-"""Pre-tournament empty state widget."""
+"""Pre-tournament start widget."""
 
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
@@ -46,14 +46,14 @@ class PreTournamentWidget(QtWidgets.QWidget):
         self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         # Use play icon but with consistent styling
         set_svg_icon(self.icon_label, "play.svg", "#2d5a27", 64)
-        self.icon_label.setProperty("class", "NoTournamentIconLabel")
+        self.icon_label.setProperty("class", "PreTournamentIconLabel")
         layout.addWidget(self.icon_label)
 
         # Title
         self.title_label = QtWidgets.QLabel("Ready to Start")
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.title_label.setProperty("class", "NoTournamentTitle")
+        self.title_label.setProperty("class", "PreTournamentTitle")
         layout.addWidget(self.title_label)
 
         # Description
@@ -63,7 +63,7 @@ class PreTournamentWidget(QtWidgets.QWidget):
         )
         self.desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.desc_label.setWordWrap(True)
-        self.desc_label.setProperty("class", "NoTournamentLabel"
+        self.desc_label.setProperty("class", "PreTournamentLabel")
 
         layout.addWidget(self.desc_label)
 
@@ -72,8 +72,8 @@ class PreTournamentWidget(QtWidgets.QWidget):
         self.btn_start.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_start.setMinimumWidth(200)
 
-        # Style the button to match NoTournamentPlaceholder
-        self.btn_start.setProperty("class", "NoTournamentButton")
+        # Style the button to match PreTournamentPlaceholder
+        self.btn_start.setProperty("class", "PreTournamentButton")
         self.btn_start.clicked.connect(self.start_requested.emit)
 
         # Center button
