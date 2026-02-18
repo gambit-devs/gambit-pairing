@@ -25,6 +25,7 @@ The TournamentController handles:
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple
@@ -39,41 +40,13 @@ from gambitpairing.constants import (
     WIN_SCORE,
 )
 from gambitpairing.utils import setup_logger
-
-if TYPE_CHECKING:
-    from gambitpairing.models.player import Player
-    from gambitpairing.tournament import Tournament
+from gambitpairing.models.pairing import (
+    PairingGenerationResult,
+    RecordingResult,
+    ValidationResult,
+)
 
 logger = setup_logger(__name__)
-
-
-@dataclass
-class PairingGenerationResult:
-    """Result of a pairing generation operation."""
-
-    success: bool
-    pairings: List[Tuple["Player", "Player"]]
-    bye_player: Optional["Player"]
-    error_message: Optional[str] = None
-
-
-@dataclass
-class ResultRecordingResult:
-    """Result of a result recording operation."""
-
-    success: bool
-    error_message: Optional[str] = None
-    tournament_finished: bool = False
-
-
-@dataclass
-class ValidationResult:
-    """Result of a validation check."""
-
-    valid: bool
-    error_message: Optional[str] = None
-    needs_confirmation: bool = False
-    confirmation_message: Optional[str] = None
 
 
 class TournamentController:
@@ -145,7 +118,6 @@ class TournamentController:
             players = list(self.tournament.players.values())
 
         num_players = len(players)
-        min_players = 2**self.tournament.num_rounds
         player_type = "active " if for_preparation else ""
 
         if pairing_system == "round_robin":
@@ -155,6 +127,7 @@ class TournamentController:
                     error_message=f"Round Robin tournaments require at least three {player_type}players.",
                 )
         elif pairing_system == "dutch_swiss":
+            min_players = 2**self.tournament.num_rounds
             if num_players < 2:
                 return ValidationResult(
                     valid=False,
@@ -177,7 +150,10 @@ class TournamentController:
                     error_message=f"Manual pairing tournaments require at least two {player_type}players.",
                 )
 
-        return ValidationResult(valid=True)
+        return ValidationResult(
+            valid=False,
+            error_message=f"pairing system {pairing_system} not handled correctly.",
+        )
 
     def generate_pairings(
         self,
@@ -555,3 +531,6 @@ class TournamentController:
                     messages.append(f"  Bye player ID {bye_id} not found (error).")
 
         return messages
+
+
+#  LocalWords:  ValidationResult PairingGenerationResult

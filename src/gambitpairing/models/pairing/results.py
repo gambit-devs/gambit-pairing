@@ -1,4 +1,4 @@
-"""Results of pairing generation. IE: The pairings."""
+"""Result data class."""
 
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
@@ -32,3 +32,22 @@ class PairingGenerationResult:
     pairings: List[Pair]
     bye_player: Optional[Player]
     error_message: Optional[str] = None
+
+
+@dataclass
+class RecordingResult:
+    """Result of a result recording operation."""
+
+    success: bool
+    error_message: Optional[str] = None
+    tournament_finished: bool = False
+
+
+@dataclass
+class ValidationResult:
+    """Result of a validation check."""
+
+    valid: bool
+    error_message: Optional[str] = None
+    needs_confirmation: bool = False
+    confirmation_message: Optional[str] = None
