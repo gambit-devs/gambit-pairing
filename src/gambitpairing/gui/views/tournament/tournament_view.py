@@ -32,7 +32,7 @@ from gambitpairing.constants import (
     RESULT_WHITE_WIN,
     WIN_SCORE,
 )
-from gambitpairing.controllers.tournament_controller import (
+from gambitpairing.controllers import (
     TournamentController,
 )
 from gambitpairing.gui.dialogs import ManualPairingDialog
