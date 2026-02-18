@@ -15,20 +15,17 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+from __future__ import annotations
 from typing import List, Optional, Tuple
+from gambitpairing.models.player import PlayerABC
 
-# Forward reference
-from typing import TYPE_CHECKING
+# Input Player objects
+Players = List[Player]
+MaybePlayer = Optional[Player]
 
-if TYPE_CHECKING:
-    from gambitpairing.models.player.base_player import Player
+# return PlayerId
+PlayerId = int
+Pairing = Tuple[PlayerId, PlayerId]
+RoundSchedule = Tuple[Pairing, ...]
 
-
-Players = List["Player"]
-MatchPairing = Tuple[int, int]
-RoundSchedule = Tuple[MatchPairing, ...]
-Pairings = Tuple[List[Tuple["Player", "Player"]], Optional["Player"]]
-MaybePlayer = Optional["Player"]
-
-#  LocalWords:  MatchPairing RoundSchedule
+#  LocalWords:  MatchPairing RoundSchedule PlayerId

@@ -3,3 +3,5 @@ from .results import (
     RecordingResult,
     ValidationResult,
 )
+
+from .abc_pairing_system import PairingSystemABC

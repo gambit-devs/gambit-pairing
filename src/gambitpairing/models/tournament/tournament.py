@@ -26,6 +26,9 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from dataclasses import dataclass, field
 from gambitpairing.constants import LOSS_SCORE, WIN_SCORE
 from gambitpairing.models.player import Player
+
+from gambitpairing.models.pairing import PairingSystemABC
+
 from .pairing_history import PairingHistory
 from .round_data import RoundData
 from .tournament_config import TournamentConfig
@@ -56,7 +59,7 @@ class Tournament:
         players: List[Player],
         num_rounds: int,
         tiebreak_order: Optional[List[str]] = None,
-        pairing_system: str = "dutch_swiss",
+        pairing_system: PairingSystemABC = "dutch_swiss",
     ) -> None:
         """Initialize a new tournament.
 
