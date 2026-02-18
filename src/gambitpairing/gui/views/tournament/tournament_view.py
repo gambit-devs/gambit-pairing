@@ -37,7 +37,7 @@ from gambitpairing.gui.widgets.tournament_placeholder import (
     TournamentPlaceholder,
 )
 from gambitpairing.gui.widgets.pairings_table import PairingsTable
-from gambitpairing.gui.widgets.pre_start_tournament import (
+from gambitpairing.gui.widgets.pre_tournament_start import (
     PreTournamentWidget,
 )
 from gambitpairing.gui.widgets.round_controls import (
