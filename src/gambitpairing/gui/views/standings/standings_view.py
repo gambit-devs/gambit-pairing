@@ -30,7 +30,7 @@ from gambitpairing.constants import (
     TB_SONNENBORN_BERGER,
     TIEBREAK_NAMES,
 )
-from gambitpairing.gui.notournament_placeholder import TournamentPlaceholder
+from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 from gambitpairing.gui.widgets.header import TabHeader
 from gambitpairing.utils.print import create_print_button
 

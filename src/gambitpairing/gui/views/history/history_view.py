@@ -20,7 +20,7 @@ import logging
 from PyQt6 import QtGui, QtWidgets
 from PyQt6.QtCore import QDateTime
 
-from gambitpairing.gui.notournament_placeholder import TournamentPlaceholder
+from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 from gambitpairing.gui.widgets.header import TabHeader
 
 

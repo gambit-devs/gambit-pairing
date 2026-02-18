@@ -19,7 +19,7 @@ from PyQt6 import QtGui, QtWidgets
 from PyQt6.QtCore import Qt
 
 from gambitpairing.constants import DRAW_SCORE, LOSS_SCORE, WIN_SCORE
-from gambitpairing.gui.notournament_placeholder import TournamentPlaceholder
+from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 from gambitpairing.gui.widgets.header import TabHeader
 
 

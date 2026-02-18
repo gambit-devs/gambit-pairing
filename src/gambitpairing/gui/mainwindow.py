@@ -39,7 +39,7 @@ from gambitpairing.gui.dialogs import (
 )
 from gambitpairing.gui.import_player import ImportPlayer
 from gambitpairing.gui.notification import show_notification
-from gambitpairing.gui.notournament_placeholder import TournamentPlaceholder
+from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 from gambitpairing.gui.views.crosstable.crosstable_view import CrosstableView
 from gambitpairing.gui.views.history.history_view import HistoryView
 from gambitpairing.gui.views.players.players_view import PlayersView
