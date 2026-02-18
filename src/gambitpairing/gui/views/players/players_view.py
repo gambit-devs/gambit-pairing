@@ -30,10 +30,9 @@ from PyQt6.QtCore import Qt, pyqtSignal
 
 from gambitpairing.gui.dialogs import PlayerManagementDialog
 from gambitpairing.gui.notification import show_notification
-from gambitpairing.gui.widgets.tournament_placeholder import (
-    TournamentPlaceholder,
-    PlayerPlaceholder,
-)
+from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
+
+from gambitpairing.gui.widgets.player_placeholder import PlayerPlaceholder
 from gambitpairing.gui.widgets import TabHeader, NumericTableWidgetItem
 from gambitpairing.models.player import (
     Player,

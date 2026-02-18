@@ -33,11 +33,11 @@ from gambitpairing.constants import (
     WIN_SCORE,
 )
 from gambitpairing.gui.dialogs import ManualPairingDialog
-from gambitpairing.gui.widgets.pre_tournament_placeholder.py import (
+from gambitpairing.gui.widgets.tournament_placeholder import (
     TournamentPlaceholder,
 )
 from gambitpairing.gui.widgets.pairings_table import PairingsTable
-from gambitpairing.gui.widgets.pre_tournament_widget import (
+from gambitpairing.gui.widgets.pre_start_tournament import (
     PreTournamentWidget,
 )
 from gambitpairing.gui.widgets.round_controls import (

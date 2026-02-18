@@ -24,7 +24,7 @@ from gambitpairing.gui.gui_utils import get_colored_icon, set_svg_icon
 from gambitpairing.resources.resource_utils import get_resource_path
 
 
-class PreTournamentWidget(QtWidgets.QWidget):
+class PreStartTournamentWidget(QtWidgets.QWidget):
     """A centered widget displayed when a tournament is loaded but not yet started."""
 
     start_requested = QtCore.pyqtSignal()
@@ -85,3 +85,6 @@ class PreTournamentWidget(QtWidgets.QWidget):
 
         # Add spacer to center content vertically
         layout.addStretch()
+
+
+#  LocalWords:  PreTournamentLabel PreTournamentTitle PreTournamentWidget
