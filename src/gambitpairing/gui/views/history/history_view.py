@@ -20,7 +20,7 @@ import logging
 from PyQt6 import QtGui, QtWidgets
 from PyQt6.QtCore import QDateTime
 
-from gambitpairing.gui.notournament_placeholder import NoTournamentPlaceholder
+from gambitpairing.gui.notournament_placeholder import TournamentPlaceholder
 from gambitpairing.gui.widgets.header import TabHeader
 
 
@@ -49,15 +49,15 @@ class HistoryView(QtWidgets.QWidget):
         self.main_layout.addWidget(self.history_group)
 
         # Add no tournament placeholder
-        self.no_tournament_placeholder = NoTournamentPlaceholder(self, "History Log")
-        self.no_tournament_placeholder.create_tournament_requested.connect(
+        self.tournament_placeholder = TournamentPlaceholder(self, "History Log")
+        self.tournament_placeholder.create_tournament_requested.connect(
             self._trigger_create_tournament
         )
-        self.no_tournament_placeholder.import_tournament_requested.connect(
+        self.tournament_placeholder.import_tournament_requested.connect(
             self._trigger_import_tournament
         )
-        self.no_tournament_placeholder.hide()
-        self.main_layout.addWidget(self.no_tournament_placeholder)
+        self.tournament_placeholder.hide()
+        self.main_layout.addWidget(self.tournament_placeholder)
 
     def set_tournament(self, tournament):
         self.tournament = tournament
@@ -66,10 +66,10 @@ class HistoryView(QtWidgets.QWidget):
     def _update_visibility(self):
         """Show/hide content based on tournament existence."""
         if not self.tournament:
-            self.no_tournament_placeholder.show()
+            self.tournament_placeholder.show()
             self.history_group.hide()
         else:
-            self.no_tournament_placeholder.hide()
+            self.tournament_placeholder.hide()
             self.history_group.show()
 
     def update_history_log(self, message: str):

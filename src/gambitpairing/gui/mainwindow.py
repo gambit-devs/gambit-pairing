@@ -39,7 +39,7 @@ from gambitpairing.gui.dialogs import (
 )
 from gambitpairing.gui.import_player import ImportPlayer
 from gambitpairing.gui.notification import show_notification
-from gambitpairing.gui.notournament_placeholder import NoTournamentPlaceholder
+from gambitpairing.gui.notournament_placeholder import TournamentPlaceholder
 from gambitpairing.gui.views.crosstable.crosstable_view import CrosstableView
 from gambitpairing.gui.views.history.history_view import HistoryView
 from gambitpairing.gui.views.players.players_view import PlayersView
@@ -97,14 +97,14 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self.main_layout.addWidget(self.stacked_widget)
 
         # Placeholder for no tournament
-        self.no_tournament_placeholder = NoTournamentPlaceholder(self)
-        self.no_tournament_placeholder.create_tournament_requested.connect(
+        self.tournament_placeholder = TournamentPlaceholder(self)
+        self.tournament_placeholder.create_tournament_requested.connect(
             self.prompt_new_tournament
         )
-        self.no_tournament_placeholder.import_tournament_requested.connect(
+        self.tournament_placeholder.import_tournament_requested.connect(
             self.load_tournament
         )
-        self.stacked_widget.addWidget(self.no_tournament_placeholder)
+        self.stacked_widget.addWidget(self.tournament_placeholder)
 
         self.tabs = QtWidgets.QTabWidget()
         self.stacked_widget.addWidget(self.tabs)
@@ -332,7 +332,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         if tournament_exists:
             self.stacked_widget.setCurrentWidget(self.tabs)
         else:
-            self.stacked_widget.setCurrentWidget(self.no_tournament_placeholder)
+            self.stacked_widget.setCurrentWidget(self.tournament_placeholder)
 
         pairings_generated = (
             len(self.tournament.rounds_pairings_ids) if tournament_exists else 0

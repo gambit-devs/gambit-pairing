@@ -34,7 +34,7 @@ from gambitpairing.constants import (
 )
 from gambitpairing.gui.dialogs import ManualPairingDialog
 from gambitpairing.gui.widgets.pre_tournament_placeholder.py import (
-    NoTournamentPlaceholder,
+    TournamentPlaceholder,
 )
 from gambitpairing.gui.widgets.pairings_table import PairingsTable
 from gambitpairing.gui.widgets.pre_tournament_widget import (
@@ -166,15 +166,15 @@ class TournamentView(QtWidgets.QWidget):
         self.main_layout.addWidget(self.pre_tournament_widget)
 
         # ===== NO TOURNAMENT PLACEHOLDER =====
-        self.no_tournament_placeholder = NoTournamentPlaceholder(self, "Rounds")
-        self.no_tournament_placeholder.create_tournament_requested.connect(
+        self.tournament_placeholder = TournamentPlaceholder(self, "Rounds")
+        self.tournament_placeholder.create_tournament_requested.connect(
             self._trigger_create_tournament
         )
-        self.no_tournament_placeholder.import_tournament_requested.connect(
+        self.tournament_placeholder.import_tournament_requested.connect(
             self._trigger_import_tournament
         )
-        self.no_tournament_placeholder.hide()
-        self.main_layout.addWidget(self.no_tournament_placeholder)
+        self.tournament_placeholder.hide()
+        self.main_layout.addWidget(self.tournament_placeholder)
 
         # Set initial UI state
         self.update_ui_state()
@@ -968,13 +968,13 @@ class TournamentView(QtWidgets.QWidget):
 
         # Show/hide placeholder based on tournament existence
         if not tournament_exists:
-            self.no_tournament_placeholder.show()
+            self.tournament_placeholder.show()
             self.header.hide()
             self.round_card.hide()
             return
 
         # Tournament exists - show main content
-        self.no_tournament_placeholder.hide()
+        self.tournament_placeholder.hide()
         self.header.show()
 
         # Compute tournament state using TournamentState helper

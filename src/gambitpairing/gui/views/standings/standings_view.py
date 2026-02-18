@@ -30,7 +30,7 @@ from gambitpairing.constants import (
     TB_SONNENBORN_BERGER,
     TIEBREAK_NAMES,
 )
-from gambitpairing.gui.notournament_placeholder import NoTournamentPlaceholder
+from gambitpairing.gui.notournament_placeholder import TournamentPlaceholder
 from gambitpairing.gui.widgets.header import TabHeader
 from gambitpairing.utils.print import create_print_button
 
@@ -87,15 +87,15 @@ class StandingsView(QtWidgets.QWidget):
         self.main_layout.addWidget(self.standings_group)
 
         # Add no tournament placeholder
-        self.no_tournament_placeholder = NoTournamentPlaceholder(self, "Standings")
-        self.no_tournament_placeholder.create_tournament_requested.connect(
+        self.tournament_placeholder = TournamentPlaceholder(self, "Standings")
+        self.tournament_placeholder.create_tournament_requested.connect(
             self._trigger_create_tournament
         )
-        self.no_tournament_placeholder.import_tournament_requested.connect(
+        self.tournament_placeholder.import_tournament_requested.connect(
             self._trigger_import_tournament
         )
-        self.no_tournament_placeholder.hide()
-        self.main_layout.addWidget(self.no_tournament_placeholder)
+        self.tournament_placeholder.hide()
+        self.main_layout.addWidget(self.tournament_placeholder)
 
     def set_tournament(self, tournament):
         self.tournament = tournament
@@ -109,11 +109,11 @@ class StandingsView(QtWidgets.QWidget):
     def _update_visibility(self):
         """Show/hide content based on tournament existence."""
         if not self.tournament:
-            self.no_tournament_placeholder.show()
+            self.tournament_placeholder.show()
             self.header.hide()
             self.standings_group.hide()
         else:
-            self.no_tournament_placeholder.hide()
+            self.tournament_placeholder.hide()
             self.header.show()
             self.standings_group.show()
 
@@ -189,10 +189,10 @@ class StandingsView(QtWidgets.QWidget):
     def _update_visibility(self):
         """Show/hide content based on tournament existence."""
         if not self.tournament:
-            self.no_tournament_placeholder.show()
+            self.tournament_placeholder.show()
             self.standings_group.hide()
         else:
-            self.no_tournament_placeholder.hide()
+            self.tournament_placeholder.hide()
             self.standings_group.show()
 
     def update_standings_table(self) -> None:

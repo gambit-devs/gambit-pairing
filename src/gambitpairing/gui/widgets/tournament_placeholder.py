@@ -21,7 +21,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 
 
 class TournamentPlaceholder(QtWidgets.QWidget):
-    """Consistent placeholder widget shown when no tournament is loaded."""
+    """Placeholder widget shown when no tournament is loaded."""
 
     create_tournament_requested = pyqtSignal()
     import_tournament_requested = pyqtSignal()
@@ -93,4 +93,4 @@ class TournamentPlaceholder(QtWidgets.QWidget):
         self.setProperty("class", "TournamentPlaceholder")
 
 
-#  LocalWords:  NoTournament
+#  LocalWords:  NoTournament NoTournamentIcon TournamentPlaceholder NoTournamentImportTournament NoTournamentCreateTournament

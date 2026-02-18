@@ -31,7 +31,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from gambitpairing.gui.dialogs import PlayerManagementDialog
 from gambitpairing.gui.notification import show_notification
 from gambitpairing.gui.notournament_placeholder import (
-    NoTournamentPlaceholder,
+    TournamentPlaceholder,
     PlayerPlaceholder,
 )
 from gambitpairing.gui.widgets import TabHeader, NumericTableWidgetItem
@@ -83,7 +83,7 @@ class PlayersView(QtWidgets.QWidget):
     list_players : QtWidgets.QListWidget
         Legacy widget kept for compatibility with ``reset_tournament_state()``.
         Not visible or actively used.
-    no_tournament_placeholder : NoTournamentPlaceholder
+    tournament_placeholder : TournamentPlaceholder
         Placeholder widget shown when no tournament is loaded.
     no_players_placeholder : PlayerPlaceholder
         Placeholder widget shown when a tournament exists but has no players.
@@ -182,11 +182,11 @@ class PlayersView(QtWidgets.QWidget):
         vheader.setMinimumSectionSize(38)
 
         # Initialize placeholders
-        self.no_tournament_placeholder = NoTournamentPlaceholder(self, "Players")
-        self.no_tournament_placeholder.create_tournament_requested.connect(
+        self.tournament_placeholder = TournamentPlaceholder(self, "Players")
+        self.tournament_placeholder.create_tournament_requested.connect(
             self._trigger_create_tournament
         )
-        self.no_tournament_placeholder.import_tournament_requested.connect(
+        self.tournament_placeholder.import_tournament_requested.connect(
             self._trigger_import_tournament
         )
         self.no_players_placeholder = PlayerPlaceholder(self)
@@ -198,9 +198,9 @@ class PlayersView(QtWidgets.QWidget):
         )
 
         # Hide placeholders initially
-        self.no_tournament_placeholder.hide()
+        self.tournament_placeholder.hide()
         self.no_players_placeholder.hide()
-        self.main_layout.addWidget(self.no_tournament_placeholder)
+        self.main_layout.addWidget(self.tournament_placeholder)
         self.main_layout.addWidget(self.no_players_placeholder)
 
     def on_player_context_menu(self, point: QtCore.QPoint) -> None:
@@ -736,4 +736,4 @@ class PlayersView(QtWidgets.QWidget):
             self.table_players.setSortingEnabled(True)
 
 
-#  LocalWords:  PlayerPlaceholder NoTournamentPlaceholder TabHeader
+#  LocalWords:  PlayerPlaceholder TournamentPlaceholder TabHeader

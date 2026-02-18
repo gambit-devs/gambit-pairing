@@ -1661,5 +1661,5 @@ QPushButton[class, "ImportPlayerButton"]:pressed {
 }
 
 
-/* LocalWords:  PreTournamentLabel PreTournamentIconLabel PreTournamentButton- PreTournamentTitle
+/* LocalWords:  PreTournamentLabel PreTournamentIconLabel PreTournamentButton- PreTournamentTitle TournamentPlaceholder NoTournamentIcon NoTournamentDescription NoTournamentMainMessage
 */

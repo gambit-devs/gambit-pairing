@@ -19,7 +19,7 @@ from PyQt6 import QtGui, QtWidgets
 from PyQt6.QtCore import Qt
 
 from gambitpairing.constants import DRAW_SCORE, LOSS_SCORE, WIN_SCORE
-from gambitpairing.gui.notournament_placeholder import NoTournamentPlaceholder
+from gambitpairing.gui.notournament_placeholder import TournamentPlaceholder
 from gambitpairing.gui.widgets.header import TabHeader
 
 
@@ -52,15 +52,15 @@ class CrosstableView(QtWidgets.QWidget):
         self.main_layout.addWidget(self.crosstable_group)
 
         # Add no tournament placeholder
-        self.no_tournament_placeholder = NoTournamentPlaceholder(self, "Crosstable")
-        self.no_tournament_placeholder.create_tournament_requested.connect(
+        self.tournament_placeholder = TournamentPlaceholder(self, "Crosstable")
+        self.tournament_placeholder.create_tournament_requested.connect(
             self._trigger_create_tournament
         )
-        self.no_tournament_placeholder.import_tournament_requested.connect(
+        self.tournament_placeholder.import_tournament_requested.connect(
             self._trigger_import_tournament
         )
-        self.no_tournament_placeholder.hide()
-        self.main_layout.addWidget(self.no_tournament_placeholder)
+        self.tournament_placeholder.hide()
+        self.main_layout.addWidget(self.tournament_placeholder)
 
     def set_tournament(self, tournament):
         self.tournament = tournament
@@ -70,10 +70,10 @@ class CrosstableView(QtWidgets.QWidget):
     def _update_visibility(self):
         """Show/hide content based on tournament existence."""
         if not self.tournament:
-            self.no_tournament_placeholder.show()
+            self.tournament_placeholder.show()
             self.crosstable_group.hide()
         else:
-            self.no_tournament_placeholder.hide()
+            self.tournament_placeholder.hide()
             self.crosstable_group.show()
 
     def update_crosstable(self):
