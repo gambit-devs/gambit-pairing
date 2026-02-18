@@ -65,7 +65,7 @@ class PairingsTableController:
 
         for row, pair in enumerate(pairings):
 
-            _build_row(row, pair.white, pair.black, winner: Optional[str])
+            _build_row(row, pair.white, pair.black)
 
         # Handle bye players display
         if bye_players:
@@ -188,69 +188,67 @@ class PairingsTableController:
         return text
 
     def _build_row(
-        self, row: int, white: Player, black: Player, result: Optional[Colour]
+        self, row: int, white: Player, black: Player, result: Optional[Colour] = None
     ) -> None:
         """Populate a single table row with board number, player names, and result selector."""
-            # Support (Player, Player, color) tuples
-            if len(pair) == 3:
-                p1, p2, result = pair
-                if result == Colour.WHITE:
-                    white, black = p1, p2
-                else:
-                    white, black = p2, p1
+        # Support (Player, Player, color) tuples
+        if len(pair) == 3:
+            p1, p2, result = pair
+            if result == Colour.WHITE:
+                white, black = p1, p2
             else:
-                white, black = pair
-                result = None
+                white, black = p2, p1
+        else:
+            white, black = pair
+            result = None
 
-            # Board number column
-            board_num = row + 1
-            item_board = QtWidgets.QTableWidgetItem(str(board_num))
-            item_board.setFlags(item_board.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            item_board.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            item_board.setFont(
-                QtGui.QFont(item_board.font().family(), -1, QtGui.QFont.Weight.Bold)
-            )
-            self.table.setItem(row, 0, item_board)
+        # Board number column
+        board_num = row + 1
+        item_board = QtWidgets.QTableWidgetItem(str(board_num))
+        item_board.setFlags(item_board.flags() & ~Qt.ItemFlag.ItemIsEditable)
+        item_board.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        item_board.setFont(
+            QtGui.QFont(item_board.font().family(), -1, QtGui.QFont.Weight.Bold)
+        )
+        self.table.setItem(row, 0, item_board)
 
-            # White player column
-            item_white = QtWidgets.QTableWidgetItem(
-                f"{white.name} ({white.rating})"
-                + (" (I)" if not white.is_active else "")
-            )
-            item_white.setFlags(item_white.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            color_info = f"Colour: {result}" if result else ""
-            item_white.setToolTip(
-                f"ID: {white.id}\nColour History: {' '.join(c or '_' for c in white.color_history)}\n{color_info}"
-            )
-            if not white.is_active:
-                item_white.setForeground(QtGui.QColor("gray"))
-            self.table.setItem(row, 1, item_white)
+        # White player column
+        item_white = QtWidgets.QTableWidgetItem(
+            f"{white.name} ({white.rating})" + (" (I)" if not white.is_active else "")
+        )
+        item_white.setFlags(item_white.flags() & ~Qt.ItemFlag.ItemIsEditable)
+        color_info = f"Colour: {result}" if result else ""
+        item_white.setToolTip(
+            f"ID: {white.id}\nColour History: {' '.join(c or '_' for c in white.color_history)}\n{color_info}"
+        )
+        if not white.is_active:
+            item_white.setForeground(QtGui.QColor("gray"))
+        self.table.setItem(row, 1, item_white)
 
-            # Black player column
-            item_black = QtWidgets.QTableWidgetItem(
-                f"{black.name} ({black.rating})"
-                + (" (I)" if not black.is_active else "")
-            )
-            item_black.setFlags(item_black.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            item_black.setToolTip(
-                f"ID: {black.id}\nColour History: {' '.join(c or '_' for c in black.color_history)}"
-            )
-            if not black.is_active:
-                item_black.setForeground(QtGui.QColor("gray"))
-            self.table.setItem(row, 2, item_black)
+        # Black player column
+        item_black = QtWidgets.QTableWidgetItem(
+            f"{black.name} ({black.rating})" + (" (I)" if not black.is_active else "")
+        )
+        item_black.setFlags(item_black.flags() & ~Qt.ItemFlag.ItemIsEditable)
+        item_black.setToolTip(
+            f"ID: {black.id}\nColour History: {' '.join(c or '_' for c in black.color_history)}"
+        )
+        if not black.is_active:
+            item_black.setForeground(QtGui.QColor("gray"))
+        self.table.setItem(row, 2, item_black)
 
-            # Result selector widget
-            result_selector = ResultSelector()
-            result_selector.setProperty("row", row)
-            result_selector.setProperty("white_id", white.id)
-            result_selector.setProperty("black_id", black.id)
+        # Result selector widget
+        result_selector = ResultSelector()
+        result_selector.setProperty("row", row)
+        result_selector.setProperty("white_id", white.id)
+        result_selector.setProperty("black_id", black.id)
 
-            # Auto-set result for inactive players
-            if not white.is_active and not black.is_active:
-                result_selector.setResult(RESULT_DRAW)  # 0-0 or F-F
-            elif not white.is_active:
-                result_selector.setResult(RESULT_BLACK_WIN)  # Black wins by forfeit
-            elif not black.is_active:
-                result_selector.setResult(RESULT_WHITE_WIN)  # White wins by forfeit
+        # Auto-set result for inactive players
+        if not white.is_active and not black.is_active:
+            result_selector.setResult(RESULT_DRAW)  # 0-0 or F-F
+        elif not white.is_active:
+            result_selector.setResult(RESULT_BLACK_WIN)  # Black wins by forfeit
+        elif not black.is_active:
+            result_selector.setResult(RESULT_WHITE_WIN)  # White wins by forfeit
 
-            self.table.setCellWidget(row, 3, result_selector)
+        self.table.setCellWidget(row, 3, result_selector)

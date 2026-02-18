@@ -32,30 +32,30 @@ from gambitpairing.constants import (
     RESULT_WHITE_WIN,
     WIN_SCORE,
 )
-from gambitpairing.gui.dialogs import ManualPairingDialog
-from gambitpairing.gui.widgets.tournament_placeholder import (
-    TournamentPlaceholder,
+from gambitpairing.controllers.tournament_controller import (
+    TournamentController,
 )
+from gambitpairing.gui.dialogs import ManualPairingDialog
+from gambitpairing.gui.views.tournament.utils.pairings_printer import PairingsPrinter
+from gambitpairing.gui.widgets import (
+    ResultSelector,
+)
+from gambitpairing.gui.widgets.header import TabHeader
 from gambitpairing.gui.widgets.pairings_table import PairingsTable
 from gambitpairing.gui.widgets.pre_tournament_start import (
-    PreTournamentWidget,
+    PreTournamentStart,
 )
 from gambitpairing.gui.widgets.round_controls import (
     RoundControlsWidget,
 )
-from gambitpairing.gui.widgets import (
-    ResultSelector,
+from gambitpairing.gui.widgets.tournament_placeholder import (
+    TournamentPlaceholder,
 )
-from gambitpairing.controllers.tournament_controller import (
-    TournamentController,
-)
+from gambitpairing.models.player import Player
 from gambitpairing.models.tournament_state import (
     TournamentPhase,
     TournamentState,
 )
-from gambitpairing.gui.views.tournament.utils.pairings_printer import PairingsPrinter
-from gambitpairing.gui.widgets.header import TabHeader
-from gambitpairing.models.player import Player
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)
@@ -160,10 +160,10 @@ class TournamentView(QtWidgets.QWidget):
         self._setup_round_card()
 
         # ===== PRE-TOURNAMENT WIDGET =====
-        self.pre_tournament_widget = PreTournamentWidget(self)
-        self.pre_tournament_widget.start_requested.connect(self.start_tournament)
-        self.pre_tournament_widget.hide()
-        self.main_layout.addWidget(self.pre_tournament_widget)
+        self.pre_tournament_start_widget = PreTournamentStart(self)
+        self.pre_tournament_start_widget.start_requested.connect(self.start_tournament)
+        self.pre_tournament_start_widget.hide()
+        self.main_layout.addWidget(self.pre_tournament_start_widget)
 
         # ===== NO TOURNAMENT PLACEHOLDER =====
         self.tournament_placeholder = TournamentPlaceholder(self, "Rounds")
@@ -989,10 +989,10 @@ class TournamentView(QtWidgets.QWidget):
 
         # Determine which view to show: Pre-Tournament or Round Card
         if state.phase == TournamentPhase.NOT_STARTED:
-            self.pre_tournament_widget.show()
+            self.pre_tournament_start_widget.show()
             self.round_card.hide()
         else:
-            self.pre_tournament_widget.hide()
+            self.pre_tournament_start_widget.hide()
             self.round_card.show()
 
         # ===== UPDATE ROUND CONTROLS =====
