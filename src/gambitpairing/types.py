@@ -20,8 +20,8 @@ from typing import List, Optional, Tuple
 from gambitpairing.models.player import PlayerABC
 
 # Input Player objects
-Players = List[Player]
-MaybePlayer = Optional[Player]
+Players = List[PlayerABC]
+MaybePlayer = Optional[PlayerABC]
 
 # return PlayerId
 PlayerId = int
