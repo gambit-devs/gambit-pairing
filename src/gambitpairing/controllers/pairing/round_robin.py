@@ -1,5 +1,4 @@
-"""
-Round Robin Tournament Pairing System.
+"""Round Robin Tournament Pairing System.
 
 This module implements FIDE-compliant round-robin tournament pairings using
 Berger tables. It supports tournaments with 3-16 players and handles both
@@ -10,8 +9,8 @@ The Berger tables ensure that:
 - Color balance is maintained as much as possible
 - Bye assignments follow FIDE rules (highest number gets bye)
 
-Example
--------
+Examples
+--------
     >>> from gambitpairing.models.player import Player
     >>> players = [Player("Alice"), Player("Bob"), Player("Charlie")]
     >>> rr = RoundRobin(players)
@@ -139,8 +138,7 @@ BERGER_TABLES: dict[str, BergerTable] = {
 
 
 class RoundRobin:
-    """
-    A FIDE-compliant round-robin chess tournament implementation.
+    """A FIDE-compliant round-robin chess tournament implementation.
 
     This class manages the complete pairing schedule for a round-robin tournament
     using Berger tables. It supports 3-16 players and automatically handles
@@ -339,7 +337,7 @@ class RoundRobin:
         Returns
         -------
         Pairings
-            Pairings for the specified round
+            the round pairings for the specified round
 
         Raises
         ------
@@ -405,7 +403,7 @@ class RoundRobin:
         return schedule
 
     def __str__(self) -> str:
-        """String representation of the tournament."""
+        """Representation of the tournament as a String."""
         lines = [
             f"Round Robin Tournament: {len(self.players)} players, {self.number_of_rounds} rounds"
         ]

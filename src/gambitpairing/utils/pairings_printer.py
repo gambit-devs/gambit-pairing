@@ -1,3 +1,9 @@
+"""Pairings printing functionality.
+
+This module handles the printing of tournament round pairings in a clean,
+professional, ink-friendly format.
+"""
+
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
 #
@@ -14,12 +20,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-Pairings printing functionality.
-
-This module handles the printing of tournament round pairings in a clean,
-professional, ink-friendly format.
-"""
 
 from typing import List, Optional, Tuple
 
@@ -31,8 +31,7 @@ from gambitpairing.utils.print import TournamentPrintUtils
 
 
 class PairingsPrinter:
-    """
-    Handles printing of tournament pairings.
+    """Handles printing of tournament pairings.
 
     This class generates HTML for professional pairing sheets and manages
     the print preview dialog.
