@@ -1,3 +1,24 @@
+"""
+Round Robin Tournament Pairing System.
+
+This module implements FIDE-compliant round-robin tournament pairings using
+Berger tables. It supports tournaments with 3-16 players and handles both
+even and odd numbers of players (with bye assignments for odd numbers).
+
+The Berger tables ensure that:
+- Each player plays every other player exactly once
+- Color balance is maintained as much as possible
+- Bye assignments follow FIDE rules (highest number gets bye)
+
+Example
+-------
+    >>> from gambitpairing.models.player import Player
+    >>> players = [Player("Alice"), Player("Bob"), Player("Charlie")]
+    >>> rr = RoundRobin(players)
+    >>> first_round = rr.get_round_pairings(1)
+    >>> print(first_round)
+"""
+
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
 #
@@ -14,36 +35,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-Round Robin Tournament Pairing System
-
-This module implements FIDE-compliant round-robin tournament pairings using
-Berger tables. It supports tournaments with 3-16 players and handles both
-even and odd numbers of players (with bye assignments for odd numbers).
-
-The Berger tables ensure that:
-- Each player plays every other player exactly once
-- Color balance is maintained as much as possible
-- Bye assignments follow FIDE rules (highest number gets bye)
-
-Example:
-    >>> from gambitpairing.models.player import Player
-    >>> players = [Player("Alice"), Player("Bob"), Player("Charlie")]
-    >>> rr = RoundRobin(players)
-    >>> first_round = rr.get_round_pairings(1)
-    >>> print(first_round)
-"""
 
 from typing import Iterable, List, Optional, Tuple
 
 from gambitpairing.exceptions import PairingException
 from gambitpairing.models.player import Player
-from gambitpairing.types import Pairings, Players, RoundSchedule
+from gambitpairing.types import Pairing, Players
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)
 
 # Type aliases for clarity
+RoundSchedule = Tuple[Pairing, ...]
 BergerTable = Tuple[RoundSchedule, ...]  # Complete tournament schedule
 
 
@@ -143,14 +146,16 @@ class RoundRobin:
     using Berger tables. It supports 3-16 players and automatically handles
     bye assignments for tournaments with odd numbers of players.
 
-    Attributes:
+    Attributes
+    ----------
         players: Immutable tuple of players in tournament order
         berger_table: The Berger table used for this tournament size
         number_of_rounds: Total number of rounds in the tournament
         bye_number: Player index that receives byes (None for even tournaments)
         round_pairings: List of pairings for each round
 
-    Example:
+    Example
+    -------
         >>> players = [Player("Alice"), Player("Bob"), Player("Charlie"), Player("David")]
         >>> tournament = RoundRobin(players)
         >>> tournament.number_of_rounds
@@ -159,13 +164,15 @@ class RoundRobin:
     """
 
     def __init__(self, players: Iterable[Player]) -> None:
-        """
-        Initialize a round-robin tournament.
+        """Initialize a round-robin tournament.
 
-        Args:
-            players: Iterable of Player objects (3-16 players supported)
+        Parameters
+        ----------
+        players : Iterable of Player objects (3-16 players supported)
+            The players in the round robin
 
-        Raises:
+        Raises
+        ------
             PairingException: If number of players is outside the 3-16 range
         """
         self.players = tuple(players)  # Immutable to preserve order
@@ -184,11 +191,12 @@ class RoundRobin:
         self._generate_all_pairings()
 
     def _select_berger_table(self, n_players: int) -> None:
-        """
-        Select the appropriate Berger table for the given number of players.
+        """Select the appropriate Berger table for the given number of players.
 
-        Args:
-            n_players: Number of players in the tournament
+        Parameters
+        ----------
+        n_players : int
+            Number of players in the tournament
         """
         self.bye_number: Optional[int] = None
 
@@ -257,16 +265,20 @@ class RoundRobin:
         )
 
     def _generate_round_pairings(self, round_idx: int) -> Pairings:
-        """
-        Generate pairings for a specific round.
+        """Generate pairings for a specific round.
 
-        Args:
-            round_idx: 0-indexed round number
+        Parameters
+        ----------
+        round_idx : int
+            0-indexed round number
 
-        Returns:
+        Returns
+        -------
+        Pairings
             Pairings tuple containing (matches, bye_player)
 
-        Raises:
+        Raises
+        ------
             PairingException: If round_idx is invalid
         """
         if not (0 <= round_idx < len(self.berger_table)):
@@ -317,16 +329,20 @@ class RoundRobin:
         return (tuple(matches), bye_player)
 
     def get_round_pairings(self, round_number: int) -> Pairings:
-        """
-        Get pairings for a specific round.
+        """Get pairings for a specific round.
 
-        Args:
-            round_number: 1-indexed round number (1 = first round)
+        Parameters
+        ----------
+        round_number : int
+            1-indexed round number (1 = first round)
 
-        Returns:
+        Returns
+        -------
+        Pairings
             Pairings for the specified round
 
-        Raises:
+        Raises
+        ------
             PairingException: If round_number is invalid or no pairings exist
         """
         if not self.round_pairings:
@@ -341,25 +357,28 @@ class RoundRobin:
         return self.round_pairings[round_number - 1]  # Convert to 0-indexed
 
     def get_all_pairings(self) -> Tuple[Pairings, ...]:
-        """
-        Get pairings for all rounds.
+        """Get pairings for all rounds.
 
-        Returns:
+        Returns
+        -------
             Tuple containing pairings for each round
         """
         return tuple(self.round_pairings)
 
     def get_player_schedule(self, player: Player) -> List[Tuple[int, Optional[Player]]]:
-        """
-        Get the complete schedule for a specific player.
+        """Get the complete schedule for a specific player.
 
-        Args:
-            player: The player to get schedule for
+        Parameters
+        ----------
+        player : Player
+            The player to get schedule for
 
-        Returns:
+        Returns
+        -------
             List of tuples (round_number, opponent), where opponent is None for bye rounds
 
-        Raises:
+        Raises
+        ------
             PairingException: If player is not in the tournament
         """
         if player not in self.players:
@@ -416,16 +435,21 @@ def create_round_robin(players: Players) -> RoundRobin:
     """
     Create a complete FIDE round-robin tournament.
 
-    Args:
-        players: Collection of Player objects to be paired
+    Parameters
+    ----------
+    players : Players
+        Collection of Player objects to be paired
 
-    Returns:
+    Returns
+    -------
         the created RoundRobin class
 
-    Raises:
+    Raises
+    ------
         PairingException: If the number of players is not between 3-16
 
-    Example:
+    Example
+    -------
         >>> players = [Player("Alice"), Player("Bob"), Player("Charlie")]
         >>> round_robin = create_round_robin(players)
         >>> len(round_robin.players)  # Number of players

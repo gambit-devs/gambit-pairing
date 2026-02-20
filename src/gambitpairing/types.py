@@ -26,6 +26,6 @@ MaybePlayer = Optional[PlayerABC]
 # return PlayerId
 PlayerId = int
 Pairing = Tuple[PlayerId, PlayerId]
-RoundSchedule = Tuple[Pairing, ...]
+Pairings = Tuple[Pairing, ...]
 
 #  LocalWords:  MatchPairing RoundSchedule PlayerId

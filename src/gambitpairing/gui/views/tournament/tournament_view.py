@@ -36,7 +36,7 @@ from gambitpairing.controllers import (
     TournamentController,
 )
 from gambitpairing.gui.dialogs import ManualPairingDialog
-from gambitpairing.gui.views.tournament.utils.pairings_printer import PairingsPrinter
+from gambitpairing.utils import PairingsPrinter
 from gambitpairing.gui.widgets import (
     ResultSelector,
 )
@@ -227,14 +227,18 @@ class TournamentView(QtWidgets.QWidget):
         self.update_ui_state()
 
     def _prepare_round(self, round_index: int, for_preparation: bool = False) -> bool:
-        """
-        Common logic for preparing a round (either starting tournament or preparing next round).
+        """Logic for preparing a round (either starting tournament or preparing next round).
 
-        Args:
-            round_index: The round index to prepare (0-based)
-            for_preparation: Whether this is for round preparation (affects player checks)
+        Parameters
+        ----------
+        round_index : int
+            The round index to prepare (0-based)
+        for_preparation : bool
+            Whether this is for round preparation (affects player checks)
 
-        Returns:
+        Returns
+        -------
+        bool
             True if round was prepared successfully, False otherwise
         """
         if not self._check_minimum_players(for_preparation=for_preparation):
