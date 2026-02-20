@@ -51,8 +51,10 @@ from gambitpairing.gui.widgets.round_controls import (
 from gambitpairing.gui.widgets.tournament_placeholder import (
     TournamentPlaceholder,
 )
-from gambitpairing.models.player import Player
-from gambitpairing.models.tournament_state import (
+from gambitpairing.models import (
+    Player,
+)
+from gambitpairing.models.tournament import (
     TournamentPhase,
     TournamentState,
 )

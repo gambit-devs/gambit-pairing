@@ -3,3 +3,4 @@ from .checkable_button import CheckableButton
 from .drag_list import DragListWidget
 from .result_selector import ResultSelector
 from .header import TabHeader
+from .pairings_table import PairingsTable
