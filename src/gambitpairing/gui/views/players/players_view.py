@@ -66,6 +66,8 @@ class PlayersView(QtWidgets.QWidget):
 
     Attributes
     ----------
+    main_window : GambitPairingMainWindow
+        The main window, used to access the rest of the app
     tournament : Tournament or None
         The currently loaded tournament. ``None`` if no tournament is open.
     main_layout : QtWidgets.QVBoxLayout
@@ -94,7 +96,7 @@ class PlayersView(QtWidgets.QWidget):
     request_reset_tournament = pyqtSignal()
     standings_update_requested = pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, main_window=None):
         """Initialize the PlayersView widget and build the UI.
 
         Parameters
@@ -102,7 +104,9 @@ class PlayersView(QtWidgets.QWidget):
         parent : QtWidgets.QWidget, optional
             The parent widget, by default ``None``.
         """
-        super().__init__(parent)
+        assert main_window
+        super().__init__(main_window)
+        self.main_window = main_window
         self.tournament = None
         self.main_layout = QtWidgets.QVBoxLayout(self)
 
@@ -154,11 +158,11 @@ class PlayersView(QtWidgets.QWidget):
         header.setSectionsClickable(True)
         header.setSectionsMovable(True)
         header.setHighlightSections(True)
-        # Enable smooth sort arrow animation (Qt6+)
-        try:
-            header.setAnimated(True)
-        except Exception:
-            pass
+        ## Enable smooth sort arrow animation (Qt6+) I do not understand this. So I do not like n
+        # try:
+        # header.setAnimated(True)
+        # except Exception:
+        # raise RuntimeError("Exception not handled in players_view: %s" % Exception)
 
         player_group_layout.addWidget(self.table_players)
         self.table_players.hide()  # Hide table initially
@@ -183,10 +187,10 @@ class PlayersView(QtWidgets.QWidget):
         # Initialize placeholders
         self.tournament_placeholder = TournamentPlaceholder(self, "Players")
         self.tournament_placeholder.create_tournament_requested.connect(
-            self._trigger_create_tournament
+            main_window.prompt_new_tournament
         )
         self.tournament_placeholder.import_tournament_requested.connect(
-            self._trigger_import_tournament
+            main_window.load_tournament
         )
         self.no_players_placeholder = PlayerPlaceholder(self)
         self.no_players_placeholder.import_players_requested.connect(
@@ -403,7 +407,6 @@ class PlayersView(QtWidgets.QWidget):
         data : dict
             Dictionary containing updated player data
         """
-
         # Core attributes that all players have
         core_attrs = [
             "name",
