@@ -133,8 +133,8 @@ class PlayerABC(ABC):
     def __str__(self) -> str:
         """Return human-readable string representation.
 
-        Example
-        -------
+        Examples
+        --------
             Nicolas (90001)
             Player name and rating
         """

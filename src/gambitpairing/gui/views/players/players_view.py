@@ -41,6 +41,9 @@ from gambitpairing.models.player import (
     FidePlayer,
 )
 
+form gambitpairing.controllers.player import (import_players_csv,
+                                              export_players_csv,)
+
 
 class PlayersView(QtWidgets.QWidget):
     """A QWidget tab for managing tournament players.
@@ -103,6 +106,10 @@ class PlayersView(QtWidgets.QWidget):
         ----------
         parent : QtWidgets.QWidget, optional
             The parent widget, by default ``None``.
+
+        Raises
+        ------
+        assertion error if no main_window reference provided
         """
         assert main_window
         super().__init__(main_window)
@@ -205,6 +212,9 @@ class PlayersView(QtWidgets.QWidget):
         self.no_players_placeholder.hide()
         self.main_layout.addWidget(self.tournament_placeholder)
         self.main_layout.addWidget(self.no_players_placeholder)
+
+    def update_ui_state(self):
+        self._update_visibility()
 
     def on_player_context_menu(self, point: QtCore.QPoint) -> None:
         """Display a context menu for the row under the cursor.
@@ -392,50 +402,6 @@ class PlayersView(QtWidgets.QWidget):
 
             self.update_ui_state()
 
-    def _update_player_from_data(self, player: Player, data: dict) -> None:
-        """Update a player object in-place from a data dictionary.
-
-        Applies core attributes to all player types and additionally
-        applies FIDE-specific attributes when the player is a
-        ``FidePlayer`` instance. Uses ``setattr`` to avoid hardcoding
-        individual field assignments.
-
-        Parameters
-        ----------
-        player : Player
-            The player object to update
-        data : dict
-            Dictionary containing updated player data
-        """
-        # Core attributes that all players have
-        core_attrs = [
-            "name",
-            "rating",
-            "phone",
-            "email",
-            "gender",
-            "dob",
-            "federation",
-        ]
-
-        # Update core attributes
-        for attr in core_attrs:
-            if attr in data:
-                setattr(player, attr, data[attr])
-
-        # Update FIDE-specific attributes if this is a FidePlayer
-        if isinstance(player, FidePlayer):
-            fide_attrs = [
-                "fide_id",
-                "fide_title",
-                "fide_standard",
-                "fide_rapid",
-                "fide_blitz",
-                "birth_year",
-            ]
-            for attr in fide_attrs:
-                if attr in data and data.get(attr) is not None:
-                    setattr(player, attr, data[attr])
 
     def update_player_table_row(self, player: Player):
         """Find the table row for the given player and refresh its contents.
@@ -600,38 +566,10 @@ class PlayersView(QtWidgets.QWidget):
             )
             return
 
-        filename, _ = QtWidgets.QFileDialog.getOpenFileName(
+        file_name, _ = QtWidgets.QFileDialog.getOpenFileName(
             self, "Import Players", "", "CSV Files (*.csv);;Text Files (*.txt)"
         )
-        if not filename:
-            return
-        with open(filename, "r", encoding="utf-8-sig") as f:  # Use utf-8-sig for BOM
-            reader = csv.DictReader(f)
-            added_count = 0
-            for row in reader:
-                name = row.get("Name")
-                if not name or any(
-                    p.name == name for p in self.tournament.players.values()
-                ):
-                    continue  # Skip empty names or duplicates
-                rating_str = row.get("Rating")
-                rating = (
-                    int(rating_str) if rating_str and rating_str.isdigit() else None
-                )
-
-                # Use factory to create player
-                player = create_player(
-                    name=name,
-                    rating=rating,
-                    gender=row.get("Gender"),
-                    date_of_birth=row.get("Date of Birth"),
-                    phone=row.get("Phone"),
-                    email=row.get("Email"),
-                    federation=row.get("Federation"),
-                )
-
-                self.tournament.players[player.id] = player
-                added_count += 1
+        import_players_csv(file_name)
         if added_count > 0:
             self.history_message.emit(
                 f"Imported {added_count} players from {filename}."
@@ -683,37 +621,7 @@ class PlayersView(QtWidgets.QWidget):
         )
         if not filename:
             return
-        with open(filename, "w", encoding="utf-8", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(
-                [
-                    "Name",
-                    "Rating",
-                    "Gender",
-                    "Date of Birth",
-                    "Phone",
-                    "Email",
-                    "Federation",
-                    "Active",
-                    "ID",
-                ]
-            )
-            for player in sorted(
-                list(self.tournament.players.values()), key=lambda p: p.name
-            ):
-                writer.writerow(
-                    [
-                        player.name,
-                        player.rating if player.rating is not None else "",
-                        player.gender or "",
-                        player.dob or "",
-                        player.phone or "",
-                        player.email or "",
-                        player.federation or "",
-                        "Yes" if player.is_active else "No",
-                        player.id,
-                    ]
-                )
+        export_players_csv(self.tournament.players, filename)
         self.status_message.emit(f"Players exported to {filename}")
 
     def refresh_player_list(self):
@@ -726,16 +634,14 @@ class PlayersView(QtWidgets.QWidget):
         self.table_players.setSortingEnabled(False)
         self.table_players.setRowCount(0)
 
-        # Update visibility
-        self._update_visibility()
-
         # Only populate table if tournament exists and has players
         if self.tournament and self.tournament.players:
             for player in sorted(
                 self.tournament.players.values(), key=lambda p: p.name
             ):
                 self.add_player_to_table(player)
-            self.table_players.setSortingEnabled(True)
+
+        self.table_players.setSortingEnabled(True)
 
 
 #  LocalWords:  PlayerPlaceholder TournamentPlaceholder TabHeader

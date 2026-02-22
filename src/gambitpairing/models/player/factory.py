@@ -7,8 +7,11 @@ proper validation and error handling.
 
 from __future__ import annotations
 from datetime import date
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import Any, Dict, Optional
 
+from .base_player import Player
+from .fide_player import FidePlayer
+from gambitpairing.models.player.base_player import Player
 from gambitpairing.exceptions import InvalidPlayerDataException
 from gambitpairing.utils.validation import (
     validate_email,
@@ -40,9 +43,12 @@ class PlayerFactory:
     def __init__(self, validate: bool = True, strict: bool = False):
         """Initialize the PlayerFactory.
 
-        Args:
-            validate: Whether to validate input data
-            strict: Whether to raise exceptions on validation errors
+        Parameters
+        ----------
+        validate : bool
+            Whether to validate input data
+        strict : bool
+            Whether to raise exceptions on validation errors
         """
         self.validate = validate
         self.strict = strict
@@ -68,7 +74,8 @@ class PlayerFactory:
         Automatically determines whether to create a Player or FidePlayer
         based on whether FIDE-specific data is provided.
 
-        Args:
+        Parameters
+        ----------
             name: Player's name
             rating: Player's rating
             phone: Phone number
@@ -84,15 +91,14 @@ class PlayerFactory:
             fide_blitz: FIDE blitz rating
             **kwargs: Additional parameters
 
-        Returns:
+        Returns
+        -------
             Player or FidePlayer instance
 
         Raises:
             InvalidPlayerDataException: If validation fails and strict=True
         """
         # Import here to avoid circular imports
-        from gambitpairing.models.player.base_player import Player
-        from gambitpairing.models.player.fide_player import FidePlayer
 
         # Validate data if enabled
         if self.validate:
@@ -161,10 +167,6 @@ class PlayerFactory:
         Raises:
             InvalidPlayerDataException: If required fields are missing
         """
-        # Import here to avoid circular imports
-        from gambitpairing.models.player.base_player import Player
-        from gambitpairing.models.player.fide_player import FidePlayer
-
         if "name" not in data:
             raise InvalidPlayerDataException("Player name is required")
 
@@ -187,10 +189,13 @@ class PlayerFactory:
     def create_batch(self, player_data_list: list[Dict[str, Any]]) -> list["Player"]:
         """Create multiple players from a list of dictionaries.
 
-        Args:
-            player_data_list: List of dictionaries containing player data
+        Parameters
+        ----------
+        player_data_list : list[Dict[str, Any]]
+            List of dictionaries containing player data
 
-        Returns:
+        Returns
+        -------
             List of Player/FidePlayer instances
         """
         players: list["Player"] = []
@@ -206,6 +211,52 @@ class PlayerFactory:
 
         return players
 
+
+def _update_player_from_data(self, player: Player, data: dict) -> None:
+    """Update a player object in-place from a data dictionary.
+
+    Applies core attributes to all player types and additionally
+    applies FIDE-specific attributes when the player is a
+    ``FidePlayer`` instance. Uses ``setattr`` to avoid hard-coding
+    individual field assignments.
+
+    Parameters
+    ----------
+    player : Player
+        The player object to update
+    data : dict
+        Dictionary containing updated player data
+    """
+    # Core attributes that all players have
+    core_attrs = [
+        "name",
+        "rating",
+        "phone",
+        "email",
+        "gender",
+        "dob",
+        "federation",
+    ]
+
+    # Update core attributes
+    for attr in core_attrs:
+        if attr in data:
+            setattr(player, attr, data[attr])
+
+    # Update FIDE-specific attributes if this is a FidePlayer
+    if isinstance(player, FidePlayer):
+        fide_attrs = [
+            "fide_id",
+            "fide_title",
+            "fide_standard",
+            "fide_rapid",
+            "fide_blitz",
+            "birth_year",
+        ]
+        for attr in fide_attrs:
+            if attr in data and data.get(attr) is not None:
+                setattr(player, attr, data[attr])
+
     def _validate_data(
         self,
         name: Optional[str],
@@ -216,14 +267,22 @@ class PlayerFactory:
     ) -> list[str]:
         """Validate player data and return list of errors.
 
-        Args:
-            name: Player name
-            rating: Player rating
-            phone: Phone number
-            email: Email address
-            fide_id: FIDE ID
+        Parameters
+        ----------
 
-        Returns:
+        name : Optional[str]
+            Player name
+        rating : Optional[int]
+            Player rating
+        phone : Optional[str]
+            Player phone number
+        email : Optional[str]
+            Email address
+        fide_id : Optional[str]
+            FIDE id
+
+        Returns
+        -------
             List of validation error messages
         """
         errors = []
@@ -276,7 +335,6 @@ def create_player(**kwargs) -> "Player":
     Example:
         >>> player = create_player(name="John Doe", rating=1800)
     """
-    from gambitpairing.models.player.base_player import Player  # noqa: F401
 
     return default_factory.create_player(**kwargs)
 
@@ -293,3 +351,6 @@ def create_player_from_dict(data: Dict[str, Any]) -> "Player":
     from gambitpairing.models.player.base_player import Player  # noqa: F401
 
     return default_factory.create_from_dict(data)
+
+
+#  LocalWords:  PlayerFactory
