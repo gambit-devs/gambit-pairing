@@ -41,8 +41,10 @@ from gambitpairing.models.player import (
     FidePlayer,
 )
 
-form gambitpairing.controllers.player import (import_players_csv,
-                                              export_players_csv,)
+from gambitpairing.controllers.player import (
+    import_players_to_csv,
+    export_players_to_csv,
+)
 
 
 class PlayersView(QtWidgets.QWidget):
@@ -402,7 +404,6 @@ class PlayersView(QtWidgets.QWidget):
 
             self.update_ui_state()
 
-
     def update_player_table_row(self, player: Player):
         """Find the table row for the given player and refresh its contents.
 
@@ -596,7 +597,7 @@ class PlayersView(QtWidgets.QWidget):
                 "No new players were imported. Check for empty names or duplicates.",
             )
 
-    def export_players_csv(self):
+    def export_players_to_file(self):
         """Export all players to a CSV file chosen via a save dialog.
 
         Writes one row per player sorted alphabetically by name, with
@@ -621,7 +622,7 @@ class PlayersView(QtWidgets.QWidget):
         )
         if not filename:
             return
-        export_players_csv(self.tournament.players, filename)
+        export_players_to_csv(self.tournament.players, filename)
         self.status_message.emit(f"Players exported to {filename}")
 
     def refresh_player_list(self):

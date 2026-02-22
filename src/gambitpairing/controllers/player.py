@@ -3,7 +3,7 @@
 from gambitpairing.models.player.fide_player import FidePlayer
 
 
-def import_players_csv():
+def import_players_to_csv():
     """Import players from a CSV file chosen via a file dialog.
 
     Expects a CSV with at minimum a ``Name`` column. Optionally reads
@@ -80,7 +80,7 @@ def import_players_csv():
         )
 
 
-def export_players_csv(players: Players, file_path: Path) -> None:
+def export_players_from_csv(players: Players, file_path: Path) -> None:
     """Export all players to a CSV file at file_path.
 
     Writes one row per player sorted alphabetically by name, with

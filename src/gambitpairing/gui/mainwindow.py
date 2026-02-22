@@ -211,7 +211,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             "&Import Players from CSV...", self.players_tab.import_players_csv
         )
         self.export_players_action = self._create_action(
-            "&Export Players to CSV...", self.players_tab.export_players_csv
+            "&Export Players to CSV...", self.players_tab.export_players_to_file
         )
         player_menu.addSeparator()
         player_menu.addActions(
