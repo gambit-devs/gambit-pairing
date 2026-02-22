@@ -33,7 +33,9 @@ QGroupBox::title {
   letter-spacing: 0.01em;
   outline: none;
 }
-
+QGroupBox[class="PlayerGroup"] {
+  margin-top: 0px;
+}
 /* TabWidget */
 QTabWidget::pane {
   border: none;
@@ -1614,9 +1616,9 @@ QPushButton["NoTournamentImportTournament"]:pressed {
     ============================================= */
 
 PlayerPlaceholder {
-    background-color: #fffbe9;
-    border: 2px solid #e2c290;
-    border-radius: 18px;
+  background-color: #fffbe9;
+  border: 2px solid #e2c290;
+  border-radius: 18px;
 }
 QLabel[class="PlayerPlaceHolderIcon"] {
   font-size: 54pt;
@@ -1660,6 +1662,7 @@ QPushButton[class, "ImportPlayerButton"]:pressed {
   color: #fff;
 }
 
-
 /* LocalWords:  PreTournamentLabel PreTournamentIconLabel PreTournamentButton- PreTournamentTitle TournamentPlaceholder NoTournamentIcon NoTournamentDescription NoTournamentMainMessage
+/* LocalWords:  PlayerGroup
+*/
 */

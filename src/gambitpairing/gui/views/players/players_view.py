@@ -28,23 +28,24 @@ from typing import Optional
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt, pyqtSignal
 
+from gambitpairing.controllers.player import (
+    export_players_to_csv,
+    import_players_from_csv,
+)
 from gambitpairing.gui.dialogs import PlayerManagementDialog
 from gambitpairing.gui.notification import show_notification
-from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
-
+from gambitpairing.gui.widgets import NumericTableWidgetItem, TabHeader
 from gambitpairing.gui.widgets.player_placeholder import PlayerPlaceholder
-from gambitpairing.gui.widgets import TabHeader, NumericTableWidgetItem
+from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 from gambitpairing.models.player import (
+    FidePlayer,
     Player,
     create_player,
     create_player_from_dict,
-    FidePlayer,
 )
+from gambitpairing.utils import setup_logger
 
-from gambitpairing.controllers.player import (
-    import_players_to_csv,
-    export_players_to_csv,
-)
+logger = setup_logger(__name__)
 
 
 class PlayersView(QtWidgets.QWidget):
@@ -115,16 +116,17 @@ class PlayersView(QtWidgets.QWidget):
         """
         assert main_window
         super().__init__(main_window)
+
         self.main_window = main_window
         self.tournament = None
         self.main_layout = QtWidgets.QVBoxLayout(self)
 
-        # Header
+        # --- Header ---
         self.header = TabHeader("Players")
         self.main_layout.addWidget(self.header)
 
         self.player_group = QtWidgets.QGroupBox()
-        self.player_group.setStyleSheet("QGroupBox { border: none; margin-top: 0px; }")
+        self.player_group.setProperty("class", "PlayerGroup")
         self.player_group.setToolTip("Manage players. Right-click a row for actions.")
         player_group_layout = QtWidgets.QVBoxLayout(self.player_group)
         player_group_layout.setContentsMargins(0, 0, 0, 0)
@@ -167,13 +169,8 @@ class PlayersView(QtWidgets.QWidget):
         header.setSectionsClickable(True)
         header.setSectionsMovable(True)
         header.setHighlightSections(True)
-        ## Enable smooth sort arrow animation (Qt6+) I do not understand this. So I do not like n
-        # try:
-        # header.setAnimated(True)
-        # except Exception:
-        # raise RuntimeError("Exception not handled in players_view: %s" % Exception)
-
         player_group_layout.addWidget(self.table_players)
+
         self.table_players.hide()  # Hide table initially
 
         self.btn_add_player_detail = QtWidgets.QPushButton(" Add New Player...")
@@ -183,10 +180,6 @@ class PlayersView(QtWidgets.QWidget):
         self.btn_add_player_detail.clicked.connect(self.add_player_detailed)
         player_group_layout.addWidget(self.btn_add_player_detail)
         self.main_layout.addWidget(self.player_group)
-
-        # --- Compatibility: Legacy list_players for reset_tournament_state() ---
-        self.list_players = QtWidgets.QListWidget()
-        self.list_players.setVisible(False)  # Not used, but present for compatibility
 
         # Ensure sufficient row height for padded cells
         vheader = self.table_players.verticalHeader()
@@ -216,7 +209,9 @@ class PlayersView(QtWidgets.QWidget):
         self.main_layout.addWidget(self.no_players_placeholder)
 
     def update_ui_state(self):
-        self._update_visibility()
+        logger.error("\/\/ I do not understand what this func. is")
+        pass
+        # self._update_visibility()
 
     def on_player_context_menu(self, point: QtCore.QPoint) -> None:
         """Display a context menu for the row under the cursor.
@@ -570,10 +565,11 @@ class PlayersView(QtWidgets.QWidget):
         file_name, _ = QtWidgets.QFileDialog.getOpenFileName(
             self, "Import Players", "", "CSV Files (*.csv);;Text Files (*.txt)"
         )
-        import_players_csv(file_name)
+        added_players, imported_players = import_players_from_csv(file_name)
+
         if added_count > 0:
             self.history_message.emit(
-                f"Imported {added_count} players from {filename}."
+                f"Imported {added_count} players from {file_name}."
             )
             self.dirty.emit()
             self.refresh_player_list()
@@ -582,7 +578,7 @@ class PlayersView(QtWidgets.QWidget):
             try:
                 show_notification(
                     self,
-                    f"Imported {added_count} players from {Path(filename).name}",
+                    f"Imported {added_count} players from {Path(file_name).name}",
                     duration=3500,
                     notification_type="success",
                 )
@@ -628,8 +624,7 @@ class PlayersView(QtWidgets.QWidget):
     def refresh_player_list(self):
         """Clear and repopulate the player table from the current tournament.
 
-        Clears all existing rows, calls ``_update_visibility`` to set the
-        correct placeholder/table state, then (if players exist) inserts
+        Clears all existing rows, then (if players exist) inserts
         them sorted alphabetically by name via ``add_player_to_table``.
         """
         self.table_players.setSortingEnabled(False)
@@ -645,4 +640,4 @@ class PlayersView(QtWidgets.QWidget):
         self.table_players.setSortingEnabled(True)
 
 
-#  LocalWords:  PlayerPlaceholder TournamentPlaceholder TabHeader
+#  LocalWords:  PlayerPlaceholder TournamentPlaceholder TabHeader PlayerGroup

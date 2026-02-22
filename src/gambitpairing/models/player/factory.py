@@ -6,13 +6,12 @@ proper validation and error handling.
 """
 
 from __future__ import annotations
+
 from datetime import date
 from typing import Any, Dict, Optional
 
-from .base_player import Player
-from .fide_player import FidePlayer
-from gambitpairing.models.player.base_player import Player
 from gambitpairing.exceptions import InvalidPlayerDataException
+from gambitpairing.models.player.base_player import Player
 from gambitpairing.utils.validation import (
     validate_email,
     validate_fide_id,
@@ -20,6 +19,9 @@ from gambitpairing.utils.validation import (
     validate_phone,
     validate_rating,
 )
+
+from .base_player import Player
+from .fide_player import FidePlayer
 
 
 class PlayerFactory:
@@ -95,7 +97,8 @@ class PlayerFactory:
         -------
             Player or FidePlayer instance
 
-        Raises:
+        Raises
+        ------
             InvalidPlayerDataException: If validation fails and strict=True
         """
         # Import here to avoid circular imports
@@ -158,13 +161,16 @@ class PlayerFactory:
     def create_from_dict(self, data: Dict[str, Any]) -> "Player":
         """Create a player from dictionary data.
 
-        Args:
+        Parameters
+        ----------
             data: Dictionary containing player data
 
-        Returns:
+        Returns
+        -------
             Player or FidePlayer instance
 
-        Raises:
+        Raises
+        ------
             InvalidPlayerDataException: If required fields are missing
         """
         if "name" not in data:
@@ -269,7 +275,6 @@ def _update_player_from_data(self, player: Player, data: dict) -> None:
 
         Parameters
         ----------
-
         name : Optional[str]
             Player name
         rating : Optional[int]
@@ -324,32 +329,36 @@ default_factory = PlayerFactory(validate=True, strict=False)
 
 
 def create_player(**kwargs) -> "Player":
-    """Convenience function to create a player using the default factory.
+    """Create a player using the default factory.
 
-    Args:
+    Parameters
+    ----------
         **kwargs: Player attributes
 
-    Returns:
+    Returns
+    -------
         Player or FidePlayer instance
 
-    Example:
+    Examples
+    --------
         >>> player = create_player(name="John Doe", rating=1800)
     """
-
     return default_factory.create_player(**kwargs)
 
 
 def create_player_from_dict(data: Dict[str, Any]) -> "Player":
-    """Convenience function to create a player from dict using default factory.
+    """Create a player from dict using default factory.
 
-    Args:
-        data: Dictionary containing player data
+    Parameters
+    ----------
+    data : Dict[str, Any]
+        Dictionary containing player data
 
-    Returns:
-        Player or FidePlayer instance
+    Returns
+    -------
+    Player
+        created player
     """
-    from gambitpairing.models.player.base_player import Player  # noqa: F401
-
     return default_factory.create_from_dict(data)
 
 

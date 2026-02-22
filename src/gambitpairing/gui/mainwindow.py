@@ -30,6 +30,7 @@ from PyQt6.QtGui import QAction, QCloseEvent
 from PyQt6.QtWidgets import QMessageBox
 
 from gambitpairing import APP_NAME, APP_VERSION, utils
+from gambitpairing.controllers.tournament import TournamentController
 from gambitpairing.gui.dialogs import (
     AboutDialog,
     NewTournamentDialog,
@@ -39,13 +40,12 @@ from gambitpairing.gui.dialogs import (
 )
 from gambitpairing.gui.import_player import ImportPlayer
 from gambitpairing.gui.notification import show_notification
-from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 from gambitpairing.gui.views.crosstable.crosstable_view import CrosstableView
 from gambitpairing.gui.views.history.history_view import HistoryView
 from gambitpairing.gui.views.players.players_view import PlayersView
 from gambitpairing.gui.views.standings.standings_view import StandingsView
 from gambitpairing.gui.views.tournament.tournament_view import TournamentView
-from gambitpairing.controllers.tournament import TournamentController
+from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 from gambitpairing.update import Updater, UpdateWorker
 from gambitpairing.utils import setup_logger
 

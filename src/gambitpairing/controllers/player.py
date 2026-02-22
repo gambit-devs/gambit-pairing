@@ -1,9 +1,7 @@
 """Player controller for managing players."""
 
-from gambitpairing.models.player.fide_player import FidePlayer
 
-
-def import_players_to_csv():
+def import_players_from_csv() -> List[Players] | None:
     """Import players from a CSV file chosen via a file dialog.
 
     Expects a CSV with at minimum a ``Name`` column. Optionally reads
@@ -16,6 +14,11 @@ def import_players_to_csv():
     player was added. Shows a success notification via
     ``show_notification`` if available, otherwise falls back to a
     ``QMessageBox``.
+
+    Returns
+    -------
+    List[Players] | None
+        The added players
 
     Raises
     ------
@@ -30,9 +33,10 @@ def import_players_to_csv():
     OSError
         File Error
     """
+    added_players_count = 0
+    players: Players | None = None
     with open(filename, "r", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
-        added_count = 0
         for row in reader:
             name = row.get("Name")
             if not name or any(
@@ -54,33 +58,12 @@ def import_players_to_csv():
             )
 
             self.tournament.players[player.id] = player
-            added_count += 1
-    if added_count > 0:
-        self.history_message.emit(f"Imported {added_count} players from {filename}.")
-        self.dirty.emit()
-        self.refresh_player_list()
-        self.update_ui_state()
-        # Show notification
-        try:
-            show_notification(
-                self,
-                f"Imported {added_count} players from {Path(filename).name}",
-                duration=3500,
-                notification_type="success",
-            )
-        except Exception:
-            QtWidgets.QMessageBox.information(
-                self, "Import Successful", f"Imported {added_count} players."
-            )
-    else:
-        QtWidgets.QMessageBox.warning(
-            self,
-            "Import Notice",
-            "No new players were imported. Check for empty names or duplicates.",
-        )
+            added_players_count += 1
+
+    return (added_players_count, players)
 
 
-def export_players_from_csv(players: Players, file_path: Path) -> None:
+def export_players_to_csv(players: Players, file_path: Path) -> None:
     """Export all players to a CSV file at file_path.
 
     Writes one row per player sorted alphabetically by name, with
