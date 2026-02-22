@@ -42,8 +42,6 @@ class PlayerPlaceholder(QtWidgets.QWidget):
         # Icon/Symbol
         icon_label = QtWidgets.QLabel("👥")
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        icon_label.set(Qt.AlignmentFlag.AlignCenter)
         icon_label.setProperty("class", "PlayerPlaceHolderIcon")
         layout.addWidget(icon_label)
 
