@@ -194,24 +194,52 @@ class PlayersView(QtWidgets.QWidget):
         self.tournament_placeholder.import_tournament_requested.connect(
             main_window.load_tournament
         )
-        self.no_players_placeholder = PlayerPlaceholder(self)
-        self.no_players_placeholder.import_players_requested.connect(
+        self.players_placeholder = PlayerPlaceholder(self)
+        self.players_placeholder.import_players_requested.connect(
             self.import_players_csv
         )
-        self.no_players_placeholder.add_player_requested.connect(
-            self.add_player_detailed
-        )
+        self.players_placeholder.add_player_requested.connect(self.add_player_detailed)
 
         # Hide placeholders initially
         self.tournament_placeholder.hide()
-        self.no_players_placeholder.hide()
+        self.players_placeholder.hide()
         self.main_layout.addWidget(self.tournament_placeholder)
-        self.main_layout.addWidget(self.no_players_placeholder)
+        self.main_layout.addWidget(self.players_placeholder)
 
     def update_ui_state(self):
-        logger.error("\/\/ I do not understand what this func. is")
-        pass
-        # self._update_visibility()
+        """Show/hide content based on tournament existence.
+
+        Notes
+        -----
+        updates the various placeholder viability based on state information.
+        Does not modify state information besides calling hide() and show()
+        """
+        if not self.tournament:
+            # No tournament: show only the placeholder
+            self.tournament_placeholder.show()
+            self.players_placeholder.hide()
+            self.table_players.hide()
+            self.btn_add_player_detail.hide()  # Completely hide the button
+            self.player_group.hide()  # Hide the group box title for perfect wall
+            return  # return so we do not have so much if else if else
+
+        # Tournament exists: hide placeholder and show appropriate content
+        self.tournament_placeholder.hide()
+        self.player_group.show()
+        if not self.tournament.players:
+            # Tournament but no players: show player placeholder
+            self.players_placeholder.show()
+            self.table_players.hide()
+            self.btn_add_player_detail.hide()
+            self.player_group.hide()
+        else:
+            # Tournament with players: show table and add button
+            self.players_placeholder.hide()
+            self.player_group.show()
+            self.table_players.show()
+            self.btn_add_player_detail.show()
+            tournament_started = len(self.tournament.rounds_pairings_ids) > 0
+            self.btn_add_player_detail.setEnabled(not tournament_started)
 
     def on_player_context_menu(self, point: QtCore.QPoint) -> None:
         """Display a context menu for the row under the cursor.
@@ -308,7 +336,7 @@ class PlayersView(QtWidgets.QWidget):
                 self.status_message.emit(f"Player '{player.name}' removed.")
         self.update_ui_state()
 
-    def add_player_detailed(self):
+    def add_player_detailed(self) -> None:
         """Open the player management dialog to add or edit a player.
 
         Blocks adding players once the tournament has started. If no
