@@ -29,7 +29,7 @@ from gambitpairing.controllers.pairing import (
 )
 from gambitpairing.models.player import Player
 from gambitpairing.models.tournament import PairingHistory, RoundData
-from gambitpairing.types import Pairings
+from gambitpairing.type_aliases import Pairings
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)

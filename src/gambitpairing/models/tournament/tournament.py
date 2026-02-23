@@ -34,7 +34,7 @@ from .round_data import RoundData
 from .tournament_config import TournamentConfig
 
 
-from gambitpairing.types import Pairings
+from gambitpairing.type_aliases import Pairings
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)

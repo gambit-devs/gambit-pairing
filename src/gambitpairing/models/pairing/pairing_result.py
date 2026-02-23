@@ -22,7 +22,7 @@ from typing import List, Optional, Tuple
 from dataclasses import dataclass
 
 from gambitpairing.models.player import Player
-from gambitpairing.types import Pairing, PairingIDs
+from gambitpairing.type_aliases import Pairing, PairingIDs
 
 
 @dataclass(slots=True)

@@ -39,7 +39,7 @@ from typing import Iterable, List, Optional, Tuple
 
 from gambitpairing.exceptions import PairingException
 from gambitpairing.models.player import Player
-from gambitpairing.types import Pairing, Players
+from gambitpairing.type_aliases import Pairing, Players
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)
