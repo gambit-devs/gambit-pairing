@@ -1,3 +1,5 @@
+"""Notification for the gui, and helper show_notification(...)."""
+
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
 #
@@ -269,6 +271,7 @@ class Notification(QWidget):
         super().mousePressEvent(event)
 
     def paintEvent(self, event):
+        """Change the background of a notification."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
