@@ -608,7 +608,7 @@ class PlayersView(QtWidgets.QWidget):
         )
         added_players, imported_players = import_players_from_csv(file_name)
 
-        if added_count > 0:
+        if added_players > 0:
             self.history_message.emit(
                 f"Imported {added_count} players from {file_name}."
             )
