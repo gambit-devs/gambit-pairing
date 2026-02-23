@@ -115,7 +115,8 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self._update_ui_state()
 
     def prompt_new_tournament(self):
-        if not self.check_save_before_proceeding():
+        """Prompt the user to create a new tournament after check_save()."""
+        if not self.check_save():
             return
 
         dialog = NewTournamentDialog(self)
@@ -293,7 +294,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         return False
 
     def load_tournament(self):
-        if not self.check_save_before_proceeding():
+        if not self.check_save():
             return
         filename, _ = QtWidgets.QFileDialog.getOpenFileName(
             self, "Load Tournament", "", "JSON Files (*.json)"
@@ -378,7 +379,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
 
         self._update_ui_state()
 
-    def check_save_before_proceeding(self) -> bool:
+    def check_save(self) -> bool:
         """Check if progress is saved before proceeding, if not prompt user."""
         if not self._dirty:
             logger.info("check_save_before_proceeding: fount state to be clean.")
@@ -562,7 +563,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             event.accept()
             return
 
-        if self.check_save_before_proceeding():
+        if self.check_save():
             logging.info(f"{APP_NAME} closing.")
             event.accept()
         else:

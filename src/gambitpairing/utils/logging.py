@@ -1,4 +1,4 @@
-"""Logging utilities."""
+"""Logging setup utilities."""
 
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
@@ -18,116 +18,72 @@
 
 
 import logging
-from logging.handlers import RotatingFileHandler
 import os
 import sys
+from logging.handlers import RotatingFileHandler
 
 from PyQt6 import QtCore
 
-# the logger format used
-LOG_FMT = "LVL: %(levelname)s | FILE PATH: %(pathname)s | FUN: %(funcName)s | msg: %(message)s | ln#:%(lineno)d"
+LOG_FMT = (
+    "LVL: %(levelname)s | FILE: %(pathname)s | "
+    "FUNC: %(funcName)s | LN:%(lineno)d | %(message)s"
+)
 
-# Track if we've already printed the log file location
-_LOG_PATH_PRINTED = False
+LOG_FILE_NAME = "gambit-pairing.log"
+MAX_BYTES = 5 * 1024 * 1024
+BACKUP_COUNT = 5
 
 
-# --- Logging Setup ---
-def setup_logger(logger_name: str) -> logging.Logger:
-    """Set up loger for a python module.
+def _get_log_dir() -> str | None:
+    """Return a writable directory for logs, or None if unavailable."""
+    paths = QtCore.QStandardPaths
 
-    Sets up file handler and console handler
+    # Prefer AppDataLocation, fall back to Temp Location
+    base = paths.writableLocation(paths.StandardLocation.AppDataLocation)
+    if not base:
+        print("logging to temporary location!")
+        base = paths.writableLocation(paths.StandardLocation.TempLocation)
+    if not base:
+        raise RuntimeError("Could not find a writable log dir.")
 
-    Parameters
-    ----------
-    logger_name : str
-        The name for the logger, __name__ is idiomatic
+    log_dir = os.path.join(base, "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    return log_dir
 
-    Returns
-    -------
-    logging.Logger
-        the created logger
-    """
-    global _LOG_PATH_PRINTED
 
-    # Setup logging to file and console
-    lgr = logging.getLogger(name=logger_name)
-    lgr.setLevel(logging.INFO)  # Set minimum level
-    # Remove any existing handlers on this logger to avoid duplicates
-    for _h in list(lgr.handlers):
-        lgr.removeHandler(_h)
-    # formatter
-    log_formatter = logging.Formatter(LOG_FMT)
-    # File Handler
-    # Use a dedicated "Gambit Pairing" folder in roaming AppData on Windows.
-    # Otherwise fall back to Qt's AppDataLocation or the temp location.
-    file_handler = None
-    try:
-        # Preferred Windows location: %APPDATA%\Gambit Pairing
-        if sys.platform == "win32":
-            appdata = os.environ.get("APPDATA")
-            if appdata:
-                log_folder = os.path.join(appdata, "Gambit Pairing")
-            else:
-                # Fallback to Qt location if APPDATA isn't set for some reason
-                log_folder = QtCore.QStandardPaths.writableLocation(
-                    QtCore.QStandardPaths.StandardLocation.AppDataLocation
-                )
-        else:
-            # Non-Windows: prefer Qt's AppDataLocation then TempLocation
-            log_folder = QtCore.QStandardPaths.writableLocation(
-                QtCore.QStandardPaths.StandardLocation.AppDataLocation
-            )
-            if not log_folder:
-                log_folder = QtCore.QStandardPaths.writableLocation(
-                    QtCore.QStandardPaths.StandardLocation.TempLocation
-                )
+def _file_handler(formatter: logging.Formatter) -> logging.Handler:
+    """Create a rotating file handler if possible."""
+    log_dir = _get_log_dir()
 
-        if log_folder:
-            # use a "logs" sub folder
-            log_folder = os.path.join(log_folder, "logs")
-            # Ensure the directory exists
-            try:
-                os.makedirs(log_folder, exist_ok=True)
-            except Exception:
-                # If we can't create the folder, fall back to temp dir
-                log_folder = QtCore.QStandardPaths.writableLocation(
-                    QtCore.QStandardPaths.StandardLocation.TempLocation
-                )
-                log_folder = os.path.join(log_folder, "logs")
-                os.makedirs(log_folder, exist_ok=True)
+    log_path = os.path.join(log_dir, LOG_FILE_NAME)
+    handler = RotatingFileHandler(
+        log_path,
+        maxBytes=MAX_BYTES,
+        backupCount=BACKUP_COUNT,
+        encoding="utf-8",
+    )
+    handler.setFormatter(formatter)
+    return handler
 
-            log_path = os.path.join(log_folder, "gambit-pairing.log")
-            # Use RotatingFileHandler to prevent unbounded log growth
-            try:
-                file_handler = RotatingFileHandler(
-                    log_path, maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8"
-                )
-                file_handler.setFormatter(log_formatter)
-                # Only print the log path once on first logger setup
-                if not _LOG_PATH_PRINTED:
-                    print(f"Logging to: {log_path}")
-                    _LOG_PATH_PRINTED = True
-            except Exception:
-                file_handler = None
-        else:
-            if not _LOG_PATH_PRINTED:
-                print("Warning: Could not determine writable location for log file.")
-                _LOG_PATH_PRINTED = True
-            file_handler = None
-    except Exception:
-        # If anything goes wrong creating the file handler, continue without file logging
-        file_handler = None
 
-    # Console Handler
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(log_formatter)
-    console_handler.setLevel(logging.INFO)
-    # add handlers
-    lgr.addHandler(console_handler)
+def setup_logger(name: str, level: int = logging.INFO) -> logging.Logger:
+    """Create or configure a logger with console + optional file logging."""
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+
+    # Avoid duplicate handlers
+    if logger.handlers:
+        return logger
+
+    # SETUP for logging to file and console n' crap
+    formatter = logging.Formatter(LOG_FMT)
+    console = logging.StreamHandler(sys.stdout)
+    console.setFormatter(formatter)
+    console.setLevel(level)
+    logger.addHandler(console)
+    file_handler = _file_handler(formatter)
     if file_handler:
-        lgr.addHandler(file_handler)
-    lgr.debug("logger %s initialized", logger_name)
-    return lgr
+        logger.addHandler(file_handler)
 
-
-#  LocalWords:  QListWidget
+    logger.debug("Logger %s initialized", name)
+    return logger
