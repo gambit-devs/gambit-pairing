@@ -206,6 +206,19 @@ class PlayersView(QtWidgets.QWidget):
         self.main_layout.addWidget(self.tournament_placeholder)
         self.main_layout.addWidget(self.players_placeholder)
 
+        def reset_display(self) -> None:
+            """Reset the UI."""
+            # Clear player table
+            self.table_players.setSortingEnabled(False)
+            self.table_players.clearContents()
+            self.table_players.setRowCount(0)
+            self.table_players.setSortingEnabled(True)
+            self.table_players.clearSelection()
+            self.table_players.setCurrentItem(None)
+
+            # Compute correct UI state
+            self.update_ui_state()
+
     def update_ui_state(self):
         """Show/hide content based on tournament existence.
 

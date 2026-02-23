@@ -30,24 +30,25 @@ from PyQt6.QtGui import QAction, QCloseEvent
 from PyQt6.QtWidgets import QMessageBox
 
 from gambitpairing import APP_NAME, APP_VERSION, utils
-from gambitpairing.controllers.tournament import TournamentController
-from gambitpairing.gui.dialogs import (
+from gambitpairing.models.tournament import Tournament
+from gambitpairing.update import Updater, UpdateWorker
+from gambitpairing.utils import setup_logger
+
+from .dialogs import (
     AboutDialog,
     NewTournamentDialog,
     SettingsDialog,
     UpdateDownloadDialog,
     UpdatePromptDialog,
 )
-from gambitpairing.gui.import_player import ImportPlayer
-from gambitpairing.gui.notification import show_notification
-from gambitpairing.gui.views.crosstable.crosstable_view import CrosstableView
-from gambitpairing.gui.views.history.history_view import HistoryView
-from gambitpairing.gui.views.players.players_view import PlayersView
-from gambitpairing.gui.views.standings.standings_view import StandingsView
-from gambitpairing.gui.views.tournament.tournament_view import TournamentView
-from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
-from gambitpairing.update import Updater, UpdateWorker
-from gambitpairing.utils import setup_logger
+from .views.crosstable.crosstable_view import CrosstableView
+from .import_player import ImportPlayer
+from .notification import show_notification
+from .views.history.history_view import HistoryView
+from .views.players.players_view import PlayersView
+from .views.standings.standings_view import StandingsView
+from .views.tournament.tournament_view import TournamentView
+from .widgets.tournament_placeholder import TournamentPlaceholder
 
 logger = setup_logger(__name__)
 
@@ -490,10 +491,10 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self._current_filepath = None
         self.mark_clean()
 
-        self._set_tournament_on_tabs()  # Pass None to clear tabs
+        self._set_tournament_on_tabs()  # clear tournament tabs
 
-        # Explicitly clear UI elements in tabs
-        self.players_tab.list_players.clear()
+        # Clear tab UI
+        self.players_tab.reset_display()
         self.rounds_tab.clear_pairings_display()
         self.standings_tab.table_standings.setRowCount(0)
         self.crosstable_tab.table_crosstable.setRowCount(0)
