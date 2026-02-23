@@ -33,7 +33,7 @@ from gambitpairing.models.tournament import (
 from .round_manager import RoundManager
 from .result_recorder import ResultRecorder
 from .tiebreak_calculator import TiebreakCalculator
-from gambitpairing.types import Pairings
+from gambitpairing.type_aliases import Pairings
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)
