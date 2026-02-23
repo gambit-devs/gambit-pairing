@@ -78,6 +78,8 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             if self.updater:
                 QtCore.QTimer.singleShot(1500, self.check_for_updates_auto)
 
+        logger.info("GambitPairingMainWindow __init__ done.")
+
     def _setup_ui(self):
         self.setWindowTitle(APP_NAME)
         self.setGeometry(100, 100, 1000, 800)
@@ -272,10 +274,12 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         toolbar.setProperty("class", "MainToolbar")
         # Prevent detaching / floating
         toolbar.setMovable(False)
-        try:
+
+        toolbar.setMovable(False)
+
+        if hasattr(toolbar, "setFloatable"):
             toolbar.setFloatable(False)
-        except Exception:
-            pass
+
         toolbar.setAllowedAreas(
             Qt.ToolBarArea.TopToolBarArea | Qt.ToolBarArea.BottomToolBarArea
         )
@@ -988,4 +992,4 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         return False
 
 
-#  LocalWords:  bbb px msgbox
+#  LocalWords:  bbb px msgbox MainToolbar

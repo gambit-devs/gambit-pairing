@@ -63,10 +63,10 @@ def _colors_satisfy_preferences_unified(
 
 
 def _is_topscorer(player: Player, current_round: int, total_rounds: int) -> bool:
-    """
-    FIDE Article 1.7: Topscorers are players who have a score of over 50%
-    of the maximum possible score WHEN PAIRING THE FINAL ROUND.
+    """FIDE Article 1.7: Topscorers are players who have a score of over 50% of the maximum possible score WHEN PAIRING THE FINAL ROUND.
 
+    Notes
+    -----
     This function should only return True for the final round.
     """
     # FIDE Rule: Topscorer status only matters when pairing the final round
@@ -84,8 +84,10 @@ def _compute_psd_list(
     downfloaters: List[Player],
     bracket_score: float,
 ) -> List[float]:
-    """
-    FIDE Article 1.8: Compute Pairing Score Difference (PSD) list.
+    """FIDE Article 1.8: Compute Pairing Score Difference (PSD) list.
+
+    Notes
+    -----
     PSD is sorted from highest to lowest score differences.
     """
     psd = []
@@ -104,9 +106,12 @@ def _compute_psd_list(
 
 
 def _compare_psd_lists(psd1: List[float], psd2: List[float]) -> int:
-    """
-    FIDE Article 1.8.5: Compare PSD lists lexicographically.
-    Returns: -1 if psd1 < psd2, 1 if psd1 > psd2, 0 if equal
+    """FIDE Article 1.8.5: Compare PSD lists lexicographically.
+
+    Returns
+    -------
+    int:
+        -1 if psd1 < psd2, 1 if psd1 > psd2, 0 if equal
     """
     eps = 1e-9  # Small epsilon for floating point comparison
 

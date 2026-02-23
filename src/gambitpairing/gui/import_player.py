@@ -1,3 +1,4 @@
+# TODO this should be a controller, not a gui
 from typing import List, Optional, Tuple
 
 from PyQt6 import QtCore, QtGui, QtWidgets

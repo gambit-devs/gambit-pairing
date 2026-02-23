@@ -1,8 +1,4 @@
-"""Main Tournament class - orchestrates all tournament operations.
-
-This is the primary interface for tournament management, coordinating various
-specialized managers to provide a clean, professional API.
-"""
+"""Main Tournament model master of all tournament data."""
 
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
@@ -34,7 +30,7 @@ from .round_data import RoundData
 from .tournament_config import TournamentConfig
 
 
-from gambitpairing.types import Pairings
+from gambitpairing.type_aliases import Pairings
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)

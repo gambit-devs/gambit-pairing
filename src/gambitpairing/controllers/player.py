@@ -1,4 +1,4 @@
-"""Player controller for managing players."""
+"""Player controller for managing chess players."""
 
 
 def import_players_from_csv() -> List[Players] | None:

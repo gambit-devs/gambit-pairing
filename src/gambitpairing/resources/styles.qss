@@ -152,6 +152,80 @@ QTableView:focus {
   border: 1.5px solid #e2c290;
 }
 
+/* =========================
+   Notification Base
+   ========================= */
+
+QWidget#Notification {
+    background: transparent;
+}
+
+/* =========================
+   Message Label
+   ========================= */
+
+QLabel#NotificationMessage {
+    font-size: 11pt;
+    font-weight: 600;
+    background: transparent;
+    border: none;
+    color: white;
+}
+
+/* =========================
+   Progress Bar
+   ========================= */
+
+QProgressBar#NotificationProgress {
+    background-color: rgba(255, 255, 255, 0.08);
+    border: none;
+    border-radius: 2px;
+}
+
+QProgressBar#NotificationProgress::chunk {
+    border-radius: 2px;
+}
+
+/* =========================
+   Type Variants
+   ========================= */
+
+/* INFO (default) */
+QWidget#Notification[type="info"] QLabel#NotificationMessage {
+    color: #ffffff;
+}
+
+QWidget#Notification[type="info"] QProgressBar::chunk {
+    background-color: #6b7280;
+}
+
+/* SUCCESS */
+QWidget#Notification[type="success"] QLabel#NotificationMessage {
+    color: #ffffff;
+}
+
+QWidget#Notification[type="success"] QProgressBar::chunk {
+    background-color: #6e8b5b;
+}
+
+/* ERROR */
+QWidget#Notification[type="error"] QLabel#NotificationMessage {
+    color: #ffffff;
+}
+
+QWidget#Notification[type="error"] QProgressBar::chunk {
+    background-color: #f87171;
+}
+
+/* WARNING */
+QWidget#Notification[type="warning"] QLabel#NotificationMessage {
+    color: #111111;
+}
+
+QWidget#Notification[type="warning"] QProgressBar::chunk {
+    background-color: #fbbf24;
+}
+
 /* --- Result Selector Buttons --- */
 /* Container widget for result selector */
 QWidget[class="ResultSelector"] {
