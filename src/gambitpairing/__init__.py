@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 APP_NAME = "Gambit Pairing"
-APP_VERSION = "0.7.0"
+APP_VERSION = "0.8.0"
 __version__ = APP_VERSION
 
 from .type_aliases import (
@@ -27,5 +27,6 @@ from .type_aliases import (
     PlayerId,
     Players,
 )
+from .utils import setup_logger
 
 #  LocalWords:  MatchPairing RoundSchedule PlayerId

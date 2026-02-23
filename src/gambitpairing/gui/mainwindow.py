@@ -41,9 +41,9 @@ from .dialogs import (
     UpdateDownloadDialog,
     UpdatePromptDialog,
 )
-from .views.crosstable.crosstable_view import CrosstableView
 from .import_player import ImportPlayer
 from .notification import show_notification
+from .views.crosstable.crosstable_view import CrosstableView
 from .views.history.history_view import HistoryView
 from .views.players.players_view import PlayersView
 from .views.standings.standings_view import StandingsView
@@ -80,6 +80,549 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
                 QtCore.QTimer.singleShot(1500, self.check_for_updates_auto)
 
         logger.info("GambitPairingMainWindow __init__ done.")
+
+    def set_app_instance(self, app):
+        """Store a reference to the QApplication instance for stylesheet control."""
+        self._app_instance = app
+
+    def mark_dirty(self, dirty=True):
+        """Mark as dirty."""
+        if self._dirty != dirty:
+            self._dirty = dirty
+            self._update_ui_state()
+
+    def mark_clean(self):
+        """Mark as clean."""
+        self.mark_dirty(False)
+
+    def reset_tournament_state(self):
+        """Reset the entire application to a clean state."""
+        self.tournament = None
+        self.current_round_index = 0
+        self.last_recorded_results_data = []
+        self._current_filepath = None
+        self.mark_clean()
+
+        self._set_tournament_on_tabs()  # clear tournament tabs
+
+        # Clear tab UI
+        self.players_tab.reset_display()
+        self.rounds_tab.clear_pairings_display()
+        self.standings_tab.table_standings.setRowCount(0)
+        self.crosstable_tab.table_crosstable.setRowCount(0)
+        self.history_tab.history_view.clear()
+
+        self._update_ui_state()
+
+    def prompt_new_tournament(self):
+        if not self.check_save_before_proceeding():
+            return
+
+        dialog = NewTournamentDialog(self)
+        if dialog.exec():
+            data = dialog.get_data()
+            if data:
+                name, num_rounds, tiebreak_order, pairing_system = data
+                self.reset_tournament_state()
+                self.tournament = Tournament(
+                    name=name,
+                    players=[],
+                    num_rounds=num_rounds,
+                    tiebreak_order=tiebreak_order,
+                    pairing_system=pairing_system,
+                )
+                # Store pairing_system as an attribute if needed:
+                self.pairing_system = pairing_system
+                self.update_history_log(
+                    f"--- New Tournament '{name}' Created (Rounds: {num_rounds}, Pairing: {pairing_system}) ---"
+                )
+                self.mark_dirty()
+                self._set_tournament_on_tabs()
+                self.standings_tab.update_standings_table_headers()
+                self._update_ui_state()
+                try:
+                    show_notification(
+                        self,
+                        f"New tournament '{name}' created.",
+                        duration=3500,
+                        notification_type="success",
+                    )
+
+                except Exception as e:
+                    message = (
+                        "exception: '%s' excepted in an `except Exception`. This is bad practice."
+                        % str(e)
+                    )
+                    raise RuntimeError(message)
+
+    def show_settings_dialog(self) -> bool:
+        if not self.tournament:
+            return False
+
+        dialog = SettingsDialog(
+            self.tournament.num_rounds, self.tournament.tiebreak_order, self
+        )
+        tournament_started = len(self.tournament.rounds_pairings_ids) > 0
+        # Hide rounds spinbox if round robin, disable if tournament started
+        if getattr(self.tournament, "pairing_system", None) == "round_robin":
+            dialog.spin_num_rounds.hide()
+            # Find and hide the label too - look through the form layout
+            rounds_group = None
+            for i in range(dialog.layout().count()):
+                item = dialog.layout().itemAt(i)
+                if (
+                    item
+                    and item.widget()
+                    and isinstance(item.widget(), QtWidgets.QGroupBox)
+                ):
+                    if item.widget().title() == "General":
+                        rounds_group = item.widget()
+                        break
+
+            if rounds_group and isinstance(
+                rounds_group.layout(), QtWidgets.QFormLayout
+            ):
+                form_layout = rounds_group.layout()
+                label = form_layout.labelForField(dialog.spin_num_rounds)
+                if label:
+                    label.hide()
+
+            dialog.spin_num_rounds.setToolTip(
+                "Number of rounds is fixed for Round Robin: players - 1."
+            )
+        else:
+            dialog.spin_num_rounds.setEnabled(not tournament_started)
+            dialog.spin_num_rounds.setToolTip("")
+
+        if dialog.exec():
+            new_rounds, new_tiebreaks = dialog.get_settings()
+            if (
+                self.tournament.num_rounds != new_rounds
+                and not tournament_started
+                and getattr(self.tournament, "pairing_system", None) != "round_robin"
+            ):
+                self.tournament.num_rounds = new_rounds
+                self.update_history_log(f"Number of rounds set to {new_rounds}.")
+                self.mark_dirty()
+
+            if self.tournament.tiebreak_order != new_tiebreaks:
+                self.tournament.tiebreak_order = new_tiebreaks
+                self.update_history_log("Tiebreak order updated.")
+                self.mark_dirty()
+                self.standings_tab.update_standings_table_headers()
+                self.standings_tab.update_standings_table()
+
+            self._update_ui_state()
+            return True
+        return False
+
+    def update_history_log(self, message: str):
+        """Append a timestamped message to the history log tab."""
+        self.history_tab.update_history_log(message)
+
+    def save_tournament(self, save_as=False):
+        if not self.tournament:
+            return False
+        if not self._current_filepath or save_as:
+            filename, _ = QtWidgets.QFileDialog.getSaveFileName(
+                self, "Save Tournament", "", "JSON Files (*.json)"
+            )
+            if not filename:
+                return False
+            self._current_filepath = filename
+
+        try:
+            data = self.tournament.to_dict()
+            data["gui_state"] = {
+                "current_round_index": self.current_round_index,
+                "last_recorded_results_data": self.last_recorded_results_data,
+            }
+            # check to see if file exists, and confirm prior to overwrite
+            if Path(self._current_filepath).exists():
+
+                logger.warning("save_tournament is trying to right over a file.")
+                # confirm before over write
+                if not self.get_confirmation(
+                    action="will overwrite tournament", message="Is that what you want?"
+                ):
+                    return False
+                # else continue
+
+            with open(self._current_filepath, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=4)
+            self.mark_clean()
+            self.statusBar().showMessage(
+                f"Tournament saved to {self._current_filepath}"
+            )
+            self.update_history_log(
+                f"Tournament saved as: {QFileInfo(self._current_filepath).fileName()}"
+            )
+            return True
+
+        except Exception as e:
+            message = (
+                "exception: '%s' excepted in an `except Exception`. This is bad practice."
+                % str(e)
+            )
+            logging.exception("Error saving tournament:")
+            QtWidgets.QMessageBox.critical(
+                self, "Save Error", f"Could not save tournament:\n{e}"
+            )
+            raise RuntimeError(message)
+            return false
+
+    def restart_application(self):
+        """Restart the application cleanly."""
+        utils.restart_application()
+
+    def get_confirmation(
+        self, action="", message="Are you sure you want to proceed?"
+    ) -> bool:
+        """Get confirmation from user before proceeding."""
+        reply = QMessageBox.question(
+            self,
+            action,
+            message,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            QMessageBox.information(self, "Success", "Action completed!")
+            return True
+        return False
+
+    def load_tournament(self):
+        if not self.check_save_before_proceeding():
+            return
+        filename, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self, "Load Tournament", "", "JSON Files (*.json)"
+        )
+        if not filename:
+            logger.warning("Not loading tournament because no filename provided.")
+            return
+
+        with open(filename, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        self.reset_tournament_state()
+        self.tournament = Tournament.from_dict(data)
+
+        gui_state = data.get("gui_state", {})
+        self.current_round_index = gui_state.get("current_round_index", 0)
+        self.last_recorded_results_data = gui_state.get(
+            "last_recorded_results_data", []
+        )
+        self._current_filepath = filename
+
+        self._set_tournament_on_tabs()
+
+        # Refresh all views
+        self.players_tab.refresh_player_list()
+        self.standings_tab.update_standings_table_headers()
+        self.standings_tab.update_standings_table()
+        self.crosstable_tab.update_crosstable()
+
+        # Display pairings for the current round if they exist
+        if self.tournament and 0 <= self.current_round_index < len(
+            self.tournament.rounds_pairings_ids
+        ):
+            pairings, bye_player = self.tournament.get_pairings_for_round(
+                self.current_round_index
+            )
+            self.rounds_tab.display_pairings_for_input(
+                pairings, [bye_player] if bye_player else []
+            )
+        else:
+            self.rounds_tab.clear_pairings_display()
+
+        self.mark_clean()
+        self.update_history_log(
+            f"--- Tournament loaded from {QFileInfo(filename).fileName()} ---"
+        )
+        self.statusBar().showMessage(f"Loaded tournament: {self.tournament.name}")
+        try:
+            show_notification(
+                self,
+                f"Loaded tournament: {self.tournament.name}",
+                duration=3000,
+                notification_type="info",
+            )
+        except Exception as e:
+            message = (
+                "exception: '%s' excepted in an `except Exception`. This is bad practice."
+                % str(e)
+            )
+            logging.exception(message)
+            raise RuntimeError(message)
+
+        self.reset_tournament_state()
+        try:
+            show_notification(
+                self,
+                f"Could not load tournament: {e}",
+                duration=6000,
+                notification_type="error",
+            )
+        except Exception as e:
+            message = (
+                "Error loading tournament: '%s' excepted in an `except Exception`. This is bad practice."
+                % str(e)
+            )
+            logging.exception(message)
+            QtWidgets.QMessageBox.critical(
+                self, "Load Error", f"Could not load tournament file:\n{e}"
+            )
+
+            raise RuntimeError(message)
+
+        self._update_ui_state()
+
+    def check_save_before_proceeding(self) -> bool:
+        """Check if progress is saved before proceeding, if not prompt user."""
+        if not self._dirty:
+            logger.info("check_save_before_proceeding: fount state to be clean.")
+            return True
+        logger.info("check_save_before_proceeding: fount state to be dirty.")
+        msgbox = QtWidgets.QMessageBox(self)
+        msgbox.setWindowTitle("Unsaved Changes")
+        msgbox.setText("You have unsaved changes. Do you want to save them?")
+        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
+
+        # Create custom buttons
+        btn_save = QtWidgets.QPushButton("Save")
+        btn_discard = QtWidgets.QPushButton("Close without Saving")
+        btn_cancel = QtWidgets.QPushButton("Cancel")
+
+        # Add buttons to msgbox
+        msgbox.addButton(btn_save, QtWidgets.QMessageBox.ButtonRole.AcceptRole)
+        msgbox.addButton(btn_discard, QtWidgets.QMessageBox.ButtonRole.DestructiveRole)
+        msgbox.addButton(btn_cancel, QtWidgets.QMessageBox.ButtonRole.RejectRole)
+
+        msgbox.exec()
+        clicked = msgbox.clickedButton()
+
+        if clicked == btn_save:
+            return self.save_tournament()
+        elif clicked == btn_discard:
+            return True
+        else:
+            return False
+
+    def show_about_dialog(self):
+        """Show the About dialog."""
+        dialog = AboutDialog(self)
+        dialog.exec()
+
+    def check_for_pending_update(self) -> bool:
+        """Check for a previously downloaded update and asks to install it."""
+        if not self.updater:
+            return False
+
+        pending_path = self.updater.get_pending_update_path()
+        if pending_path:
+            reply = QtWidgets.QMessageBox.question(
+                self,
+                "Update Ready to Install",
+                "A downloaded update is ready. This will restart the application.\n\nInstall now?",
+                QtWidgets.QMessageBox.StandardButton.Yes
+                | QtWidgets.QMessageBox.StandardButton.No,
+            )
+
+            if reply == QtWidgets.QMessageBox.StandardButton.Yes:
+                self.is_updating = True
+                self.statusBar().showMessage("Restarting to apply update...")
+                self.updater.apply_update(pending_path)
+                QtCore.QTimer.singleShot(100, self.close)
+                return True  # Update is being applied
+            else:
+                # User chose not to install. Let's ask if they want to discard it.
+                discard_reply = QtWidgets.QMessageBox.question(
+                    self,
+                    "Discard Update?",
+                    "Do you want to discard the downloaded update? If not, you will be asked again on the next launch.",
+                    QtWidgets.QMessageBox.StandardButton.Yes
+                    | QtWidgets.QMessageBox.StandardButton.No,
+                )
+                if discard_reply == QtWidgets.QMessageBox.StandardButton.Yes:
+                    self.updater.cleanup_pending_update()
+        return False
+
+    def check_for_updates_manual(self) -> None:
+        """Manually checks for updates and notifies the user of the result."""
+        if not getattr(sys, "frozen", False):
+            QtWidgets.QMessageBox.information(
+                self,
+                "Update Check",
+                "Automatic updates are only available in packaged releases.\n\n"
+                "If you installed from source, please update using git or your package manager. ie: `pip install --upgrade [git-root]`",
+            )
+            return
+        if not self.updater:
+            QtWidgets.QMessageBox.information(
+                self, "Update Check", "The update checker is not configured."
+            )
+            return
+
+        self.statusBar().showMessage("Checking for updates...")
+        has_update = self.updater.check_for_updates()
+        if has_update:
+            self.prompt_update()
+        else:
+            self.statusBar().showMessage("No new updates available.")
+            QtWidgets.QMessageBox.information(
+                self,
+                "Update Check",
+                f"You are using the latest version of {APP_NAME} ({APP_VERSION}).",
+            )
+
+    def check_for_updates_auto(self):
+        """Automatically checks for updates in the background."""
+        if not getattr(sys, "frozen", False):
+            return
+        if not self.updater:
+            return
+        if self.updater.check_for_updates():
+            self.prompt_update()
+
+    def prompt_update(self):
+        """Show a dialog prompting the user to download the new version."""
+        if not self.updater or not self.updater.latest_version_info:
+            return
+
+        latest_version = self.updater.get_latest_version()
+        release_notes = self.updater.get_release_notes()
+
+        if not all([latest_version, release_notes]):
+            QtWidgets.QMessageBox.warning(
+                self, "Update Error", "Could not retrieve complete update information."
+            )
+            return
+
+        dialog = UpdatePromptDialog(
+            new_version=latest_version,
+            current_version=APP_VERSION,
+            release_notes=release_notes,
+            parent=self,
+        )
+
+        if dialog.exec():
+            self.start_update_download()
+
+    def start_update_download(self):
+        """Initiate the update download and shows the progress dialog."""
+        if not self.updater:
+            return
+
+        self.statusBar().showMessage("Starting update download...")
+        self.download_dialog = UpdateDownloadDialog(self)
+
+        self.thread = QtCore.QThread()
+        self.worker = UpdateWorker(self.updater)
+        self.worker.moveToThread(self.thread)
+
+        self.thread.started.connect(self.worker.run)
+        self.worker.progress.connect(self.download_dialog.update_progress)
+        self.worker.status.connect(self.download_dialog.update_status)
+        self.worker.done.connect(self.on_update_done)
+
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
+
+        self.worker.error.connect(self.thread.quit)
+        self.worker.error.connect(self.worker.deleteLater)
+
+        self.thread.start()
+        self.download_dialog.exec()
+
+    def on_update_done(self, success: bool, message: str):
+        """Handle both success and error for update."""
+        if success:
+            self.download_dialog.show_complete()
+            # Connect restart button to restart logic
+            self.download_dialog.restart_btn.clicked.disconnect()
+            self.download_dialog.restart_btn.clicked.connect(
+                lambda: self._restart_with_update(message)
+            )
+        else:
+            self.download_dialog.show_error(message)
+            self.download_dialog.close_btn.clicked.disconnect()
+            self.download_dialog.close_btn.clicked.connect(self.download_dialog.close)
+
+    def _restart_with_update(self, extracted_path: str):
+        self.is_updating = True
+        self.statusBar().showMessage("Restarting to apply update...")
+        self.updater.apply_update(extracted_path)
+        QtCore.QTimer.singleShot(100, self.close)
+
+    def closeEvent(self, event: QCloseEvent):
+        """Handle a close Event, checking if needed."""
+        if self.is_updating:
+            event.accept()
+            return
+
+        if self.check_save_before_proceeding():
+            logging.info(f"{APP_NAME} closing.")
+            event.accept()
+        else:
+            event.ignore()
+
+    def _on_round_completed(self, round_index: int):
+        """Slot called when a round is recorded and the tournament is advanced."""
+        self.current_round_index = round_index
+        # Sync last_recorded_results_data from rounds_tab to main window
+        if hasattr(self.rounds_tab, "last_recorded_results_data"):
+            self.last_recorded_results_data = list(
+                self.rounds_tab.last_recorded_results_data
+            )
+        self.mark_dirty()
+        self._update_ui_state()
+
+    def _navigate_to_rounds_tab(self):
+        """Switch to the Rounds tab."""
+        self.tabs.setCurrentWidget(self.rounds_tab)
+
+    def _start_tournament_with_navigation(self):
+        """Navigate to Rounds tab and start the tournament."""
+        self._navigate_to_rounds_tab()
+        self.rounds_tab.start_tournament()
+
+    def _prepare_round_with_navigation(self):
+        """Navigate to Rounds tab and prepare the next round."""
+        self._navigate_to_rounds_tab()
+        self.rounds_tab.prepare_next_round()
+
+    def _record_results_with_navigation(self):
+        """Navigate to Rounds tab and record results."""
+        self._navigate_to_rounds_tab()
+        self.rounds_tab.record_and_advance()
+
+    def _undo_results_with_navigation(self):
+        """Navigate to Rounds tab and undo last results."""
+        self._navigate_to_rounds_tab()
+        self.rounds_tab.undo_last_results()
+
+    def _set_tournament_on_tabs(self):
+        """Pass the current tournament object to all tabs so they can access its data."""
+        for tab in [
+            self.players_tab,
+            self.rounds_tab,
+            self.standings_tab,
+            self.crosstable_tab,
+            self.history_tab,
+        ]:
+            if hasattr(tab, "set_tournament"):
+                tab.set_tournament(self.tournament)
+        # Also set current_round_index and last_recorded_results_data on rounds_tab
+        if hasattr(self.rounds_tab, "set_current_round_index"):
+            self.rounds_tab.set_current_round_index(self.current_round_index)
+        if hasattr(self.rounds_tab, "last_recorded_results_data"):
+            self.rounds_tab.last_recorded_results_data = list(
+                self.last_recorded_results_data
+            )
+        # Ensure UI state is updated after tournament propagation
+        self._update_ui_state()
 
     def _setup_ui(self):
         self.setWindowTitle(APP_NAME)
@@ -451,546 +994,6 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             self.toolbar_tournament_label.setText(tournament_name)
         else:
             self.toolbar_tournament_label.setText("No Tournament Loaded")
-
-    def mark_dirty(self, dirty=True):
-        """Mark as dirty."""
-        if self._dirty != dirty:
-            self._dirty = dirty
-            self._update_ui_state()
-
-    def mark_clean(self):
-        """Mark as clean."""
-        self.mark_dirty(False)
-
-    def _set_tournament_on_tabs(self):
-        """Pass the current tournament object to all tabs so they can access its data."""
-        for tab in [
-            self.players_tab,
-            self.rounds_tab,
-            self.standings_tab,
-            self.crosstable_tab,
-            self.history_tab,
-        ]:
-            if hasattr(tab, "set_tournament"):
-                tab.set_tournament(self.tournament)
-        # Also set current_round_index and last_recorded_results_data on rounds_tab
-        if hasattr(self.rounds_tab, "set_current_round_index"):
-            self.rounds_tab.set_current_round_index(self.current_round_index)
-        if hasattr(self.rounds_tab, "last_recorded_results_data"):
-            self.rounds_tab.last_recorded_results_data = list(
-                self.last_recorded_results_data
-            )
-        # Ensure UI state is updated after tournament propagation
-        self._update_ui_state()
-
-    def reset_tournament_state(self):
-        """Reset the entire application to a clean state."""
-        self.tournament = None
-        self.current_round_index = 0
-        self.last_recorded_results_data = []
-        self._current_filepath = None
-        self.mark_clean()
-
-        self._set_tournament_on_tabs()  # clear tournament tabs
-
-        # Clear tab UI
-        self.players_tab.reset_display()
-        self.rounds_tab.clear_pairings_display()
-        self.standings_tab.table_standings.setRowCount(0)
-        self.crosstable_tab.table_crosstable.setRowCount(0)
-        self.history_tab.history_view.clear()
-
-        self._update_ui_state()
-
-    def prompt_new_tournament(self):
-        if not self.check_save_before_proceeding():
-            return
-
-        dialog = NewTournamentDialog(self)
-        if dialog.exec():
-            data = dialog.get_data()
-            if data:
-                name, num_rounds, tiebreak_order, pairing_system = data
-                self.reset_tournament_state()
-                self.tournament = Tournament(
-                    name=name,
-                    players=[],
-                    num_rounds=num_rounds,
-                    tiebreak_order=tiebreak_order,
-                    pairing_system=pairing_system,
-                )
-                # Store pairing_system as an attribute if needed:
-                self.pairing_system = pairing_system
-                self.update_history_log(
-                    f"--- New Tournament '{name}' Created (Rounds: {num_rounds}, Pairing: {pairing_system}) ---"
-                )
-                self.mark_dirty()
-                self._set_tournament_on_tabs()
-                self.standings_tab.update_standings_table_headers()
-                self._update_ui_state()
-                try:
-                    show_notification(
-                        self,
-                        f"New tournament '{name}' created.",
-                        duration=3500,
-                        notification_type="success",
-                    )
-
-                except Exception as e:
-                    message = (
-                        "exception: '%s' excepted in an `except Exception`. This is bad practice."
-                        % str(e)
-                    )
-                    raise RuntimeError(message)
-
-    def show_settings_dialog(self) -> bool:
-        if not self.tournament:
-            return False
-
-        dialog = SettingsDialog(
-            self.tournament.num_rounds, self.tournament.tiebreak_order, self
-        )
-        tournament_started = len(self.tournament.rounds_pairings_ids) > 0
-        # Hide rounds spinbox if round robin, disable if tournament started
-        if getattr(self.tournament, "pairing_system", None) == "round_robin":
-            dialog.spin_num_rounds.hide()
-            # Find and hide the label too - look through the form layout
-            rounds_group = None
-            for i in range(dialog.layout().count()):
-                item = dialog.layout().itemAt(i)
-                if (
-                    item
-                    and item.widget()
-                    and isinstance(item.widget(), QtWidgets.QGroupBox)
-                ):
-                    if item.widget().title() == "General":
-                        rounds_group = item.widget()
-                        break
-
-            if rounds_group and isinstance(
-                rounds_group.layout(), QtWidgets.QFormLayout
-            ):
-                form_layout = rounds_group.layout()
-                label = form_layout.labelForField(dialog.spin_num_rounds)
-                if label:
-                    label.hide()
-
-            dialog.spin_num_rounds.setToolTip(
-                "Number of rounds is fixed for Round Robin: players - 1."
-            )
-        else:
-            dialog.spin_num_rounds.setEnabled(not tournament_started)
-            dialog.spin_num_rounds.setToolTip("")
-
-        if dialog.exec():
-            new_rounds, new_tiebreaks = dialog.get_settings()
-            if (
-                self.tournament.num_rounds != new_rounds
-                and not tournament_started
-                and getattr(self.tournament, "pairing_system", None) != "round_robin"
-            ):
-                self.tournament.num_rounds = new_rounds
-                self.update_history_log(f"Number of rounds set to {new_rounds}.")
-                self.mark_dirty()
-
-            if self.tournament.tiebreak_order != new_tiebreaks:
-                self.tournament.tiebreak_order = new_tiebreaks
-                self.update_history_log("Tiebreak order updated.")
-                self.mark_dirty()
-                self.standings_tab.update_standings_table_headers()
-                self.standings_tab.update_standings_table()
-
-            self._update_ui_state()
-            return True
-        return False
-
-    def update_history_log(self, message: str):
-        """Append a timestamped message to the history log tab."""
-        self.history_tab.update_history_log(message)
-
-    def save_tournament(self, save_as=False):
-        if not self.tournament:
-            return False
-        if not self._current_filepath or save_as:
-            filename, _ = QtWidgets.QFileDialog.getSaveFileName(
-                self, "Save Tournament", "", "JSON Files (*.json)"
-            )
-            if not filename:
-                return False
-            self._current_filepath = filename
-
-        try:
-            data = self.tournament.to_dict()
-            data["gui_state"] = {
-                "current_round_index": self.current_round_index,
-                "last_recorded_results_data": self.last_recorded_results_data,
-            }
-            # check to see if file exists, and confirm prior to overwrite
-            if Path(self._current_filepath).exists():
-
-                logger.warning("save_tournament is trying to right over a file.")
-                # confirm before over write
-                if not self.get_confirmation(
-                    action="will overwrite tournament", message="Is that what you want?"
-                ):
-                    return False
-                # else continue
-
-            with open(self._current_filepath, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=4)
-            self.mark_clean()
-            self.statusBar().showMessage(
-                f"Tournament saved to {self._current_filepath}"
-            )
-            self.update_history_log(
-                f"--- Tournament saved to {QFileInfo(self._current_filepath).fileName()} ---"
-            )
-            return True
-        except Exception as e:
-            message = (
-                "exception: '%s' excepted in an `except Exception`. This is bad practice."
-                % str(e)
-            )
-            logging.exception("Error saving tournament:")
-            QtWidgets.QMessageBox.critical(
-                self, "Save Error", f"Could not save tournament:\n{e}"
-            )
-            raise RuntimeError(message)
-            return False
-
-    def load_tournament(self):
-        if not self.check_save_before_proceeding():
-            return
-        filename, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Load Tournament", "", "JSON Files (*.json)"
-        )
-        if not filename:
-            return
-
-        with open(filename, "r", encoding="utf-8") as f:
-            data = json.load(f)
-
-        self.reset_tournament_state()
-        self.tournament = Tournament.from_dict(data)
-
-        gui_state = data.get("gui_state", {})
-        self.current_round_index = gui_state.get("current_round_index", 0)
-        self.last_recorded_results_data = gui_state.get(
-            "last_recorded_results_data", []
-        )
-        self._current_filepath = filename
-
-        self._set_tournament_on_tabs()
-
-        # Refresh all views
-        self.players_tab.refresh_player_list()
-        self.standings_tab.update_standings_table_headers()
-        self.standings_tab.update_standings_table()
-        self.crosstable_tab.update_crosstable()
-
-        # Display pairings for the current round if they exist
-        if self.tournament and 0 <= self.current_round_index < len(
-            self.tournament.rounds_pairings_ids
-        ):
-            pairings, bye_player = self.tournament.get_pairings_for_round(
-                self.current_round_index
-            )
-            self.rounds_tab.display_pairings_for_input(
-                pairings, [bye_player] if bye_player else []
-            )
-        else:
-            self.rounds_tab.clear_pairings_display()
-
-        self.mark_clean()
-        self.update_history_log(
-            f"--- Tournament loaded from {QFileInfo(filename).fileName()} ---"
-        )
-        self.statusBar().showMessage(f"Loaded tournament: {self.tournament.name}")
-        try:
-            show_notification(
-                self,
-                f"Loaded tournament: {self.tournament.name}",
-                duration=3000,
-                notification_type="info",
-            )
-        except Exception as e:
-            message = (
-                "exception: '%s' excepted in an `except Exception`. This is bad practice."
-                % str(e)
-            )
-            logging.exception(message)
-            raise RuntimeError(message)
-
-        self.reset_tournament_state()
-        try:
-            show_notification(
-                self,
-                f"Could not load tournament: {e}",
-                duration=6000,
-                notification_type="error",
-            )
-        except Exception as e:
-            message = (
-                "Error loading tournament: '%s' excepted in an `except Exception`. This is bad practice."
-                % str(e)
-            )
-            logging.exception(message)
-            QtWidgets.QMessageBox.critical(
-                self, "Load Error", f"Could not load tournament file:\n{e}"
-            )
-
-            raise RuntimeError(message)
-
-        self._update_ui_state()
-
-    def check_save_before_proceeding(self) -> bool:
-        """Check if progress is saved before proceeding, if not prompt user."""
-        if not self._dirty:
-            return True
-
-        msgbox = QtWidgets.QMessageBox(self)
-        msgbox.setWindowTitle("Unsaved Changes")
-        msgbox.setText("You have unsaved changes. Do you want to save them?")
-        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
-
-        # Create custom buttons
-        btn_save = QtWidgets.QPushButton("Save")
-        btn_discard = QtWidgets.QPushButton("Close without Saving")
-        btn_cancel = QtWidgets.QPushButton("Cancel")
-
-        # Add buttons to msgbox
-        msgbox.addButton(btn_save, QtWidgets.QMessageBox.ButtonRole.AcceptRole)
-        msgbox.addButton(btn_discard, QtWidgets.QMessageBox.ButtonRole.DestructiveRole)
-        msgbox.addButton(btn_cancel, QtWidgets.QMessageBox.ButtonRole.RejectRole)
-
-        msgbox.exec()
-        clicked = msgbox.clickedButton()
-
-        if clicked == btn_save:
-            return self.save_tournament()
-        elif clicked == btn_discard:
-            return True
-        else:
-            return False
-
-    def show_about_dialog(self):
-        """Show the About dialog."""
-        dialog = AboutDialog(self)
-        dialog.exec()
-
-    def check_for_pending_update(self) -> bool:
-        """Check for a previously downloaded update and asks to install it."""
-        if not self.updater:
-            return False
-
-        pending_path = self.updater.get_pending_update_path()
-        if pending_path:
-            reply = QtWidgets.QMessageBox.question(
-                self,
-                "Update Ready to Install",
-                "A downloaded update is ready. This will restart the application.\n\nInstall now?",
-                QtWidgets.QMessageBox.StandardButton.Yes
-                | QtWidgets.QMessageBox.StandardButton.No,
-            )
-
-            if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-                self.is_updating = True
-                self.statusBar().showMessage("Restarting to apply update...")
-                self.updater.apply_update(pending_path)
-                QtCore.QTimer.singleShot(100, self.close)
-                return True  # Update is being applied
-            else:
-                # User chose not to install. Let's ask if they want to discard it.
-                discard_reply = QtWidgets.QMessageBox.question(
-                    self,
-                    "Discard Update?",
-                    "Do you want to discard the downloaded update? If not, you will be asked again on the next launch.",
-                    QtWidgets.QMessageBox.StandardButton.Yes
-                    | QtWidgets.QMessageBox.StandardButton.No,
-                )
-                if discard_reply == QtWidgets.QMessageBox.StandardButton.Yes:
-                    self.updater.cleanup_pending_update()
-        return False
-
-    def check_for_updates_manual(self) -> None:
-        """Manually checks for updates and notifies the user of the result."""
-        if not getattr(sys, "frozen", False):
-            QtWidgets.QMessageBox.information(
-                self,
-                "Update Check",
-                "Automatic updates are only available in packaged releases.\n\n"
-                "If you installed from source, please update using git or your package manager. ie: `pip install --upgrade [git-root]`",
-            )
-            return
-        if not self.updater:
-            QtWidgets.QMessageBox.information(
-                self, "Update Check", "The update checker is not configured."
-            )
-            return
-
-        self.statusBar().showMessage("Checking for updates...")
-        has_update = self.updater.check_for_updates()
-        if has_update:
-            self.prompt_update()
-        else:
-            self.statusBar().showMessage("No new updates available.")
-            QtWidgets.QMessageBox.information(
-                self,
-                "Update Check",
-                f"You are using the latest version of {APP_NAME} ({APP_VERSION}).",
-            )
-
-    def check_for_updates_auto(self):
-        """Automatically checks for updates in the background."""
-        if not getattr(sys, "frozen", False):
-            return
-        if not self.updater:
-            return
-        if self.updater.check_for_updates():
-            self.prompt_update()
-
-    def prompt_update(self):
-        """Show a dialog prompting the user to download the new version."""
-        if not self.updater or not self.updater.latest_version_info:
-            return
-
-        latest_version = self.updater.get_latest_version()
-        release_notes = self.updater.get_release_notes()
-
-        if not all([latest_version, release_notes]):
-            QtWidgets.QMessageBox.warning(
-                self, "Update Error", "Could not retrieve complete update information."
-            )
-            return
-
-        dialog = UpdatePromptDialog(
-            new_version=latest_version,
-            current_version=APP_VERSION,
-            release_notes=release_notes,
-            parent=self,
-        )
-
-        if dialog.exec():
-            self.start_update_download()
-
-    def start_update_download(self):
-        """Initiate the update download and shows the progress dialog."""
-        if not self.updater:
-            return
-
-        self.statusBar().showMessage("Starting update download...")
-        self.download_dialog = UpdateDownloadDialog(self)
-
-        self.thread = QtCore.QThread()
-        self.worker = UpdateWorker(self.updater)
-        self.worker.moveToThread(self.thread)
-
-        self.thread.started.connect(self.worker.run)
-        self.worker.progress.connect(self.download_dialog.update_progress)
-        self.worker.status.connect(self.download_dialog.update_status)
-        self.worker.done.connect(self.on_update_done)
-
-        self.worker.finished.connect(self.thread.quit)
-        self.worker.finished.connect(self.worker.deleteLater)
-        self.thread.finished.connect(self.thread.deleteLater)
-
-        self.worker.error.connect(self.thread.quit)
-        self.worker.error.connect(self.worker.deleteLater)
-
-        self.thread.start()
-        self.download_dialog.exec()
-
-    def on_update_done(self, success: bool, message: str):
-        """Handle both success and error for update."""
-        if success:
-            self.download_dialog.show_complete()
-            # Connect restart button to restart logic
-            self.download_dialog.restart_btn.clicked.disconnect()
-            self.download_dialog.restart_btn.clicked.connect(
-                lambda: self._restart_with_update(message)
-            )
-        else:
-            self.download_dialog.show_error(message)
-            self.download_dialog.close_btn.clicked.disconnect()
-            self.download_dialog.close_btn.clicked.connect(self.download_dialog.close)
-
-    def _restart_with_update(self, extracted_path: str):
-        self.is_updating = True
-        self.statusBar().showMessage("Restarting to apply update...")
-        self.updater.apply_update(extracted_path)
-        QtCore.QTimer.singleShot(100, self.close)
-
-    def closeEvent(self, event: QCloseEvent):
-        """Handle a close Event, checking if needed."""
-        if self.is_updating:
-            event.accept()
-            return
-
-        if self.check_save_before_proceeding():
-            logging.info(f"{APP_NAME} closing.")
-            event.accept()
-        else:
-            event.ignore()
-
-    def _on_round_completed(self, round_index: int):
-        """Slot called when a round is recorded and the tournament is advanced."""
-        self.current_round_index = round_index
-        # Sync last_recorded_results_data from rounds_tab to main window
-        if hasattr(self.rounds_tab, "last_recorded_results_data"):
-            self.last_recorded_results_data = list(
-                self.rounds_tab.last_recorded_results_data
-            )
-        self.mark_dirty()
-        self._update_ui_state()
-
-    def _navigate_to_rounds_tab(self):
-        """Switch to the Rounds tab."""
-        self.tabs.setCurrentWidget(self.rounds_tab)
-
-    def _start_tournament_with_navigation(self):
-        """Navigate to Rounds tab and start the tournament."""
-        self._navigate_to_rounds_tab()
-        self.rounds_tab.start_tournament()
-
-    def _prepare_round_with_navigation(self):
-        """Navigate to Rounds tab and prepare the next round."""
-        self._navigate_to_rounds_tab()
-        self.rounds_tab.prepare_next_round()
-
-    def _record_results_with_navigation(self):
-        """Navigate to Rounds tab and record results."""
-        self._navigate_to_rounds_tab()
-        self.rounds_tab.record_and_advance()
-
-    def _undo_results_with_navigation(self):
-        """Navigate to Rounds tab and undo last results."""
-        self._navigate_to_rounds_tab()
-        self.rounds_tab.undo_last_results()
-
-    def set_app_instance(self, app):
-        """Store a reference to the QApplication instance for stylesheet control."""
-        self._app_instance = app
-
-    def restart_application(self):
-        """Restart the application cleanly."""
-        utils.restart_application()
-
-    def get_confirmation(
-        self, action="", message="Are you sure you want to proceed?"
-    ) -> bool:
-        """Get confirmation from user before proceeding."""
-        reply = QMessageBox.question(
-            self,
-            action,
-            message,
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-
-        if reply == QMessageBox.StandardButton.Yes:
-            QMessageBox.information(self, "Success", "Action completed!")
-            return True
-        return False
 
 
 #  LocalWords:  bbb px msgbox MainToolbar
