@@ -67,6 +67,11 @@ class CrosstableView(QtWidgets.QWidget):
         self.update_ui_state()
         self._update_visibility()
 
+    def reset_display(self) -> None:
+        """Reset the UI to default state."""
+        # clear standings table
+        self.table_crosstable.setRowCount(0)
+
     def _update_visibility(self):
         """Show/hide content based on tournament existence."""
         if not self.tournament:

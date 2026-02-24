@@ -335,7 +335,7 @@ class PairingsTable(QtWidgets.QWidget):
                 return None, False
         return results_data, all_entered
 
-    def clear(self):
+    def reset_display(self):
         """Remove all rows and reset the bye bar to its hidden default state."""
         self.table.setRowCount(0)
         self.lbl_bye.setText("No bye this round")

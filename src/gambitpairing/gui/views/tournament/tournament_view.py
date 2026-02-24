@@ -418,9 +418,12 @@ class TournamentView(QtWidgets.QWidget):
             pairings, bye_players, self.current_round_index
         )
 
-    def clear_pairings_display(self):
-        """Clears the pairings table and bye player label."""
-        self.pairings_table.clear()
+    def reset_display(self):
+        """Reset the UI to default state.
+
+        Clears the pairings table and bye player label.
+        """
+        self.pairings_table.reset_display()
         if self.tournament:
             self.header.set_title(f"Round {self.current_round_index + 1} - Not Started")
         else:
@@ -549,14 +552,14 @@ class TournamentView(QtWidgets.QWidget):
                         f"--- Tournament Finished ({self.tournament.num_rounds} Rounds) ---"
                     )
                     # Clear pairings table as no more rounds to input
-                    self.pairings_table.clear()
+                    self.pairings_table.reset_displau()
                     self.header.set_title("Tournament Finished")
                 else:
                     self.status_message.emit(
                         f"Round {display_round_number} results recorded. Prepare Round {self.current_round_index + 1}."
                     )
                     # Clear pairings table for next round prep
-                    self.pairings_table.clear()
+                    self.pairings_table.reset_displau()
                     self.header.set_title(
                         f"Round {self.current_round_index + 1} (Pending Preparation)"
                     )

@@ -1,3 +1,5 @@
+"""Action history."""
+
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
 #
@@ -15,13 +17,17 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-import logging
+from __future__ import annotations
+
+from gambitpairing.utils import setup_logger
 
 from PyQt6 import QtGui, QtWidgets
 from PyQt6.QtCore import QDateTime
 
 from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 from gambitpairing.gui.widgets.header import TabHeader
+
+logger = setup_logger(__name__)
 
 
 class HistoryView(QtWidgets.QWidget):
@@ -40,12 +46,12 @@ class HistoryView(QtWidgets.QWidget):
         history_layout = QtWidgets.QVBoxLayout(self.history_group)
         history_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.history_view = QtWidgets.QPlainTextEdit()
-        self.history_view.setReadOnly(True)
-        self.history_view.setToolTip("Log of pairings, results, and actions.")
+        self.history_log_widget = QtWidgets.QPlainTextEdit()
+        self.history_log_widget.setReadOnly(True)
+        self.history_log_widget.setToolTip("Log of pairings, results, and actions.")
         font = QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.SystemFont.FixedFont)
-        self.history_view.setFont(font)
-        history_layout.addWidget(self.history_view)
+        self.history_log_widget.setFont(font)
+        history_layout.addWidget(self.history_log_widget)
         self.main_layout.addWidget(self.history_group)
 
         # Add no tournament placeholder
@@ -59,29 +65,33 @@ class HistoryView(QtWidgets.QWidget):
         self.tournament_placeholder.hide()
         self.main_layout.addWidget(self.tournament_placeholder)
 
+    def reset_display(self) -> None:
+        """Reset the UI to default state."""
+        self.history_log_widget.clear()
+
     def set_tournament(self, tournament):
         self.tournament = tournament
         self._update_visibility()
 
-    def _update_visibility(self):
+    def update_history_log(self, message: str):
+        """Display message in Widget."""
+        if self.tournament:  # Only log when tournament exists
+            timestamp = QDateTime.currentDateTime().toString("yyyy-MM-dd hh:mm:ss")
+            self.history_log_widget.appendPlainText(f"[{timestamp}] {message}")
+            logger.info(f"UI_LOG: {message}")
+
+    def update_ui_state(self):
         """Show/hide content based on tournament existence."""
+        self._update_visibility()
+
+    def _update_visibility(self):
+        """Change displayed stuff based on tournament existence."""
         if not self.tournament:
             self.tournament_placeholder.show()
             self.history_group.hide()
         else:
             self.tournament_placeholder.hide()
             self.history_group.show()
-
-    def update_history_log(self, message: str):
-        if self.tournament:  # Only log when tournament exists
-            timestamp = QDateTime.currentDateTime().toString("yyyy-MM-dd hh:mm:ss")
-            self.history_view.appendPlainText(f"[{timestamp}] {message}")
-            logging.info(
-                f"UI_LOG: {message}"
-            )  # Distinguish from backend logging if needed
-
-    def update_ui_state(self):
-        self._update_visibility()
 
     def _trigger_create_tournament(self):
         parent = self.parent()

@@ -107,10 +107,10 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
 
         # Clear tab UI
         self.players_tab.reset_display()
-        self.rounds_tab.clear_pairings_display()
-        self.standings_tab.table_standings.setRowCount(0)
-        self.crosstable_tab.table_crosstable.setRowCount(0)
-        self.history_tab.history_view.clear()
+        self.rounds_tab.reset_display()
+        self.standings_tab.reset_display()
+        self.crosstable_tab.reset_display()
+        self.history_tab.reset_display()
 
         self._update_ui_state()
 
@@ -335,7 +335,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
                 pairings, [bye_player] if bye_player else []
             )
         else:
-            self.rounds_tab.clear_pairings_display()
+            self.rounds_tab.reset_display()
 
         self.mark_clean()
         self.update_history_log(

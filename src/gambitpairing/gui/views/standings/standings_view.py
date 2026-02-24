@@ -97,6 +97,11 @@ class StandingsView(QtWidgets.QWidget):
         self.tournament_placeholder.hide()
         self.main_layout.addWidget(self.tournament_placeholder)
 
+    def reset_display(self) -> None:
+        """Reset the UI to default state."""
+        # clear standings table
+        self.table_standings.setRowCount(0)
+
     def set_tournament(self, tournament):
         self.tournament = tournament
         # Update the header title with tournament name
