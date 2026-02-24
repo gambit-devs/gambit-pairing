@@ -268,7 +268,6 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
                 self, "Save Error", f"Could not save tournament:\n{e}"
             )
             raise RuntimeError(message)
-            return false
 
     def restart_application(self):
         """Restart the application cleanly."""

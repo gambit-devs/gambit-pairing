@@ -19,6 +19,7 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, List
 
+from gambitpairing.models.pairing import PairingSystemABC
 from gambitpairing.constants import DEFAULT_TIEBREAK_SORT_ORDER
 
 
@@ -32,9 +33,8 @@ class TournamentConfig:
         Tournament name.
     num_rounds : int
         Number of rounds in the tournament.
-    pairing_system : str
-        Pairing system used for generating pairings. Supported values include
-        "dutch_swiss", "round_robin", and "manual".
+    pairing_system : PairingSystemABC
+        Pairing system used for generating pairings.
     tiebreak_order : list of str
         Ordered list of tiebreak criteria in priority order.
     tournament_over : bool
@@ -43,7 +43,7 @@ class TournamentConfig:
 
     name: str
     num_rounds: int
-    pairing_system: str = "dutch_swiss"
+    pairing_system: PairingSysteABC
     tiebreak_order: List[str] = field(
         default_factory=lambda: list(DEFAULT_TIEBREAK_SORT_ORDER)
     )
@@ -51,4 +51,4 @@ class TournamentConfig:
     tournament_over: bool = False
 
 
-#  LocalWords:  TournamentConfig
+#  LocalWords:  TournamentConfig PairingSystemABC

@@ -18,13 +18,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-import functools
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import List
 
-from gambitpairing.constants import LOSS_SCORE, WIN_SCORE
-from gambitpairing.models.pairing import PairingSystemABC
-from gambitpairing.models.player import Player
-from gambitpairing.type_aliases import Pairings
+from gambitpairing.type_aliases import Players
 
 from .pairing_history import PairingHistory
 from .round_data import RoundData
@@ -33,103 +29,12 @@ from .tournament_config import TournamentConfig
 
 @dataclass
 class Tournament:
-    """Main tournament management class.
+    """Tournament data, nothing else.
 
-    This class coordinates all tournament operations through specialized managers:
-    - RoundManager: handles round creation and pairing
-    - ResultRecorder: manages result entry and validation
-    - TiebreakCalculator: computes tiebreak scores
-
-    The Tournament class maintains the overall state and provides a clean API
-    for tournament operations.
+    Holds all domain state for a tournament but performs no STUFF.
     """
 
-    def __init__(
-        self,
-        name: str,
-        players: List[Player],
-        num_rounds: int,
-        tiebreak_order: Optional[List[str]] = None,
-        pairing_system: PairingSystemABC = "dutch_swiss",
-    ) -> None:
-        """Initialize a new tournament.
-
-        Args
-        ----
-        name: Tournament name
-        players: List of participating players
-        num_rounds: Number of rounds to play
-        tiebreak_order: Priority order for tiebreak criteria
-        pairing_system: Pairing system ('dutch_swiss', 'round_robin', 'manual')
-        """
-        # Configuration
-        self.config = TournamentConfig(
-            name=name,
-            num_rounds=num_rounds,
-            pairing_system=pairing_system,
-            tiebreak_order=tiebreak_order,
-        )
-
-        # Players
-        self.players: Dict[str, Player] = {p.id: p for p in players}
-
-        # Pairing history
-        self.pairing_history = PairingHistory()
-
-        # Specialized managers
-        self.round_manager = RoundManager(
-            pairing_system=self.config.pairing_system,
-            num_rounds=self.config.num_rounds,
-            pairing_history=self.pairing_history,
-        )
-        self.result_recorder = ResultRecorder()
-        self.tiebreak_calculator = TiebreakCalculator()
-
-    # ========== Properties ==========
-
-    @property
-    def name(self) -> str:
-        """Get tournament name."""
-        return self.config.name
-
-    @name.setter
-    def name(self, value: str) -> None:
-        """Set tournament name."""
-        self.config.name = value
-
-    @property
-    def num_rounds(self) -> int:
-        """Get number of rounds."""
-        return self.config.num_rounds
-
-    @num_rounds.setter
-    def num_rounds(self, value: int) -> None:
-        """Set number of rounds."""
-        self.config.num_rounds = value
-        # Update the round manager with the new number of rounds
-        self.round_manager.num_rounds = value
-
-    @property
-    def pairing_system(self) -> str:
-        """Get pairing system."""
-        return self.config.pairing_system
-
-    @property
-    def tiebreak_order(self) -> List[str]:
-        """Get tiebreak order."""
-        return self.config.tiebreak_order
-
-    @tiebreak_order.setter
-    def tiebreak_order(self, value: List[str]) -> None:
-        """Set tiebreak order."""
-        self.config.tiebreak_order = value
-
-    @property
-    def tournament_over(self) -> bool:
-        """If the tournament over."""
-        return self.config.tournament_over
-
-    @tiebreak_order.setter
-    def tournament_over(self, value: bool) -> None:
-        """Set tournament over."""
-        self.config.tournament_over = value
+    config: TournamentConfig
+    players: Players
+    rounds: List[RoundData] = field(default_factory=list)
+    pairing_history: PairingHistory = field(default_factory=PairingHistory)

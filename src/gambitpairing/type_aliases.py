@@ -16,15 +16,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
+from collections.abc import Mapping, MutableMapping, Sequence, Iterable
 from typing import List, Optional, Tuple
 from gambitpairing.models.player import PlayerABC
 
+PlayerId = int
+
 # Input Player objects
-Players = List[PlayerABC]
+Players = Iterable[PlayerABC]
 MaybePlayer = Optional[PlayerABC]
 
 # return PlayerId
-PlayerId = int
 Pairing = Tuple[PlayerId, PlayerId]
 Pairings = Tuple[Pairing, ...]
 

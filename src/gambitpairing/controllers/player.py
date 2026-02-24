@@ -1,7 +1,25 @@
 """Player controller for managing chess players."""
 
+# Gambit Pairing
+# Copyright (C) 2025  Gambit Pairing developers
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-def import_players_from_csv() -> List[Players] | None:
+from __future__ import annotations
+
+
+def import_players_from_csv() -> Players | None:
     """Import players from a CSV file chosen via a file dialog.
 
     Expects a CSV with at minimum a ``Name`` column. Optionally reads
@@ -17,8 +35,8 @@ def import_players_from_csv() -> List[Players] | None:
 
     Returns
     -------
-    List[Players] | None
-        The added players
+    tuple(int, Players)
+        tuple of the number of players found and Players found.
 
     Raises
     ------
@@ -33,8 +51,8 @@ def import_players_from_csv() -> List[Players] | None:
     OSError
         File Error
     """
-    added_players_count = 0
-    players: Players | None = None
+    player_count = 0
+    players: Players = []
     with open(filename, "r", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         for row in reader:
@@ -57,10 +75,10 @@ def import_players_from_csv() -> List[Players] | None:
                 federation=row.get("Federation"),
             )
 
-            self.tournament.players[player.id] = player
-            added_players_count += 1
+            players.append(player)
+            player_count += 1
 
-    return (added_players_count, players)
+    return (player_count, players)
 
 
 def export_players_to_csv(players: Players, file_path: Path) -> None:
@@ -69,6 +87,13 @@ def export_players_to_csv(players: Players, file_path: Path) -> None:
     Writes one row per player sorted alphabetically by name, with
     columns: Name, Rating, Gender, Date of Birth, Phone, Email, Club,
     Federation, Active, ID.
+
+    Parameters
+    ----------
+    players : Players
+        An iterable of players to export
+    file_path : Path
+        The path to write csv file
 
     Raises
     ------
