@@ -86,7 +86,10 @@ combine_as_imports = true
 force_sort_within_sections = true
 
 [tool.setuptools.package-data]
-"gambitpairing.resources" = ["styles.qss"]
+# QSS partial templates; compiled at runtime by style_manager.
+"gambitpairing.resources.styles" = ["*.qss"]
+# Theme dictionaries are pure Python — no extra pattern needed.
+# Icon resources.
 "gambitpairing.resources.icons" = ["*.png", "*.ico", "*.webp", "*.svg"]
 
 [tool.setuptools.dynamic]

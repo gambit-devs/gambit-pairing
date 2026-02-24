@@ -1,0 +1,214 @@
+/* =============================================================================
+   04 — TABLES & LISTS
+   QListWidget / QListView, QTableWidget / QTableView, and QHeaderView.
+   ============================================================================= */
+
+/* --- List views ------------------------------------------------------------ */
+QListWidget,
+QListView {
+  background:               {{bg_surface}};
+  border:                   none;
+  border-radius:            {{radius_lg}};
+  padding:                  8px;
+  alternate-background-color: {{bg_subtle}};
+  font-size:                {{font_size_base}};
+  outline:                  none;
+}
+
+QListWidget::item,
+QListView::item {
+  padding:           12px 16px;
+  border-radius:     {{radius_md}};
+  color:             {{text_heading}};
+  background-color:  transparent;
+  margin:            1px 0;
+}
+
+QListWidget::item:selected,
+QListView::item:selected {
+  background-color: {{color_primary_bg}};
+  color:            {{color_primary}};
+}
+
+QListWidget::item:hover:!selected,
+QListView::item:hover:!selected {
+  background-color: {{color_accent_hover}};
+  color:            {{color_primary}};
+}
+
+QListWidget::item:pressed,
+QListView::item:pressed {
+  background-color: {{color_accent}};
+  color:            {{color_accent_dark}};
+}
+
+QListWidget:focus,
+QListView:focus {
+  border: 2px solid {{color_accent_light}};
+}
+
+/* --- Table views ----------------------------------------------------------- */
+QTableWidget,
+QTableView {
+  background:                {{bg_surface}};
+  border:                    none;
+  border-radius:             {{radius_lg}};
+  gridline-color:            {{table_grid}};
+  selection-background-color: {{selection_bg}};
+  selection-color:           {{selection_text}};
+  alternate-background-color: {{table_alt}};
+  font-size:                 {{font_size_md}};
+  outline:                   none;
+  padding:                   0;
+}
+
+QTableWidget::item,
+QTableView::item {
+  padding:     10px 16px;
+  border:      none;
+  background:  transparent;
+  color:       {{text_dark}};
+  border-bottom: 1px solid {{table_grid}};
+  /* Programmatic per-cell color overrides (e.g. crosstable) work because
+     this rule only sets a default; Qt handles object-level setForeground(). */
+}
+
+QTableWidget::item:selected,
+QTableView::item:selected {
+  background-color: {{selection_bg}};
+  color:            {{selection_text}};
+}
+
+QTableWidget::item:hover:!selected,
+QTableView::item:hover:!selected {
+  background-color: {{table_hover_bg}};
+  color:            {{color_primary}};
+}
+
+QTableWidget::item:pressed,
+QTableView::item:pressed {
+  background-color: {{color_accent}};
+  color:            {{color_accent_dark}};
+}
+
+QTableWidget:focus,
+QTableView:focus {
+  border: 1.5px solid {{color_accent}};
+}
+
+/* --- Header view ----------------------------------------------------------- */
+QHeaderView::section {
+  background:   {{bg_header}};
+  color:        {{text_heading}};
+  border:       1px solid {{border_header}};
+  border-bottom: 2px solid {{border_header_bottom}};
+  border-right: none;
+  padding:      10px 16px;
+  font-weight:  600;
+  font-size:    {{font_size_base}};
+  letter-spacing: 0.02em;
+}
+
+QHeaderView::section:horizontal:hover,
+QHeaderView::section:horizontal:pressed {
+  background-color: {{color_primary_bg}};
+  color:            {{color_primary}};
+}
+
+QHeaderView::section:vertical:hover,
+QHeaderView::section:vertical:pressed {
+  background-color: {{color_primary_bg}};
+  color:            {{color_primary}};
+}
+
+QHeaderView::section:last {
+  border-right: none;
+}
+
+QHeaderView::section:vertical {
+  background: {{bg_header}};
+  color:      {{text_secondary}};
+  font-size:  {{font_size_sm}};
+  font-weight: 500;
+  border:     1px solid {{border_header}};
+  padding:    8px 7px;
+}
+
+QTableWidget QTableCornerButton::section,
+QTableView  QTableCornerButton::section {
+  background: {{bg_header}};
+  border:     1px solid {{border_header}};
+}
+
+/* --- Pairings table (compact variant) ------------------------------------- */
+QTableWidget[class="PairingsTable"] {
+  background:                 {{bg_surface}};
+  border:                     none;
+  border-radius:              0;
+  gridline-color:             {{border_light}};
+  selection-background-color: {{color_primary_bg}};
+  selection-color:            {{text_heading}};
+  alternate-background-color: {{bg_subtle}};
+  font-size:                  {{font_size_sm}};
+}
+
+QTableWidget[class="PairingsTable"]::item {
+  padding:    8px 12px;
+  border:     none;
+  border-bottom: 1px solid {{border_light}};
+}
+
+QTableWidget[class="PairingsTable"]::item:selected {
+  background-color: {{color_primary_bg}};
+  color:            {{text_heading}};
+}
+
+/* Pairings table header — narrower padding for compact column widths */
+QTableWidget[class="PairingsTable"] QHeaderView::section {
+  padding: 10px 8px;
+}
+
+/* --- Manual-pairing list widgets ------------------------------------------ */
+QListWidget[class="ManualPairingDialog"] {
+  background-color: {{bg_subtle}};
+  border:           1px solid {{border_medium}};
+  border-radius:    {{radius_xs}};
+  padding:          4px;
+}
+
+QListWidget[class="ManualPairingDialog"]::item {
+  padding:          6px 8px;
+  margin:           1px;
+  border-radius:    3px;
+  background-color: {{bg_surface}};
+  border:           1px solid {{border_light}};
+}
+
+QListWidget[class="ManualPairingDialog"]::item:hover {
+  background-color: {{color_accent_hover}};
+  border-color:     {{color_primary}};
+}
+
+QListWidget[class="ManualPairingDialog"]::item:selected {
+  background-color: {{color_primary}};
+  color:            {{text_on_primary}};
+  border-color:     {{color_primary_dark}};
+}
+
+/* Confirmed pairing pill — accent-outlined list */
+QListWidget[class="PairingSelected"] {
+  background-color: {{color_primary_bg_light}};
+  border:           2px dashed {{color_primary_light}};
+  border-radius:    {{radius_md}};
+  padding:          4px;
+}
+
+QListWidget[class="PairingSelected"]::item {
+  padding:          6px 8px;
+  margin:           1px;
+  border-radius:    3px;
+  background-color: {{state_warn_bg}};
+  border:           1px solid {{color_accent}};
+  color:            {{color_accent_dark}};
+  font-weight:      bold;
+}

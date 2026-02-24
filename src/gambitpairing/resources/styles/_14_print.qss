@@ -1,0 +1,25 @@
+/* =============================================================================
+   14 — PRINT PREVIEW
+   Overrides for system print preview and print dialogs.  These are sized
+   down to prevent text overflow in the relatively narrow system dialog panels.
+   ============================================================================= */
+
+/* Compact text for labels and combos inside print dialogs */
+QPrintPreviewDialog QLabel,
+QPrintDialog QLabel,
+QPrintPreviewDialog QComboBox,
+QPrintDialog QComboBox {
+  font-size: {{font_size_xs}};
+  outline:   none;
+}
+
+/* Smaller toolbar buttons inside print preview */
+QPrintPreviewDialog QToolButton,
+QPrintDialog QToolButton {
+  min-width:  24px;
+  min-height: 24px;
+  padding:    2px 4px;
+  icon-size:  16px 16px;
+  font-size:  {{font_size_xs}};
+  outline:    none;
+}

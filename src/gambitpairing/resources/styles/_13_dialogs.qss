@@ -1,0 +1,81 @@
+/* =============================================================================
+   13 — DIALOGS
+   Styles scoped to specific dialog classes.  Base QDialog appearance is
+   defined in _08_chrome.qss; this file handles dialog-specific child widgets.
+   ============================================================================= */
+
+/* --- Manual-pairing dialog ------------------------------------------------ */
+QDialog[class="ManualPairingDialog"] {
+  background: {{bg_page}};
+  color:      {{text_body}};
+}
+
+QLabel[class="ManualPairingDialog"] {
+  color: {{text_body}};
+}
+
+QLineEdit[class="ManualPairingDialog"] {
+  background:    {{bg_surface}};
+  border:        1.5px solid {{border_input}};
+  border-radius: {{radius_sm}};
+  padding:       6px 10px;
+  color:         {{text_body}};
+  font-size:     {{font_size_sm}};
+}
+
+QLineEdit[class="ManualPairingDialog"]:focus {
+  border-color: {{border_input_focus}};
+  background:   {{bg_input_focus}};
+}
+
+QLineEdit[class="ManualPairingDialog"]:disabled {
+  background:   {{bg_disabled}};
+  color:        {{text_disabled}};
+  border-color: {{border_medium}};
+}
+
+/* Dock widget inside manual-pairing dialog */
+QDockWidget[class="ManualPairingDialog"] {
+  background:    {{bg_surface}};
+  border:        1px solid {{border_light}};
+  border-radius: {{radius_md}};
+}
+
+QDockWidget[class="ManualPairingDialog"]::title {
+  background:  {{bg_subtle}};
+  color:       {{text_body}};
+  font-weight: normal;
+  font-size:   {{font_size_base}};
+  padding:     4px;
+  text-align:  left;
+  border:      1px solid {{border_medium}};
+  border-bottom: none;
+}
+
+QDockWidget[class="ManualPairingDialog"]::close-button,
+QDockWidget[class="ManualPairingDialog"]::float-button {
+  background:           transparent;
+  border:               1px solid transparent;
+  border-radius:        2px;
+  subcontrol-position:  top right;
+  subcontrol-origin:    margin;
+  position:             relative;
+  width:                14px;
+  height:               14px;
+}
+
+QDockWidget[class="ManualPairingDialog"]::close-button:hover,
+QDockWidget[class="ManualPairingDialog"]::float-button:hover {
+  background: {{border_medium}};
+  border:     1px solid {{text_muted}};
+}
+
+QDockWidget[class="ManualPairingDialog"]::close-button:pressed,
+QDockWidget[class="ManualPairingDialog"]::float-button:pressed {
+  background: {{border_header}};
+}
+
+/* --- Print-options dialog -------------------------------------------------- */
+/* No widget-class overrides are needed here because all constituents use
+   global typography and the base button style.  Section labels below use
+   the DialogHeader / DialogSubtitle classes defined in _02_base.qss. */

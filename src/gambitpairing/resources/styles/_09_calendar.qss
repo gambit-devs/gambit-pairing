@@ -1,0 +1,190 @@
+/* =============================================================================
+   09 — CALENDAR WIDGET
+   Complete styling for QCalendarWidget used in the new-tournament dialog.
+   ============================================================================= */
+
+QCalendarWidget {
+  border-radius: {{radius_lg}};
+  background:    {{bg_surface}};
+  border:        1.5px solid {{border_medium}};
+  padding:       8px;
+  min-width:     240px;
+  min-height:    240px;
+  max-width:     340px;
+  max-height:    340px;
+  font-family:   {{font_family}};
+}
+
+QCalendarWidget QWidget {
+  background:    {{bg_surface}};
+  border-radius: {{radius_md}};
+}
+
+/* Navigation bar row */
+QCalendarWidget QNavigationBar {
+  background:  {{bg_surface}};
+  border:      none;
+  border-top-left-radius:  {{radius_lg}};
+  border-top-right-radius: {{radius_lg}};
+  padding:     6px 10px 5px 10px;
+  margin-bottom: 2px;
+  min-height:  32px;
+}
+
+/* Navigation arrows and month/year buttons */
+QCalendarWidget QToolButton {
+  color:         {{color_primary}};
+  font-size:     {{font_size_xl}};
+  font-weight:   600;
+  background:    transparent;
+  border:        none;
+  border-radius: {{radius_sm}};
+  padding:       4px 10px;
+  margin:        0 2px;
+  min-width:     28px;
+  min-height:    26px;
+  font-family:   inherit;
+}
+
+QCalendarWidget QToolButton:hover,
+QCalendarWidget QToolButton:focus {
+  background: {{color_accent_hover}};
+  color:      {{color_accent_dark}};
+}
+
+QCalendarWidget QToolButton:pressed {
+  background: {{color_accent}};
+  color:      {{text_on_primary}};
+}
+
+QCalendarWidget QToolButton:disabled {
+  color:      {{border_medium}};
+  background: transparent;
+  border:     none;
+}
+
+QCalendarWidget QToolButton:focus {
+  outline: none;
+}
+
+/* Month / year label buttons */
+#qt_calendar_monthbutton,
+#qt_calendar_yearbutton {
+  font-weight:   700;
+  background:    transparent;
+  color:         {{color_accent_dark}};
+  border:        none;
+  border-radius: {{radius_sm}};
+  padding:       4px 12px;
+  margin:        0 4px;
+  font-size:     {{font_size_xl}};
+}
+
+#qt_calendar_monthbutton:hover,
+#qt_calendar_yearbutton:hover {
+  background: {{color_accent_hover}};
+  color:      {{color_primary}};
+}
+
+#qt_calendar_monthbutton:pressed,
+#qt_calendar_yearbutton:pressed {
+  background: {{color_accent}};
+  color:      {{text_on_primary}};
+}
+
+/* Weekday header row */
+QCalendarWidget QHeaderView {
+  background: transparent;
+  border:     none;
+}
+
+QCalendarWidget QHeaderView::section {
+  background:    {{color_accent_hover}};
+  color:         {{color_primary}};
+  font-weight:   700;
+  font-size:     {{font_size_md}};
+  border:        none;
+  border-radius: 0;
+  padding:       6px 0;
+  letter-spacing: 0.07em;
+  font-family:   inherit;
+}
+
+/* Calendar date grid */
+QCalendarWidget QTableView,
+QCalendarWidget QAbstractItemView {
+  selection-background-color: {{color_primary}};
+  selection-color:            {{text_on_primary}};
+  background:                 {{bg_surface}};
+  alternate-background-color: {{color_accent_hover}};
+  outline:                    none;
+  border-radius:              {{radius_md}};
+  font-size:                  {{font_size_base}};
+  border:                     1px solid {{color_accent}};
+  padding:                    0;
+  gridline-color:             {{color_accent}};
+}
+
+/* All day cells */
+QCalendarWidget QAbstractItemView:item,
+QCalendarWidget QTableView:item {
+  color:       {{text_body}};
+  background:  {{bg_surface}};
+  min-width:   28px;
+  min-height:  28px;
+  padding:     6px 0;
+  font-size:   {{font_size_base}};
+  font-weight: 600;
+  border:      none;
+  font-family: inherit;
+  letter-spacing: 0.01em;
+}
+
+/* Dates from the adjacent months */
+QCalendarWidget QAbstractItemView:item[month="false"] {
+  color:       {{border_medium}};
+  background:  {{color_accent_hover}};
+  font-weight: 400;
+  border:      none;
+  opacity:     0.7;
+}
+
+/* Current-month dates */
+QCalendarWidget QAbstractItemView:item[month="true"] {
+  color:       {{text_body}};
+  background:  {{bg_surface}};
+  font-weight: 700;
+  border:      none;
+}
+
+QCalendarWidget QAbstractItemView:item[month="true"]:hover {
+  background: {{color_accent}};
+  color:      {{color_primary}};
+  border:     none;
+}
+
+/* Selected date */
+QCalendarWidget QAbstractItemView:item:selected,
+QCalendarWidget QTableView:item:selected {
+  background:  {{color_primary}};
+  color:       {{text_on_primary}};
+  font-weight: bold;
+  border:      none;
+}
+
+/* Today — bordered, un-filled */
+QCalendarWidget QAbstractItemView:item:enabled[today="true"],
+QCalendarWidget QTableView:item:enabled[today="true"] {
+  border:      2px solid {{color_accent}};
+  background:  {{bg_surface}};
+  color:       {{color_accent_dark}};
+  font-weight: 900;
+}
+
+/* Disabled dates */
+QCalendarWidget QAbstractItemView:item:disabled,
+QCalendarWidget QTableView:item:disabled {
+  color:      {{text_disabled}};
+  background: transparent;
+  opacity:    0.5;
+}

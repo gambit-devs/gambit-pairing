@@ -13,10 +13,7 @@ PATHEX = [str(SRC)]
 
 # Data files to include (source path or glob, destination relative path inside bundle)
 DATAS = [
-    (
-        str(SRC / "gambitpairing" / "resources" / "styles.qss"),
-        "gambitpairing/resources/",
-    ),
+    # styles.qss no longer shipped; individual partials are compiled at runtime
     (str(SRC / "gambitpairing" / "resources" / "LICENSE"), "gambitpairing/resources/"),
     (
         str(SRC / "gambitpairing" / "resources" / "icons" / "*"),

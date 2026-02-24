@@ -1,0 +1,166 @@
+/* =============================================================================
+   06 — INPUTS
+   QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox, QDateEdit,
+   QTextEdit, QPlainTextEdit, and QCheckBox.
+   ============================================================================= */
+
+/* --- Text / Numeric Inputs ------------------------------------------------ */
+QLineEdit,
+QSpinBox,
+QDoubleSpinBox,
+QComboBox,
+QDateEdit,
+QTextEdit,
+QPlainTextEdit {
+  background:    {{bg_input}};
+  border:        1.5px solid {{border_input}};
+  border-radius: {{radius_md}};
+  padding:       10px 14px;
+  color:         {{text_body}};
+  font-size:     {{font_size_base}};
+}
+
+QLineEdit:focus,
+QSpinBox:focus,
+QDoubleSpinBox:focus,
+QComboBox:focus,
+QDateEdit:focus,
+QTextEdit:focus,
+QPlainTextEdit:focus {
+  border-color:  {{border_input_focus}};
+  background:    {{bg_input_focus}};
+}
+
+QLineEdit:disabled,
+QSpinBox:disabled,
+QDoubleSpinBox:disabled,
+QComboBox:disabled,
+QDateEdit:disabled,
+QTextEdit:disabled,
+QPlainTextEdit:disabled {
+  background:    {{bg_disabled}};
+  color:         {{text_disabled}};
+  border-color:  {{border_medium}};
+}
+
+/* --- SpinBox arrow buttons ------------------------------------------------- */
+QSpinBox::up-button,
+QSpinBox::down-button,
+QDoubleSpinBox::up-button,
+QDoubleSpinBox::down-button {
+  background:    transparent;
+  border:        none;
+  width:         22px;
+  height:        18px;
+  margin:        0 2px;
+  padding:       0;
+  border-radius: {{radius_sm}};
+}
+
+QSpinBox::up-button:hover,
+QSpinBox::down-button:hover,
+QDoubleSpinBox::up-button:hover,
+QDoubleSpinBox::down-button:hover {
+  background: {{color_primary_bg}};
+}
+
+QSpinBox::up-arrow,
+QDoubleSpinBox::up-arrow {
+  image:  url(icons:arrow-up.svg);
+  width:  12px;
+  height: 12px;
+}
+
+QSpinBox::down-arrow,
+QDoubleSpinBox::down-arrow {
+  image:  url(icons:arrow-down.svg);
+  width:  12px;
+  height: 12px;
+}
+
+QSpinBox::up-arrow:disabled,
+QSpinBox::down-arrow:disabled,
+QDoubleSpinBox::up-arrow:disabled,
+QDoubleSpinBox::down-arrow:disabled {
+  image: none;
+}
+
+/* --- ComboBox ------------------------------------------------------------- */
+QComboBox {
+  min-width: 80px;
+}
+
+QComboBox QAbstractItemView {
+  background:               {{bg_surface}};
+  border:                   1.5px solid {{border_input}};
+  border-radius:            {{radius_md}};
+  selection-background-color: {{color_accent_hover}};
+  selection-color:          {{color_primary}};
+  font-size:                {{font_size_base}};
+  padding:                  5px;
+  outline:                  none;
+}
+
+QComboBox::drop-down {
+  subcontrol-origin:   padding;
+  subcontrol-position: top right;
+  width:               32px;
+  border-left:         1.5px solid {{border_input}};
+  border-top-right-radius: {{radius_md}};
+  border-bottom-right-radius: {{radius_md}};
+  background:          {{bg_muted}};
+}
+
+QComboBox::drop-down:hover {
+  background: {{color_accent_hover}};
+}
+
+QComboBox::down-arrow {
+  image:  url(:/qt-project.org/styles/commonstyle/images/arrowdown-16.png);
+  width:  16px;
+  height: 16px;
+}
+
+QComboBox::down-arrow:disabled {
+  image: url(:/qt-project.org/styles/commonstyle/images/arrowdown-disabled-16.png);
+}
+
+/* --- Checkbox ------------------------------------------------------------- */
+QCheckBox {
+  spacing:   12px;
+  font-size: {{font_size_base}};
+  color:     {{text_body}};
+}
+
+QCheckBox::indicator {
+  width:         22px;
+  height:        22px;
+  border-radius: {{radius_sm}};
+  border:        1.5px solid {{border_input}};
+  background:    {{bg_surface}};
+}
+
+QCheckBox::indicator:hover {
+  border-color: {{border_input_focus}};
+}
+
+QCheckBox::indicator:checked {
+  background:   {{color_primary}};
+  border:       1.5px solid {{color_primary}};
+  image:        url(icons:checkmark-white.svg);
+}
+
+QCheckBox::indicator:checked:hover {
+  background:   {{color_primary_light}};
+  border-color: {{color_primary_light}};
+}
+
+QCheckBox::indicator:disabled {
+  background:   {{border_medium}};
+  border-color: {{border_medium}};
+}
+
+QCheckBox::indicator:checked:disabled {
+  background:   {{text_disabled}};
+  border-color: {{text_disabled}};
+}

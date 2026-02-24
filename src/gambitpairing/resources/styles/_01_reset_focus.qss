@@ -1,0 +1,45 @@
+/* =============================================================================
+   01 — FOCUS RESET
+   Removes Qt's default focus rectangles and grey-fill outlines from every
+   widget category.  Specific focused-state styles (e.g. input border colour)
+   are set in the relevant partial rather than here.
+   ============================================================================= */
+
+/* Universal focus outline suppression */
+QWidget:focus               { outline: none; }
+QFrame:focus                { outline: none; }
+QLabel:focus                { outline: none; }
+QDialog:focus               { outline: none; }
+QTabBar:focus               { outline: none; }
+QTabWidget:focus            { outline: none; }
+QTabBar::tab:focus          { outline: none; }
+QTabBar::tab:selected:focus { outline: none; }
+QListWidget:focus           { outline: none; }
+QListView:focus             { outline: none; }
+QTableWidget:focus          { outline: none; }
+QTableView:focus            { outline: none; }
+QSplitter::handle:focus     { outline: none; }
+QMenu:focus                 { outline: none; }
+QMenuBar:focus              { outline: none; }
+QMenu::item:focus           { outline: none; }
+QMenuBar::item:focus        { outline: none; }
+QToolBar:focus              { outline: none; }
+QCheckBox:focus             { outline: none; }
+QRadioButton:focus          { outline: none; }
+QCheckBox::indicator:focus  { outline: none; }
+QRadioButton::indicator:focus { outline: none; }
+QCalendarWidget:focus              { outline: none; }
+QCalendarWidget QAbstractItemView:focus { outline: none; }
+
+/* Input fields: keep border highlight but remove outline glow */
+QLineEdit:focus,
+QSpinBox:focus,
+QDoubleSpinBox:focus,
+QComboBox:focus,
+QDateEdit:focus,
+QTextEdit:focus,
+QPlainTextEdit:focus { outline: none; }
+
+/* Combo dropdown items */
+QComboBox QAbstractItemView:focus,
+QComboBox QAbstractItemView::item:focus { outline: none; }

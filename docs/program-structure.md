@@ -68,7 +68,7 @@
 │   │   │   ├── **init**.py
 │   │   │   ├── resource_utils.py
 │   │   │   ├── scripts
-│   │   │   └── styles.qss
+│   │   │   └── styles/
 │   │   └── test
 │   │   ├── core
 │   │   │   └── pairing_round_robin.py

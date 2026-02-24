@@ -1,0 +1,87 @@
+/* =============================================================================
+   02 — BASE
+   Root widget, typography defaults, QLabel, QFrame.
+   ============================================================================= */
+
+/* --- Root widget ----------------------------------------------------------- */
+QWidget {
+  background:   {{bg_page}};
+  color:        {{text_body}};
+  font-family:  {{font_family}};
+  font-size:    {{font_size_base}};
+  border:       none;
+  outline:      none;
+}
+
+/* --- QLabel --------------------------------------------------------------- */
+/* Labels are transparent by default; individual contexts override as needed. */
+QLabel {
+  background:   transparent;
+  border:       none;
+  outline:      none;
+  color:        {{text_body}};
+}
+
+/* Section title / heading labels */
+QLabel[class="SectionTitle"] {
+  color:        {{text_heading}};
+  font-size:    {{font_size_2xl}};
+  font-weight:  700;
+  background:   transparent;
+  padding:      0;
+}
+
+/* Dialog header / subtitle */
+QLabel[class="DialogHeader"] {
+  color:        {{text_heading}};
+  font-size:    {{font_size_lg}};
+  font-weight:  700;
+  background:   transparent;
+  padding-bottom: 4px;
+}
+
+QLabel[class="DialogSubtitle"] {
+  color:        {{text_secondary}};
+  font-size:    {{font_size_sm}};
+  font-weight:  500;
+  background:   transparent;
+}
+
+/* Toolbar / info label variants */
+QLabel[class="ToolbarTournamentLabel"] {
+  color:        {{text_heading}};
+  font-size:    {{font_size_base}};
+  font-weight:  600;
+  background:   transparent;
+  padding:      0;
+}
+
+QWidget[class="ToolbarInfoContainer"] {
+  background:   transparent;
+}
+
+/* --- QFrame --------------------------------------------------------------- */
+QFrame {
+  outline: none;
+  border:  none;
+}
+
+/* --- QSplitter handle ----------------------------------------------------- */
+QSplitter::handle {
+  background:    {{border_light}};
+  border-radius: 5px;
+}
+QSplitter::handle:horizontal {
+  width:  8px;
+  margin: 0 2px;
+}
+QSplitter::handle:vertical {
+  height: 8px;
+  margin: 2px 0;
+}
+QSplitter::handle:hover {
+  background: {{color_primary}};
+}
+QSplitter::handle:pressed {
+  background: {{color_accent_dark}};
+}

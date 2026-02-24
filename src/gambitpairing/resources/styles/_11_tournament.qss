@@ -1,0 +1,169 @@
+/* =============================================================================
+   11 — TOURNAMENT COMPONENTS
+   Components that are unique to the tournament management workflow:
+     - Round card
+     - Tournament / standings header
+     - Round progress indicator
+     - Bye info bar
+     - Action footer
+     - Status instruction label
+     - Toolbar info containers
+   ============================================================================= */
+
+/* --- Round card container ------------------------------------------------- */
+QFrame[class="RoundCard"] {
+  background:    {{bg_surface}};
+  border:        1px solid {{border_light}};
+  border-radius: {{radius_2xl}};
+}
+
+/* --- Tournament tab header ------------------------------------------------ */
+QWidget[class="TournamentHeader"] {
+  background: transparent;
+}
+
+QLabel[class="RoundTitle"] {
+  color:       {{text_heading}};
+  font-size:   {{font_size_2xl}};
+  font-weight: 700;
+  background:  transparent;
+  padding:     0;
+}
+
+/* --- Standings header ----------------------------------------------------- */
+QWidget[class="StandingsHeader"] {
+  background: transparent;
+}
+
+QLabel[class="StandingsTitle"] {
+  color:       {{text_heading}};
+  font-size:   {{font_size_2xl}};
+  font-weight: 700;
+  background:  transparent;
+  padding:     0;
+}
+
+/* --- Round progress indicator --------------------------------------------- */
+QWidget[class="RoundProgressIndicator"] {
+  background: transparent;
+}
+
+/* Default dot label */
+QWidget[class="RoundProgressIndicator"] QLabel {
+  background:    {{bg_muted}};
+  color:         {{text_secondary}};
+  border:        2px solid {{border_light}};
+  border-radius: {{radius_md}};
+  font-size:     {{font_size_xs}};
+  font-weight:   600;
+}
+
+/* Completed round dot */
+QWidget[class="RoundProgressIndicator"] QLabel[state="completed"] {
+  background:  {{color_primary}};
+  color:       {{text_on_primary}};
+  border-color: {{color_primary}};
+}
+
+/* Round with in-progress results */
+QWidget[class="RoundProgressIndicator"] QLabel[state="active"] {
+  background:  {{state_warn_bg}};
+  color:       {{state_warn_text}};
+  border-color: {{state_warn_accent}};
+  font-weight: 700;
+}
+
+/* The currently open / active round */
+QWidget[class="RoundProgressIndicator"] QLabel[state="current"] {
+  background:  {{color_primary_bg}};
+  color:       {{color_primary}};
+  border-color: {{color_primary}};
+  font-weight: 700;
+}
+
+/* Pending future rounds */
+QWidget[class="RoundProgressIndicator"] QLabel[state="pending"] {
+  background:  {{bg_page}};
+  color:       {{text_muted}};
+  border-color: {{border_medium}};
+}
+
+/* Ellipsis indicator between visible dots */
+QLabel[class="ProgressEllipsis"] {
+  color:       {{text_muted}};
+  font-size:   {{font_size_sm}};
+  font-weight: 500;
+  background:  transparent;
+  border:      none;
+}
+
+/* "Round N of M" text */
+QLabel[class="ProgressLabel"] {
+  color:       {{text_secondary}};
+  font-size:   {{font_size_sm}};
+  font-weight: 500;
+  background:  transparent;
+  border:      none;
+}
+
+/* --- Bye info bar --------------------------------------------------------- */
+QWidget[class="ByeInfoBar"] {
+  background: {{state_warn_bg}};
+  border-top:  1px solid {{state_warn_border}};
+}
+
+QLabel[class="ByeIcon"] {
+  font-size:  14pt;
+  background: transparent;
+}
+
+QLabel[class="ByeLabel"] {
+  color:       {{state_warn_text}};
+  font-size:   10.5pt;
+  font-weight: 500;
+  background:  transparent;
+}
+
+/* --- Action footer -------------------------------------------------------- */
+QWidget[class="ActionFooter"] {
+  background:              {{bg_page}};
+  border-top:              1px solid {{border_light}};
+  border-bottom-left-radius:  {{radius_2xl}};
+  border-bottom-right-radius: {{radius_2xl}};
+}
+
+/* --- Status instruction label --------------------------------------------- */
+/* Contextual banner displayed above the pairings table. */
+QLabel[class="StatusInstruction"] {
+  font-size:   {{font_size_base}};
+  font-weight: 500;
+  padding:     14px 20px;
+  border-radius: 0;
+  margin:      0;
+  border-bottom: 1px solid {{border_light}};
+}
+
+QLabel[class="StatusInstruction"][state="default"],
+QLabel[class="StatusInstruction"][state="ready"] {
+  color:            {{text_dark}};
+  background-color: {{bg_page}};
+}
+
+QLabel[class="StatusInstruction"][state="recording"] {
+  color:            {{state_info_text}};
+  background-color: {{state_info_bg}};
+  border-bottom-color: {{state_info_border}};
+}
+
+QLabel[class="StatusInstruction"][state="prepare"] {
+  color:            {{state_warn_text}};
+  background-color: {{state_warn_bg}};
+  border-bottom-color: {{state_warn_border}};
+}
+
+QLabel[class="StatusInstruction"][state="finished"] {
+  color:            {{state_success_text}};
+  background-color: {{state_success_bg}};
+  font-weight:      600;
+  border-bottom-color: {{state_success_border}};
+}

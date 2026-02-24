@@ -29,7 +29,7 @@ from gambitpairing.exceptions import IconException, StyleException
 from gambitpairing.gui.mainwindow import GambitPairingMainWindow
 from gambitpairing.resources.resource_utils import (
     get_resource_path,
-    read_resource_text,
+    get_style_sheet,
 )
 from gambitpairing.utils import setup_logger
 
@@ -38,9 +38,9 @@ logger = setup_logger(__name__)
 
 def main():
     """Entry point."""
-    # define aliases used in styles.qss
+    # Register the icons directory as the "icons:" search-path prefix so QSS
+    # url(icons:arrow-up.svg) references resolve at runtime.
     icon_path = str(Path(str(files("gambitpairing.resources.icons"))))
-    # set qt search path for use in styles.qss
     QDir.setSearchPaths("icons", [icon_path])
     exit_code = run_app()
     logger.info("run_app() exited with code: %s", exit_code)
@@ -93,15 +93,15 @@ def set_application_style(app: QtWidgets.QApplication) -> None:
     StyleException
         When style fails to be set
     """
-    # to ensure it is bound, or mypy bitches
+    # Bind variable here to satisfy static type-checkers even if an exception
+    # is raised before it is assigned inside the try block.
     style_text = ""
     try:
-        style_text = read_resource_text("styles.qss")
+        style_text = get_style_sheet()  # uses the active theme (dark by default)
 
         logger.debug("style_text: (%s)\n", style_text)
-        #  apply style sheet
         app.setStyleSheet(style_text)
-        logger.debug("set style sheet to:\n%s", style_text)
+        logger.debug("Applied stylesheet (%d chars)", len(style_text))
 
     except Exception as e:
         raise StyleException(

@@ -137,16 +137,38 @@ def read_resource_binary(resource_name: str, subpackage: str = "") -> bytes:
 
 
 # Convenience functions for your specific use case
-def get_style_sheet() -> str:
-    """
-    Get the QSS stylesheet content.
+def get_style_sheet(theme: str | None = None) -> str:
+    """Assemble and return the complete application stylesheet.
+
+    Delegates to ``style_manager.get_stylesheet`` which loads the modular
+    QSS partial files from ``gambitpairing.resources.styles`` and substitutes
+    colour/typography tokens from the requested (or currently active) theme.
+
+    Parameters
+    ----------
+    theme : str or None, optional
+        Theme name to apply, e.g. ``"light"`` or ``"dark"``.
+        When ``None`` (default) the active theme controlled by
+        ``style_manager.set_active_theme()`` is used.
 
     Returns
     -------
     str
-        Content of the styles.qss file
+        Fully resolved QSS string ready for ``QApplication.setStyleSheet()``.
+
+    Raises
+    ------
+    ValueError
+        If *theme* is not a registered theme name.
+
+    See Also
+    --------
+    style_manager.set_active_theme : Change the application-wide active theme.
+    style_manager.list_themes : Enumerate available theme names.
     """
-    return read_resource_text("styles.qss")
+    from gambitpairing.resources.style_manager import get_stylesheet
+
+    return get_stylesheet(theme_name=theme)
 
 
 def get_icon_path(icon_type: str = "png"):

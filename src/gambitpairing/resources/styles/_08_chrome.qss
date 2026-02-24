@@ -1,0 +1,189 @@
+/* =============================================================================
+   08 — APPLICATION CHROME
+   QScrollBar, QMenu, QMenuBar, QToolBar, QStatusBar, QDialog.
+   ============================================================================= */
+
+/* --- Scroll bars ----------------------------------------------------------- */
+QScrollBar:vertical,
+QScrollBar:horizontal {
+  background:    {{bg_muted}};
+  border:        none;
+  border-radius: 7px;
+  width:         14px;
+  height:        14px;
+  margin:        0;
+}
+
+QScrollBar::handle:vertical,
+QScrollBar::handle:horizontal {
+  background:    {{border_light}};
+  border-radius: 7px;
+  min-height:    32px;
+  min-width:     32px;
+}
+
+QScrollBar::handle:vertical:hover,
+QScrollBar::handle:horizontal:hover {
+  background: {{color_primary}};
+}
+
+QScrollBar::handle:vertical:pressed,
+QScrollBar::handle:horizontal:pressed {
+  background: {{color_primary_light}};
+}
+
+QScrollBar::add-line,
+QScrollBar::sub-line {
+  background: none;
+  border:     none;
+  height:     0;
+  width:      0;
+}
+
+QScrollBar::add-page,
+QScrollBar::sub-page {
+  background: none;
+}
+
+/* --- Menu ------------------------------------------------------------------ */
+QMenu {
+  background:    {{bg_surface}};
+  border:        1.5px solid {{border_light}};
+  border-radius: {{radius_lg}};
+  padding:       8px;
+  font-size:     {{font_size_base}};
+  color:         {{text_body}};
+}
+
+QMenu::item {
+  padding:    10px 28px 10px 22px;
+  border-radius: {{radius_sm}};
+  background: transparent;
+  color:      {{text_body}};
+}
+
+QMenu::item:selected,
+QMenu::item:hover {
+  background: {{color_accent_hover}};
+  color:      {{color_primary}};
+}
+
+QMenu::item:disabled {
+  color:      {{text_disabled}};
+  background: transparent;
+}
+
+QMenu::separator {
+  height:     1px;
+  background: {{border_light}};
+  margin:     7px 0;
+}
+
+/* --- Menu bar ------------------------------------------------------------- */
+QMenuBar {
+  background:  {{bg_page}};
+  border:      none;
+  padding:     0 12px;
+  font-size:   {{font_size_base}};
+  font-weight: 600;
+  color:       {{text_body}};
+}
+
+QMenuBar::item {
+  background:   transparent;
+  color:        {{text_body}};
+  padding:      8px 18px;
+  border-radius: {{radius_md}} {{radius_md}} 0 0;
+  margin:       0 2px;
+}
+
+QMenuBar::item:selected,
+QMenuBar::item:pressed {
+  background: {{color_accent_hover}};
+  color:      {{color_primary}};
+}
+
+QMenuBar::item:disabled {
+  color:      {{text_disabled}};
+  background: transparent;
+}
+
+/* --- Toolbar -------------------------------------------------------------- */
+QToolBar {
+  background:   {{bg_surface}};
+  border-bottom: 1px solid {{border_light}};
+  padding:      8px 12px;
+  spacing:      6px;
+}
+
+QToolBar#MainToolbar {
+  background:   {{bg_surface}};
+  border-bottom: 1px solid {{border_light}};
+  padding:      6px 12px;
+  spacing:      4px;
+  min-height:   44px;
+}
+
+QToolBar QToolButton {
+  background:    transparent;
+  border:        1.5px solid transparent;
+  border-radius: {{radius_sm}};
+  padding:       6px 10px;
+  margin:        0 2px;
+  color:         {{text_dark}};
+  font-size:     {{font_size_sm}};
+  font-weight:   500;
+  min-width:     32px;
+  min-height:    32px;
+}
+
+QToolBar QToolButton:hover,
+QToolBar QToolButton:focus {
+  background:  {{color_accent_hover}};
+  color:       {{color_primary}};
+  border-color: transparent;
+}
+
+QToolBar QToolButton:pressed {
+  background: {{color_accent}};
+  color:      {{color_accent_dark}};
+}
+
+QToolBar QToolButton:disabled {
+  background:  transparent;
+  color:       {{border_medium}};
+  border-color: transparent;
+}
+
+QToolBar QToolButton:checked {
+  background: {{color_primary_bg}};
+  color:      {{color_primary}};
+  border-color: transparent;
+}
+
+QToolBar::separator {
+  background:    {{border_light}};
+  width:         2px;
+  height:        24px;
+  margin:        0 8px;
+  border-radius: 1px;
+}
+
+/* --- Status bar ----------------------------------------------------------- */
+QStatusBar {
+  background: {{bg_muted}};
+  color:      {{text_body}};
+  border-top: none;
+  padding:    8px 14px;
+  font-size:  {{font_size_md}};
+}
+
+QStatusBar::item {
+  border: none;
+}
+
+/* --- Dialog --------------------------------------------------------------- */
+QDialog {
+  background:    {{bg_page}};
+  border-radius: {{radius_xl}};
+}

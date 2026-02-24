@@ -1,0 +1,81 @@
+/* =============================================================================
+   12 — PLACEHOLDER WIDGETS
+   Empty-state views shown when no tournament or no players exist yet, and
+   the pre-tournament welcome screen shown before the first round is started.
+   ============================================================================= */
+
+/* --- No-tournament placeholder -------------------------------------------- */
+TournamentPlaceholder {
+  background-color: #fffbe9;
+  border:           2px solid {{color_accent}};
+  border-radius:    {{radius_3xl}};
+}
+
+QLabel[class="NoTournamentIcon"] {
+  font-size:    {{font_size_icon}};
+  margin-bottom: 18px;
+  color:         {{color_primary}};
+}
+
+QLabel[class="NoTournamentMainMessage"] {
+  font-size:     {{font_size_3xl}};
+  font-weight:   700;
+  color:         {{color_primary}};
+  margin-bottom: 10px;
+  letter-spacing: 0.01em;
+}
+
+QLabel[class="NoTournamentDescription"] {
+  font-size:     {{font_size_xl}};
+  color:         {{color_accent_dark}};
+  margin-bottom: 32px;
+  font-weight:   500;
+}
+
+/* --- Player placeholder --------------------------------------------------- */
+PlayerPlaceholder {
+  background-color: #fffbe9;
+  border:           2px solid {{color_accent}};
+  border-radius:    {{radius_3xl}};
+}
+
+QLabel[class="PlayerPlaceHolderIcon"] {
+  font-size:     {{font_size_icon}};
+  margin-bottom: 18px;
+  color:         {{color_primary}};
+}
+
+QLabel[class="PlayerPlaceholderTitle"] {
+  font-size:     {{font_size_3xl}};
+  font-weight:   700;
+  color:         {{color_primary}};
+  margin-bottom: 10px;
+  letter-spacing: 0.01em;
+}
+
+QLabel[class="PlayerPlaceholderDesc"] {
+  font-size:     {{font_size_xl}};
+  color:         {{color_accent_dark}};
+  margin-bottom: 32px;
+  font-weight:   500;
+}
+
+/* --- Pre-tournament welcome screen ---------------------------------------- */
+QLabel[class="PreTournamentTitle"] {
+  font-size:     {{font_size_3xl}};
+  font-weight:   700;
+  color:         {{color_primary}};
+  margin-bottom: 10px;
+  letter-spacing: 0.01em;
+}
+
+QLabel[class="PreTournamentLabel"] {
+  font-size:     {{font_size_xl}};
+  color:         {{color_accent_dark}};
+  margin-bottom: 32px;
+  font-weight:   500;
+}
+
+QLabel[class="PreTournamentIconLabel"] {
+  margin-bottom: 18px;
+}

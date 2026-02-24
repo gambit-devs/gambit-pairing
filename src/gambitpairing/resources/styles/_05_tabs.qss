@@ -1,0 +1,41 @@
+/* =============================================================================
+   05 — TABS
+   QTabWidget pane and QTabBar tab strip styling.
+   ============================================================================= */
+
+QTabWidget::pane {
+  border:        none;
+  border-radius: {{radius_2xl}};
+  background:    {{bg_surface}};
+  margin-top:    -2px;
+}
+
+QTabBar::tab {
+  background:    transparent;
+  color:         {{text_secondary}};
+  border:        none;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  padding:       12px 32px 10px 32px;
+  margin-right:  4px;
+  font-weight:   600;
+  min-width:     100px;
+  font-size:     {{font_size_base}};
+  letter-spacing: -0.01em;
+}
+
+QTabBar::tab:hover {
+  color:         {{text_heading}};
+  border-bottom: 3px solid {{color_accent_light}};
+}
+
+QTabBar::tab:selected {
+  color:         {{color_primary}};
+  border-bottom: 3px solid {{color_primary}};
+  background:    {{bg_surface}};
+  font-weight:   700;
+}
+
+QTabBar::tab:!selected {
+  margin-top: 2px;
+}

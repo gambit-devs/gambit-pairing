@@ -1,0 +1,367 @@
+/* =============================================================================
+   07 — BUTTONS
+   Defines all QPushButton variants used throughout the application.
+
+   Hierarchy
+   ---------
+   QPushButton                   — base outlined button (white / black border)
+   QPushButton[class="Primary"]  — filled primary-colour button
+   QPushButton[class="IconButton"]    — icon-only toolbar utility button
+   QPushButton[class="QuickEditButton"] — inline edit toggle (checkable)
+   QPushButton[class="ResultSelectorButton"] — result recording button group
+   QPushButton[class="PreTournamentButton"]  — large call-to-action on placeholder
+   QPushButton[class="NoTournamentCreateTournament"] — CTA on empty-state view
+   QPushButton[class="ManualPairingDialog"]  — manual pairing action button
+   ============================================================================= */
+
+/* --- Base button ---------------------------------------------------------- */
+QPushButton {
+  background:    {{bg_surface}};
+  color:         {{text_heading}};
+  border:        2px solid {{text_heading}};
+  border-radius: {{radius_md}};
+  padding:       10px 28px;
+  font-weight:   700;
+  font-size:     {{font_size_base}};
+  outline:       none;
+}
+
+QPushButton:hover,
+QPushButton:focus {
+  background:  {{color_accent_hover}};
+  color:       {{text_heading}};
+  border:      2px solid {{text_heading}};
+  outline:     none;
+}
+
+QPushButton:pressed {
+  background: {{text_heading}};
+  color:      {{bg_surface}};
+  border:     2px solid {{text_heading}};
+  outline:    none;
+}
+
+QPushButton:disabled {
+  background: {{border_medium}};
+  color:      {{text_disabled}};
+  border:     none;
+  outline:    none;
+}
+
+/* --- Dialog button box (slightly narrower) -------------------------------- */
+QDialogButtonBox QPushButton {
+  min-width: 90px;
+  padding:   10px 24px;
+}
+
+/* --- Primary filled button ------------------------------------------------ */
+/* Assign class="Primary" in Python for filled-green call-to-action buttons. */
+QPushButton[class="Primary"] {
+  background:    {{color_primary}};
+  color:         {{text_on_primary}};
+  border:        none;
+  border-radius: {{radius_md}};
+  padding:       10px 28px;
+  font-weight:   700;
+  font-size:     {{font_size_base}};
+}
+
+QPushButton[class="Primary"]:hover {
+  background:  {{color_primary_hover}};
+  color:       {{text_on_primary}};
+  border:      none;
+}
+
+QPushButton[class="Primary"]:pressed {
+  background: {{color_primary_dark}};
+  color:      {{text_on_primary}};
+}
+
+QPushButton[class="Primary"]:disabled {
+  background: {{border_medium}};
+  color:      {{text_disabled}};
+  border:     none;
+}
+
+/* --- Icon button (utility / toolbar) -------------------------------------- */
+QPushButton[class="IconButton"] {
+  background:    transparent;
+  color:         {{text_dark}};
+  border:        none;
+  border-radius: {{radius_xs}};
+  padding:       4px;
+  font-weight:   500;
+  font-size:     {{font_size_lg}};
+  outline:       none;
+  min-width:     32px;
+  max-width:     32px;
+  min-height:    32px;
+  max-height:    32px;
+  qproperty-iconsize: 16px 16px;
+}
+
+QPushButton[class="IconButton"]:hover {
+  background: {{bg_muted}};
+  color:      {{color_primary}};
+}
+
+QPushButton[class="IconButton"]:pressed {
+  background: {{border_medium}};
+  color:      {{color_primary_dark}};
+}
+
+QPushButton[class="IconButton"]:disabled {
+  color:      {{border_medium}};
+  background: transparent;
+}
+
+/* --- Quick-edit button (checkable inline toggle) -------------------------- */
+QPushButton[class="QuickEditButton"] {
+  background:    {{bg_surface}};
+  color:         {{text_heading}};
+  border:        1.5px solid {{text_heading}};
+  border-radius: {{radius_sm}};
+  padding:       5px 10px;
+  font-weight:   600;
+  font-size:     {{font_size_sm}};
+  outline:       none;
+  min-height:    32px;
+  max-height:    32px;
+  min-width:     100px;
+  max-width:     100px;
+}
+
+QPushButton[class="QuickEditButton"]:hover {
+  background: {{color_accent_hover}};
+  color:      {{text_heading}};
+}
+
+QPushButton[class="QuickEditButton"]:pressed {
+  background: {{text_heading}};
+  color:      {{bg_surface}};
+}
+
+QPushButton[class="QuickEditButton"]:checked {
+  background:  #ffc107;
+  color:       #212529;
+  border:      1.5px solid #e0a800;
+  font-weight: 700;
+}
+
+QPushButton[class="QuickEditButton"]:disabled {
+  background: {{border_medium}};
+  color:      {{text_disabled}};
+  border:     1.5px solid {{border_medium}};
+}
+
+/* --- Result selector button group ----------------------------------------- */
+/* A horizontal row of three checkable buttons: White / Draw / Black         */
+QWidget[class="ResultSelector"] {
+  background: transparent;
+}
+
+QPushButton[class="ResultSelectorButton"] {
+  background-color: {{bg_surface}};
+  color:        {{text_dark}};
+  border:       1px solid {{border_medium}};
+  border-radius: 0;
+  padding:      4px 8px;
+  font-weight:  600;
+  font-size:    {{font_size_sm}};
+  outline:      none;
+  min-height:   32px;
+  min-width:    44px;
+  max-width:    66px;
+  margin:       0;
+  margin-left:  -1px;
+}
+
+/* Left-cap */
+QPushButton[class="ResultSelectorButton"][result_type="white"] {
+  border-top-left-radius:    {{radius_sm}};
+  border-bottom-left-radius: {{radius_sm}};
+  margin-left: 0;
+}
+
+/* Right-cap */
+QPushButton[class="ResultSelectorButton"][result_type="black"] {
+  border-top-right-radius:    {{radius_sm}};
+  border-bottom-right-radius: {{radius_sm}};
+}
+
+QPushButton[class="ResultSelectorButton"]:hover {
+  background-color: {{bg_muted}};
+  border-color:     {{text_muted}};
+  color:            {{text_dark}};
+}
+
+/* Default checked state (generic — overridden per result_type below) */
+QPushButton[class="ResultSelectorButton"]:checked {
+  background-color: {{color_primary}};
+  color:            {{text_on_primary}};
+  border-color:     {{color_primary}};
+  font-weight:      700;
+}
+
+QPushButton[class="ResultSelectorButton"]:checked:hover {
+  background-color: {{color_primary_hover}};
+  border-color:     {{color_primary_hover}};
+}
+
+QPushButton[class="ResultSelectorButton"]:disabled {
+  background-color: {{bg_subtle}};
+  color:            {{border_medium}};
+  border-color:     {{bg_muted}};
+}
+
+/* White-win */
+QPushButton[class="ResultSelectorButton"][result_type="white"]:checked {
+  background-color: {{state_info_text}};
+  border-color:     {{state_info_text}};
+}
+QPushButton[class="ResultSelectorButton"][result_type="white"]:checked:hover {
+  background-color: {{state_info_hover}};
+  border-color:     {{state_info_hover}};
+}
+
+/* Draw */
+QPushButton[class="ResultSelectorButton"][result_type="draw"]:checked {
+  background-color: {{text_secondary}};
+  border-color:     {{text_secondary}};
+}
+QPushButton[class="ResultSelectorButton"][result_type="draw"]:checked:hover {
+  background-color: {{text_dark}};
+  border-color:     {{text_dark}};
+}
+
+/* Black-win */
+QPushButton[class="ResultSelectorButton"][result_type="black"]:checked {
+  background-color: {{text_heading}};
+  border-color:     {{text_heading}};
+}
+QPushButton[class="ResultSelectorButton"][result_type="black"]:checked:hover {
+  background-color: #1f2937;
+  border-color:     #1f2937;
+}
+
+/* --- Pre-tournament call-to-action button --------------------------------- */
+QPushButton[class="PreTournamentButton"] {
+  background-color: {{color_primary}};
+  color:       {{text_on_primary}};
+  font-size:   {{font_size_xl}};
+  font-weight: 700;
+  padding:     13px 32px;
+  border:      none;
+  border-radius: {{radius_lg}};
+  min-width:   170px;
+  letter-spacing: 0.01em;
+}
+
+QPushButton[class="PreTournamentButton"]:hover {
+  background-color: {{color_accent}};
+  color:            {{color_primary}};
+}
+
+QPushButton[class="PreTournamentButton"]:pressed {
+  background-color: {{color_accent_dark}};
+  color:            {{text_on_primary}};
+}
+
+/* --- No-tournament placeholder CTA buttons -------------------------------- */
+QPushButton[class="NoTournamentCreateTournament"] {
+  background-color: {{color_primary}};
+  color:       {{text_on_primary}};
+  font-size:   {{font_size_xl}};
+  font-weight: 700;
+  padding:     13px 32px;
+  border:      none;
+  border-radius: {{radius_lg}};
+  min-width:   170px;
+  letter-spacing: 0.01em;
+}
+
+QPushButton[class="NoTournamentCreateTournament"]:hover {
+  background-color: {{color_accent}};
+  color:            {{color_primary}};
+}
+
+QPushButton[class="NoTournamentCreateTournament"]:pressed {
+  background-color: {{color_accent_dark}};
+  color:            {{text_on_primary}};
+}
+
+QPushButton[class="NoTournamentImportTournament"] {
+  background-color: {{color_accent}};
+  color:       {{color_primary}};
+  font-size:   {{font_size_xl}};
+  font-weight: 700;
+  padding:     13px 32px;
+  border:      none;
+  border-radius: {{radius_lg}};
+  min-width:   170px;
+  letter-spacing: 0.01em;
+}
+
+QPushButton[class="NoTournamentImportTournament"]:hover {
+  background-color: {{color_primary}};
+  color:            {{text_on_primary}};
+}
+
+QPushButton[class="NoTournamentImportTournament"]:pressed {
+  background-color: {{color_accent_dark}};
+  color:            {{text_on_primary}};
+}
+
+/* --- Import player button ------------------------------------------------- */
+QPushButton[class="ImportPlayerButton"] {
+  background-color: {{color_accent}};
+  color:       {{color_primary}};
+  font-size:   {{font_size_lg}};
+  font-weight: 700;
+  padding:     12px 28px;
+  border:      none;
+  border-radius: {{radius_lg}};
+  min-width:   140px;
+  letter-spacing: 0.01em;
+}
+
+QPushButton[class="ImportPlayerButton"]:hover {
+  background-color: {{color_primary}};
+  color:            {{text_on_primary}};
+}
+
+QPushButton[class="ImportPlayerButton"]:pressed {
+  background-color: {{color_accent_dark}};
+  color:            {{text_on_primary}};
+}
+
+/* --- Manual-pairing dialog button ---------------------------------------- */
+QPushButton[class="ManualPairingDialog"] {
+  background:    {{bg_surface}};
+  color:         {{text_heading}};
+  border:        1.5px solid {{border_light}};
+  border-radius: {{radius_sm}};
+  padding:       6px 12px;
+  font-weight:   600;
+  font-size:     {{font_size_sm}};
+  min-width:     70px;
+  outline:       none;
+}
+
+QPushButton[class="ManualPairingDialog"]:hover {
+  background:  {{color_accent_hover}};
+  color:       {{color_primary}};
+  border-color: {{color_primary}};
+}
+
+QPushButton[class="ManualPairingDialog"]:pressed {
+  background:  {{color_accent}};
+  color:       {{color_accent_dark}};
+  border-color: {{color_accent_dark}};
+}
+
+QPushButton[class="ManualPairingDialog"]:disabled {
+  background:  {{bg_muted}};
+  color:       {{text_disabled}};
+  border-color: {{border_medium}};
+}

@@ -1,0 +1,59 @@
+/* =============================================================================
+   03 — GROUP BOX
+   Styled card-like containers used to group related form fields and controls.
+   ============================================================================= */
+
+QGroupBox {
+  border:        none;
+  border-radius: {{radius_xl}};
+  margin-top:    18px;
+  background:    {{bg_surface}};
+  padding:       18px 18px 12px 18px;
+  font-weight:   600;
+  outline:       none;
+}
+
+QGroupBox::title {
+  subcontrol-origin:   margin;
+  subcontrol-position: top left;
+  left:          12px;
+  top:           2px;
+  background:    transparent;
+  padding:       2px 10px;
+  color:         {{color_primary}};
+  font-size:     {{font_size_lg}};
+  font-weight:   700;
+  border-radius: {{radius_sm}};
+  border:        none;
+  letter-spacing: 0.01em;
+  outline:       none;
+}
+
+/* Player group variant — no top margin (visually flush with parent) */
+QGroupBox[class="PlayerGroup"] {
+  margin-top: 0px;
+}
+
+/* Manual-pairing dialog groupbox — slightly tighter */
+QGroupBox[class="ManualPairingDialog"] {
+  border:        none;
+  border-radius: {{radius_lg}};
+  margin-top:    15px;
+  background:    {{bg_surface}};
+  padding:       15px;
+  font-weight:   600;
+  color:         {{color_primary}};
+}
+
+QGroupBox[class="ManualPairingDialog"]::title {
+  subcontrol-origin:   margin;
+  subcontrol-position: top left;
+  left:          10px;
+  top:           2px;
+  background:    transparent;
+  padding:       2px 8px;
+  color:         {{color_primary}};
+  font-size:     {{font_size_base}};
+  font-weight:   700;
+  border-radius: {{radius_sm}};
+}
