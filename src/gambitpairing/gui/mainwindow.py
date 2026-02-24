@@ -53,7 +53,6 @@ from .widgets.tournament_placeholder import TournamentPlaceholder
 logger = setup_logger(__name__)
 
 
-# --- Main Application Window ---
 class GambitPairingMainWindow(QtWidgets.QMainWindow):
     """Main application window for Gambit Pairing."""
 
@@ -132,7 +131,6 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
                     tiebreak_order=tiebreak_order,
                     pairing_system=pairing_system,
                 )
-                # Store pairing_system as an attribute if needed:
                 self.pairing_system = pairing_system
                 self.update_history_log(
                     f"--- New Tournament '{name}' Created (Rounds: {num_rounds}, Pairing: {pairing_system}) ---"

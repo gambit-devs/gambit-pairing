@@ -97,7 +97,6 @@ QPushButton[class="IconButton"] {
   max-width:     32px;
   min-height:    32px;
   max-height:    32px;
-  qproperty-iconsize: 16px 16px;
 }
 
 QPushButton[class="IconButton"]:hover {
