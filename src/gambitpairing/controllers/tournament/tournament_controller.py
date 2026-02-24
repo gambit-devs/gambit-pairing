@@ -246,7 +246,7 @@ class TournamentController:
 
     def get_round_pairings(
         self, round_index: int
-    ) -> Tuple[List[Tuple["Player", "Player"]], Optional["Player"]]:
+    ) -> Tuple[List[Tuple[Player, Player]], Optional[Player]]:
         """
         Get the pairings and bye player for a specific round.
 
@@ -443,8 +443,8 @@ class TournamentController:
     def set_manual_pairings(
         self,
         round_index: int,
-        pairings: List[Tuple["Player", "Player"]],
-        bye_player: Optional["Player"],
+        pairings: List[Tuple[Player, Player]],
+        bye_player: Optional[Player],
     ) -> bool:
         """
         Set manual pairings for a round.

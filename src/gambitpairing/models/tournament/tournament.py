@@ -16,24 +16,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
+
+from dataclasses import dataclass, field
 import functools
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from dataclasses import dataclass, field
 from gambitpairing.constants import LOSS_SCORE, WIN_SCORE
-from gambitpairing.models.player import Player
-
 from gambitpairing.models.pairing import PairingSystemABC
+from gambitpairing.models.player import Player
+from gambitpairing.type_aliases import Pairings
 
 from .pairing_history import PairingHistory
 from .round_data import RoundData
 from .tournament_config import TournamentConfig
-
-
-from gambitpairing.type_aliases import Pairings
-from gambitpairing.utils import setup_logger
-
-logger = setup_logger(__name__)
 
 
 @dataclass
@@ -131,7 +126,7 @@ class Tournament:
 
     @property
     def tournament_over(self) -> bool:
-        """Is the tournament over?"""
+        """If the tournament over."""
         return self.config.tournament_over
 
     @tiebreak_order.setter

@@ -1,4 +1,4 @@
-"""TournamentConfig data class."""
+"""TournamentConfig data class, contains tournament "settings"."""
 
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
@@ -22,7 +22,7 @@ from typing import Any, Dict, List
 from gambitpairing.constants import DEFAULT_TIEBREAK_SORT_ORDER
 
 
-@dataclass
+@dataclass(frozen=False)
 class TournamentConfig:
     """Tournament configuration settings.
 
@@ -49,29 +49,6 @@ class TournamentConfig:
     )
     # Is the tournament complete?
     tournament_over: bool = False
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Serialize configuration to dictionary."""
-        return {
-            "name": self.name,
-            "num_rounds": self.num_rounds,
-            "pairing_system": self.pairing_system,
-            "tiebreak_order": self.tiebreak_order,
-            "tournament_over": self.tournament_over,
-        }
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TournamentConfig":
-        """Deserialize configuration from dictionary."""
-        return cls(
-            name=data.get("name", "Untitled Tournament"),
-            num_rounds=data["num_rounds"],
-            pairing_system=data.get("pairing_system", "dutch_swiss"),
-            tiebreak_order=data.get(
-                "tiebreak_order", list(DEFAULT_TIEBREAK_SORT_ORDER)
-            ),
-            tournament_over=data.get("tournament_over", False),
-        )
 
 
 #  LocalWords:  TournamentConfig

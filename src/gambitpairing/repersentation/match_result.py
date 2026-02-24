@@ -1,4 +1,4 @@
-"""Match result data class."""
+"""Data transformation/serialization/to-from dict for MatchResult."""
 
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
@@ -15,31 +15,21 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize match result to dictionary."""
+        return {
+            "white_id": self.white_id,
+            "black_id": self.black_id,
+            "white_score": self.white_score,
+        }
 
-from dataclasses import dataclass
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "MatchResult":
+        """Deserialize match result from dictionary."""
+        return cls(
+            white_id=data["white_id"],
+            black_id=data["black_id"],
+            white_score=data["white_score"],
+        )
 
-
-@dataclass
-class MatchResult:
-    """Represents the result of a single match.
-
-    Attributes
-    ----------
-    white_id: str
-        ID of the white player
-    black_id : str
-        ID of the black player
-    white_score : float
-        Score for white (1.0 = win, 0.5 = draw, 0.0 = loss)
-    black_score : float
-        Score for black (computed as 1.0 - white_score)
-    """
-
-    white_id: str
-    black_id: str
-    white_score: float
-
-    @property
-    def black_score(self) -> float:
-        """Calculate black's score based on white's score."""
-        return 1.0 - self.white_score
+#  LocalWords:  MatchResult
