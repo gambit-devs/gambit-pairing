@@ -756,37 +756,6 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         )
         help_menu.addAction(self.update_action)
 
-    def _create_action(
-        self, text: str, slot: callable, shortcut: str = "", tooltip: str = ""
-    ) -> QAction:
-        """Create and configure a QAction.
-
-        Parameters
-        ----------
-        text : str
-            The text to display for the action.
-        slot : callable
-            The function to call when the action is triggered.
-        shortcut : str, optional
-            Optional keyboard shortcut (e.g., "Ctrl+N"),
-            must be understood by QtGui.QKeySequence
-        tooltip : str, optional
-            Optional tooltip to show on hover. The default is ""
-
-        Returns
-        -------
-            The configured QAction.
-        """
-        action = QAction(text, self)
-        action.triggered.connect(slot)
-        if shortcut:
-            action.setShortcut(QtGui.QKeySequence(shortcut))
-        if tooltip:
-            action.setToolTip(tooltip)
-            action.setStatusTip(tooltip)
-        action.setIconVisibleInMenu(False)  # Hide icon in menus
-        return action
-
     def _setup_toolbar(self) -> None:
         """Set up the main application toolbar.
 
