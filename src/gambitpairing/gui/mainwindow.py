@@ -273,23 +273,6 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         """Restart the application cleanly."""
         utils.restart_application()
 
-    def get_confirmation(
-        self, action="", message="Are you sure you want to proceed?"
-    ) -> bool:
-        """Get confirmation from user before proceeding."""
-        reply = QMessageBox.question(
-            self,
-            action,
-            message,
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-
-        if reply == QMessageBox.StandardButton.Yes:
-            QMessageBox.information(self, "Success", "Action completed!")
-            return True
-        return False
-
     def load_tournament(self):
         if not self.check_save():
             return
