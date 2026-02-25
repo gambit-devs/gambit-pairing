@@ -26,7 +26,7 @@ from PyQt6.QtGui import QIcon
 from importlib_resources import files
 
 from gambitpairing.exceptions import IconException, StyleException
-from gambitpairing.gui.mainwindow import GambitPairingMainWindow
+from gambitpairing.gui import GambitPairingMainWindow
 from gambitpairing.resources.resource_utils import (
     get_resource_path,
     get_style_sheet,

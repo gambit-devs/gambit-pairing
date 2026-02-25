@@ -18,8 +18,14 @@
 
 from __future__ import annotations
 
+from PyQt6 import QtWidgets
+from PyQt6.QtWidgets import QMessageBox
+
+from gambitpairing import APP_VERSION
 from gambitpairing.exceptions import FileLoadException
+from gambitpairing.type_aliases import Players
 from gambitpairing.utils import setup_logger
+from gambitpairing.controllers import GampitPairingController
 
 logger = setup_logger(__name__)
 
@@ -81,12 +87,13 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self._notify(f"New tournament '{tournament.name}' created")
 
     def load_tournament(self) -> None:
+        """Prompt user for tournament file, and load the tournament save @ path."""
         path = self._prompt_load_path()
         if not path:
+            logger.warning("No file path returned by _prompt_load_path, returning.")
             return
 
         try:
-            self.app = self.persistence.load(path)
             self._propagate_tournament()
             self._refresh_ui()
         except FileLoadException as e:
@@ -99,6 +106,4 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self._update_toolbar(state)
         self._update_status_bar(state)
 
-    def _propagate_tournament(self) -> None:
-        for tab in self._tabs:
-            tab.set_tournament(self.app.tournament)
+    def _show_error(self, error_text: str) -> None:
