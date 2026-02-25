@@ -1,4 +1,4 @@
-"""Round management for tournaments.
+"""Round controller for tournaments.
 
 This module handles all round-related operations including pairing generation,
 round progression, and round history management.
@@ -35,7 +35,7 @@ from gambitpairing.utils import setup_logger
 logger = setup_logger(__name__)
 
 
-class RoundManager:
+class RoundController:
     """Manages round progression and pairing generation for tournaments.
 
     This class is responsible for:
