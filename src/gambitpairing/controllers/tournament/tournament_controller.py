@@ -479,7 +479,7 @@ class TournamentController:
             return False
         return self.tournament.pairing_system == "manual"
 
-    def format_results_for_log(
+    def _format_results_for_log(
         self, results_data: List[Tuple[str, str, float]], round_index: int
     ) -> List[str]:
         """
