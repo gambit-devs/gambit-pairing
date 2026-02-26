@@ -33,7 +33,7 @@ def main() -> int:
             [
                 sys.executable,
                 "-m",
-                "PySide6.scripts.uic",
+                "PyQt6.uic.pyuic",
                 str(ui_file),
                 "-o",
                 str(out_file),
