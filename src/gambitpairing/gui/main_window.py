@@ -105,5 +105,3 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self._update_actions(state)
         self._update_toolbar(state)
         self._update_status_bar(state)
-
-    def _show_error(self, error_text: str) -> None:
