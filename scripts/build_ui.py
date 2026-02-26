@@ -11,12 +11,14 @@ OUT_DIR = ROOT / "src" / "gambitpairing" / "ui_gen"
 
 
 def main() -> int:
-   """Main entrypoint and doer."""
+    """Entry-point and doer."""
     if not UI_DIR.exists():
         print(f"UI directory not found: {UI_DIR}")
         return 1
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
+    # Ensure ui_gen is a package
+    (OUT_DIR / "__init__.py").touch(exist_ok=True)
 
     ui_files = list(UI_DIR.glob("*.ui"))
     if not ui_files:
