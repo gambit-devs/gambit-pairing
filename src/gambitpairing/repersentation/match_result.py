@@ -1,6 +1,5 @@
 """Data transformation/serialization/to-from dict for MatchResult."""
 
-
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
 #
@@ -16,6 +15,12 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+from typing import Any, Dict
+
+from gambitpairing.models.tournament import MatchResult
+
+
 def match_result_to_dict(match_result: MatchResult) -> Dict[str, Any]:
     """Project a MatchResult into a dictionary representation.
 
@@ -57,7 +62,7 @@ def match_result_to_dict(match_result: MatchResult) -> Dict[str, Any]:
 def match_result_from_dict(data: Dict[str, Any]) -> MatchResult:
     """Retrieve a MatchResult from the dictionary representation.
 
-    This function converts a  dictionary reperesentation into
+    This function converts a dictionary representation into
     :class:`~gambitpairing.models.tournament.match_result.MatchResult`
 
     Parameters
@@ -82,7 +87,7 @@ def match_result_from_dict(data: Dict[str, Any]) -> MatchResult:
     --------
     match_result_to_dict : Create a Tournament dictionary representation.
     """
-    return cls(
+    return MatchResult(
         white_id=data["white_id"],
         black_id=data["black_id"],
         white_score=data["white_score"],
