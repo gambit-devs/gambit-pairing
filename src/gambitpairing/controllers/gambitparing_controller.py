@@ -33,6 +33,7 @@ class GampitPairingController:
     """
 
     def __init__(self) -> None:
+        # TODO: Figure out the main window
         self.main_window = GambitPairingMainWindow()
         self.window.set_app_instance(app)
         self.window.show()
