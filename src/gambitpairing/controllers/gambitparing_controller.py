@@ -34,6 +34,9 @@ class GampitPairingController:
 
     def __init__(self) -> None:
         self.main_window = GambitPairingMainWindow()
+        self.window.set_app_instance(app)
+        self.window.show()
+        logger.info("Setup main window")
         self.tournament: Optional[Tournament] = None
         self.current_round_index: int = 0
         self.last_recorded_results_data: List[Tuple[str, str, float]] = []
