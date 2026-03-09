@@ -47,10 +47,10 @@ def load_pyproject_dependencies():
 
 
 def main():
-    # change to the directory this file is in
-    this_dir = os.path.dirname(os.path.realpath(__file__))
-    os.chdir(this_dir)
-    print("Changed working dir to ", str(this_dir))
+
+    # Set cwd for python process
+    git_root = Path(__file__).parent.parent
+    os.chdir(git_root)
 
     parser = argparse.ArgumentParser(
         description="Format Python code using black and isort"

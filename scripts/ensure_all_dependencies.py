@@ -52,8 +52,8 @@ def load_pyproject_dependencies():
 def main():
     """Entry point."""
     # Set cwd for python process
-    script_dir = Path(__file__).parent
-    os.chdir(script_dir)
+    git_root = Path(__file__).parent.parent
+    os.chdir(git_root)
 
     # Ensure pip is up to date
     print("Ensuring pip is up to date")

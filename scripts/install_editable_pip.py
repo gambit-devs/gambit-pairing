@@ -8,6 +8,7 @@ from pathlib import Path
 
 def main():
     try:
+
         # Get the directory where this script is located
         script_dir = Path(__file__).parent
 
@@ -19,13 +20,16 @@ def main():
         else:
             print(f"Warning: Dependencies script not found: {dependencies_script}")
 
-        print("Python pip pkg installed in --editable mode")
-
         # Install the package in editable mode
+
+        # Set cwd for python process
+        git_root = Path(__file__).parent.parent
+        os.chdir(git_root)
         subprocess.run(
             [sys.executable, "-m", "pip", "install", "--editable", str(script_dir)],
             check=True,
         )
+        print("Python pip pkg installed in --editable mode")
 
         print(
             "now gambit-pairing should be on your $PATH, try gambit-paining in your shell"

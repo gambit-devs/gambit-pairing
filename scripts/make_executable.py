@@ -92,8 +92,9 @@ def build_executable(spec_file: Path):
 
 def main():
     """Entry point."""
-    script_dir = Path(__file__).parent
-    os.chdir(script_dir)  # set script cwd
+    # Set cwd for python process
+    git_root = Path(__file__).parent.parent
+    os.chdir(git_root)
 
     parser = argparse.ArgumentParser(
         description="Build Gambit Pairing executable using PyInstaller",
@@ -138,10 +139,10 @@ Examples:
     if args.spec:
         spec_file = Path(args.spec)
     elif args.onedir:
-        spec_file = script_dir / "gambit-pairing-onedir.spec"
+        spec_file = git_root / "gambit-pairing-onedir.spec"
     else:
         # Default to onefile (more portable)
-        spec_file = script_dir / "gambit-pairing.spec"
+        spec_file = git_root / "gambit-pairing.spec"
 
     # Build the executable
     build_executable(spec_file)

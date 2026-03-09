@@ -21,6 +21,8 @@
 from pathlib import Path
 import sys
 
+from gambitpairing.resources.style_manager import get_stylesheet
+
 # Use importlib.resources for Python 3.9+ or importlib_resources backport
 if sys.version_info >= (3, 9):
     from importlib import resources
@@ -136,7 +138,6 @@ def read_resource_binary(resource_name: str, subpackage: str = "") -> bytes:
         ) from e
 
 
-# Convenience functions for your specific use case
 def get_style_sheet(theme: str | None = None) -> str:
     """Assemble and return the complete application stylesheet.
 
@@ -166,8 +167,6 @@ def get_style_sheet(theme: str | None = None) -> str:
     style_manager.set_active_theme : Change the application-wide active theme.
     style_manager.list_themes : Enumerate available theme names.
     """
-    from gambitpairing.resources.style_manager import get_stylesheet
-
     return get_stylesheet(theme_name=theme)
 
 
