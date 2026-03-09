@@ -9,7 +9,7 @@ import tomllib
 
 
 def run_command(cmd, description, check_mode=False):
-    """Run a command and handle errors"""
+    """Run a command and handle errors."""
     print(f"Running: {description}")
     try:
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)
@@ -27,7 +27,7 @@ def run_command(cmd, description, check_mode=False):
 
 
 def load_pyproject_dependencies():
-    """Load dependencies from pyproject.toml"""
+    """Load dependencies from pyproject.toml."""
     try:
         with open("pyproject.toml", "rb") as f:
             data = tomllib.load(f)
@@ -47,7 +47,7 @@ def load_pyproject_dependencies():
 
 
 def main():
-
+    """Entry point."""
     # Set cwd for python process
     git_root = Path(__file__).parent.parent
     os.chdir(git_root)
