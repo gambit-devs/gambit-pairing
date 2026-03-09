@@ -9,8 +9,10 @@ from pathlib import Path
 def main():
     try:
 
+        # Set cwd for python process
+        git_root = Path(__file__).parent.parent
         # Get the directory where this script is located
-        script_dir = Path(__file__).parent
+        script_dir = git_root / "scripts"
 
         # Run the ensure_all_dependencies.py script
         dependencies_script = script_dir / "ensure_all_dependencies.py"
@@ -26,7 +28,7 @@ def main():
         git_root = Path(__file__).parent.parent
         os.chdir(git_root)
         subprocess.run(
-            [sys.executable, "-m", "pip", "install", "--editable", str(script_dir)],
+            [sys.executable, "-m", "pip", "install", "--editable", str(git_root)],
             check=True,
         )
         print("Python pip pkg installed in --editable mode")

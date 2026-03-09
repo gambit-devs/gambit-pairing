@@ -1,4 +1,4 @@
-"""gambit pairing init."""
+"""gambit pairing version."""
 
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
@@ -16,15 +16,5 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-APP_NAME = "Gambit Pairing"
-from ._version import __version__, APP_VERSION
-from .type_aliases import (
-    MaybePlayer,
-    Pairing,
-    Pairings,
-    PlayerId,
-    Players,
-)
-from .utils import setup_logger
-
-#  LocalWords:  MatchPairing RoundSchedule PlayerId
+APP_VERSION = "0.8.0"
+__version__ = APP_VERSION
