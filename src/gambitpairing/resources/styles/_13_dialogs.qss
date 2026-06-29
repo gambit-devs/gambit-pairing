@@ -150,3 +150,43 @@ QTextBrowser[class="PairingInfoDetails"] {
   border-radius: {{radius_sm}};
   font-size:     10.5pt;
 }
+
+/* --- About dialog ---------------------------------------------------------- */
+QDialog[class="AboutDialog"] {
+  background: {{bg_page}};
+}
+
+QTabWidget[class="AboutTabs"] QTabBar {
+  qproperty-expanding: true;
+}
+
+QTabWidget[class="AboutTabs"] QTabBar::tab {
+  min-width: 80px;
+}
+
+QLabel[class="AboutAppName"] {
+  color:       {{text_heading}};
+  font-size:   18px;
+  font-weight: 700;
+}
+
+QLabel[class="AboutVersion"] {
+  color:     {{text_muted}};
+  font-size: 9px;
+}
+
+QLabel[class="AboutDescription"] {
+  font-size: 10px;
+}
+
+QLabel[class="AboutSupport"] {
+  font-size:  10px;
+  margin-top: 10px;
+}
+
+QTextEdit[class="AboutLicenseText"] {
+  border:        1px solid {{border_medium}};
+  border-radius: {{radius_sm}};
+  font-family:   monospace;
+  font-size:     7px;
+}

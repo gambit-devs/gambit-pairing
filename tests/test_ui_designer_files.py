@@ -9,6 +9,7 @@ from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
 
 from gambitpairing.constants import DEFAULT_TIEBREAK_SORT_ORDER
+from gambitpairing.gui.dialogs.about_dialog import AboutDialog
 from gambitpairing.gui.dialogs.new_tournament_dialog import NewTournamentDialog
 from gambitpairing.gui.dialogs.print_options_dialog import PrintOptionsDialog
 from gambitpairing.gui.dialogs.tournament_settings_dialoug import SettingsDialog
@@ -101,8 +102,18 @@ def test_designer_backed_dialogs_wire_expected_controls():
     assert new_tournament.rounds_spin.isHidden()
     assert new_tournament.rounds_label.isHidden()
 
+    about_dialog = AboutDialog()
+    assert about_dialog.windowTitle() == "About Gambit Pairing"
+    assert about_dialog.tab_widget.count() == 2
+    assert about_dialog.app_name_label.text() == "Gambit Pairing"
+    assert "Gambit Pairing" in about_dialog.version_label.text()
+    assert about_dialog.support_label.openExternalLinks()
+    assert "GNU General Public License" in about_dialog.license_text.toPlainText()
+    assert about_dialog.close_button.text() == "Close"
+
     print_dialog.close()
     update_dialog.close()
     settings_dialog.close()
     update_prompt.close()
     new_tournament.close()
+    about_dialog.close()
