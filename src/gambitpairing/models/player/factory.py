@@ -11,7 +11,6 @@ from datetime import date
 from typing import Any, Dict, Optional
 
 from gambitpairing.exceptions import InvalidPlayerDataException
-from gambitpairing.models.player.base_player import Player
 from gambitpairing.utils.validation import (
     validate_email,
     validate_fide_id,
@@ -61,6 +60,7 @@ class PlayerFactory:
         rating: Optional[int] = None,
         phone: Optional[str] = None,
         email: Optional[str] = None,
+        club: Optional[object] = None,
         gender: Optional[str] = None,
         date_of_birth: Optional[date] = None,
         federation: Optional[str] = None,
@@ -322,6 +322,47 @@ def _update_player_from_data(self, player: Player, data: dict) -> None:
                 errors.append(fide_result.error_message or "Invalid FIDE ID")
 
         return errors
+
+
+def _validate_player_factory_data(
+    self,
+    name: Optional[str],
+    rating: Optional[int],
+    phone: Optional[str],
+    email: Optional[str],
+    fide_id: Optional[str],
+) -> list[str]:
+    """Validate player data and return list of errors."""
+    errors = []
+
+    name_result = validate_name(name, required=True)
+    if not name_result:
+        errors.append(name_result.error_message or "Invalid name")
+
+    if rating is not None:
+        rating_result = validate_rating(rating)
+        if not rating_result:
+            errors.append(rating_result.error_message or "Invalid rating")
+
+    if phone:
+        phone_result = validate_phone(phone)
+        if not phone_result:
+            errors.append(phone_result.error_message or "Invalid phone")
+
+    if email:
+        email_result = validate_email(email)
+        if not email_result:
+            errors.append(email_result.error_message or "Invalid email")
+
+    if fide_id:
+        fide_result = validate_fide_id(fide_id)
+        if not fide_result:
+            errors.append(fide_result.error_message or "Invalid FIDE ID")
+
+    return errors
+
+
+PlayerFactory._validate_data = _validate_player_factory_data
 
 
 # Global factory instance for convenience

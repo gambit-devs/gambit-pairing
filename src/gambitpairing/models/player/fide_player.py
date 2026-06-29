@@ -20,7 +20,8 @@
 from datetime import date
 from typing import Any, Dict, Optional
 
-from gambitpairing.models.player import Player
+from gambitpairing.models.enums import Colour
+from gambitpairing.models.player.base_player import Player
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)
@@ -35,6 +36,7 @@ class FidePlayer(Player):
         rating: Optional[int] = None,
         phone: Optional[str] = None,
         email: Optional[str] = None,
+        club: Optional[object] = None,
         gender: Optional[str] = None,
         date_of_birth: Optional[date] = None,
         federation: Optional[str] = None,
@@ -122,6 +124,7 @@ class FidePlayer(Player):
             "results",
             "running_scores",
             "float_history",
+            "match_history",
         ]:
             if not hasattr(player, list_attr) or getattr(player, list_attr) is None:
                 setattr(player, list_attr, [])
@@ -131,8 +134,11 @@ class FidePlayer(Player):
             )
         if not hasattr(player, "num_black_games"):  # For older save files
             player.num_black_games = (
-                player.color_history.count("Black") if player.color_history else 0
+                player.color_history.count(Colour.BLACK) if player.color_history else 0
             )
+        if not hasattr(player, "tiebreakers") or player.tiebreakers is None:
+            player.tiebreakers = {}
+        player._opponents_played_cache = []
 
         return player
 

@@ -19,7 +19,7 @@ This module handles recording match results with proper validation and error che
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from gambitpairing.constants import BYE_SCORE, WIN_SCORE
 from gambitpairing.models.player import Player
@@ -43,7 +43,7 @@ class ResultRecorder:
     def record_round_results(
         self,
         round_data: RoundData,
-        results_data: List[Tuple[str, str, float]],
+        results_data: List[tuple],
         players: Dict[str, Player],
     ) -> bool:
         """Record results for all matches in a round.
@@ -68,20 +68,34 @@ class ResultRecorder:
         success = True
 
         # Record game results
-        for white_id, black_id, white_score in results_data:
+        for result_entry in results_data:
+            white_id, black_id, white_score = result_entry[:3]
+            black_score = result_entry[3] if len(result_entry) > 3 else None
             if not self._validate_result_entry(
-                white_id, black_id, white_score, pairing_ids, processed_pairs, players
+                white_id,
+                black_id,
+                white_score,
+                black_score,
+                pairing_ids,
+                processed_pairs,
+                players,
             ):
                 success = False
                 continue
 
             if not self._record_game_result(
-                white_id, black_id, white_score, round_number, round_data, players
+                white_id,
+                black_id,
+                white_score,
+                black_score,
+                round_number,
+                round_data,
+                players,
             ):
                 success = False
                 continue
 
-            processed_pairs.add((white_id, black_id))
+            processed_pairs.add(frozenset({white_id, black_id}))
 
         # Record bye result
         if round_data.bye_player_id:
@@ -91,7 +105,7 @@ class ResultRecorder:
                 success = False
 
         # Check for unprocessed pairings
-        expected_pairs = pairing_ids.copy()
+        expected_pairs = {frozenset({white_id, black_id}) for white_id, black_id in pairing_ids}
         unprocessed = expected_pairs - processed_pairs
         if unprocessed:
             logger.warning(
@@ -105,6 +119,7 @@ class ResultRecorder:
         white_id: str,
         black_id: str,
         white_score: float,
+        black_score: Optional[float],
         pairing_ids: set,
         processed_pairs: set,
         players: Dict[str, Player],
@@ -130,7 +145,8 @@ class ResultRecorder:
             return False
 
         # Check for duplicate recording
-        if (white_id, black_id) in processed_pairs:
+        pair_key = frozenset({white_id, black_id})
+        if pair_key in processed_pairs:
             logger.warning(
                 f"Result for {white.name} vs {black.name} already recorded in this batch"
             )
@@ -140,6 +156,11 @@ class ResultRecorder:
         if not (0.0 <= white_score <= 1.0):
             logger.error(f"Invalid score: {white_score} (must be between 0.0 and 1.0)")
             return False
+        if black_score is not None and not (0.0 <= black_score <= 1.0):
+            logger.error(
+                f"Invalid black score: {black_score} (must be between 0.0 and 1.0)"
+            )
+            return False
 
         return True
 
@@ -148,6 +169,7 @@ class ResultRecorder:
         white_id: str,
         black_id: str,
         white_score: float,
+        black_score: Optional[float],
         round_number: int,
         round_data: RoundData,
         players: Dict[str, Player],
@@ -159,20 +181,25 @@ class ResultRecorder:
         """
         white = players[white_id]
         black = players[black_id]
-        black_score = WIN_SCORE - white_score
+        actual_black_score = WIN_SCORE - white_score if black_score is None else black_score
 
         # Add result to round data
         match_result = MatchResult(
-            white_id=white_id, black_id=black_id, white_score=white_score
+            white_id=white_id,
+            black_id=black_id,
+            white_score=white_score,
+            black_score_override=black_score,
         )
         round_data.results.append(match_result)
 
         # Update player records
         white.add_round_result(opponent=black, result=white_score, color=Colour.WHITE)
-        black.add_round_result(opponent=white, result=black_score, color=Colour.BLACK)
+        black.add_round_result(
+            opponent=white, result=actual_black_score, color=Colour.BLACK
+        )
 
         logger.debug(
-            f"Recorded: {white.name} ({white_score}) vs {black.name} ({black_score})"
+            f"Recorded: {white.name} ({white_score}) vs {black.name} ({actual_black_score})"
         )
         return True
 
@@ -269,15 +296,15 @@ class ResultRecorder:
         # Remove the last result (should be for this round)
         if len(player.results) >= round_number:
             removed_result = player.results.pop()
-            player.score -= removed_result
+            player.score -= removed_result or 0.0
             player.opponent_ids.pop()
-            player.color_history.pop()
+            removed_color = player.color_history.pop()
 
             if player.running_scores:
                 player.running_scores.pop()
 
             # Update black game count if needed
-            if player.color_history and player.color_history[-1] == Colour.BLACK:
+            if removed_color == Colour.BLACK:
                 player.num_black_games = max(0, player.num_black_games - 1)
 
             # Update bye status if this was a bye

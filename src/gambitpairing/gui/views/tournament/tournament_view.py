@@ -36,6 +36,7 @@ from gambitpairing.controllers import (
     TournamentController,
 )
 from gambitpairing.gui.dialogs import ManualPairingDialog
+from gambitpairing.gui.ui_loader import load_ui_into
 from gambitpairing.utils import PairingsPrinter
 from gambitpairing.gui.widgets import (
     ResultSelector,
@@ -132,15 +133,14 @@ class TournamentView(QtWidgets.QWidget):
         super().__init__(parent)
         self.tournament = None
         self.current_round_index = 0
-        self.last_recorded_results_data: List[Tuple[str, str, float]] = []
+        self.last_recorded_results_data: List[tuple] = []
 
         # Create controller and printer helpers
         self.controller = TournamentController()
         self.printer = PairingsPrinter(self)
 
-        self.main_layout = QtWidgets.QVBoxLayout(self)
-        self.main_layout.setContentsMargins(16, 16, 16, 16)
-        self.main_layout.setSpacing(0)
+        load_ui_into(self, "tournament_view.ui")
+        self.main_layout = self.findChild(QtWidgets.QVBoxLayout, "main_layout")
 
         # ===== TOURNAMENT INFO HEADER =====
         self.header = TabHeader("No Tournament Loaded")
@@ -552,14 +552,14 @@ class TournamentView(QtWidgets.QWidget):
                         f"--- Tournament Finished ({self.tournament.num_rounds} Rounds) ---"
                     )
                     # Clear pairings table as no more rounds to input
-                    self.pairings_table.reset_displau()
+                    self.pairings_table.reset_display()
                     self.header.set_title("Tournament Finished")
                 else:
                     self.status_message.emit(
                         f"Round {display_round_number} results recorded. Prepare Round {self.current_round_index + 1}."
                     )
                     # Clear pairings table for next round prep
-                    self.pairings_table.reset_displau()
+                    self.pairings_table.reset_display()
                     self.header.set_title(
                         f"Round {self.current_round_index + 1} (Pending Preparation)"
                     )
@@ -761,19 +761,18 @@ class TournamentView(QtWidgets.QWidget):
 
     def get_results_from_table(
         self,
-    ) -> Tuple[Optional[List[Tuple[str, str, float]]], bool]:
+    ) -> Tuple[Optional[List[tuple]], bool]:
         return self.pairings_table.get_results()
 
     def log_results_details(self, results_data, round_index_recorded):
         # Log paired game results
-        for w_id, b_id, score_w in results_data:
+        for result_entry in results_data:
+            w_id, b_id, score_w = result_entry[:3]
+            score_b = result_entry[3] if len(result_entry) > 3 else WIN_SCORE - score_w
             w = self.tournament.players.get(w_id)  # Assume player exists
             b = self.tournament.players.get(b_id)
-            score_b_display = (
-                f"{WIN_SCORE - score_w:.1f}"  # Calculate display for black's score
-            )
             self.history_message.emit(
-                f"  {w.name if w else w_id} ({score_w:.1f}) - {b.name if b else b_id} ({score_b_display})"
+                f"  {w.name if w else w_id} ({score_w:.1f}) - {b.name if b else b_id} ({score_b:.1f})"
             )
 
         # Log bye if one was assigned for the undone round
@@ -830,7 +829,8 @@ class TournamentView(QtWidgets.QWidget):
             round_index_being_undone = self.current_round_index - 1
 
             # Revert player stats for each game in last_recorded_results_data
-            for white_id, black_id, _ in self.last_recorded_results_data:
+            for result_entry in self.last_recorded_results_data:
+                white_id, black_id = result_entry[:2]
                 p_white = self.tournament.players.get(white_id)
                 p_black = self.tournament.players.get(black_id)
                 if p_white:

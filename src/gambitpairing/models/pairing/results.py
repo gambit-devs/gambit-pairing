@@ -19,8 +19,7 @@
 
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import List, Optional
-from .pair import Pair
+from typing import List, Optional, Tuple
 from gambitpairing.models.player import Player
 
 
@@ -29,7 +28,7 @@ class PairingGenerationResult:
     """Result of a pairing generation operation."""
 
     success: bool
-    pairings: List[Pair]
+    pairings: List[Tuple[Player, Player]]
     bye_player: Optional[Player]
     error_message: Optional[str] = None
 

@@ -30,10 +30,9 @@ from gambitpairing.models.tournament import (
     RoundData,
     TournamentConfig,
 )
-from .round_manager import RoundManager
-from .result_recorder import ResultRecorder
+from .round import RoundController as RoundManager
+from .result import ResultRecorder
 from .tiebreak_calculator import TiebreakCalculator
-from gambitpairing.type_aliases import Pairings
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)
@@ -66,7 +65,7 @@ class TournamentManager:
             name=name,
             num_rounds=num_rounds,
             pairing_system=pairing_system,
-            tiebreak_order=tiebreak_order,
+            tiebreak_order=tiebreak_order or TournamentConfig("", 0).tiebreak_order,
         )
 
         # Players
@@ -128,7 +127,7 @@ class TournamentManager:
         """Is the tournament over?"""
         return self.config.tournament_over
 
-    @tiebreak_order.setter
+    @tournament_over.setter
     def tournament_over(self, value: bool) -> None:
         """Set tournament over"""
         self.config.tournament_over = value
@@ -196,7 +195,7 @@ class TournamentManager:
         self,
         current_round: int,
         allow_repeat_pairing_callback: Optional[Callable] = None,
-    ) -> Pairings:
+    ) -> Tuple[List[Tuple[Player, Player]], Optional[Player]]:
         """Generate pairings for the next round.
 
         Args:
@@ -219,7 +218,9 @@ class TournamentManager:
 
         return pairings, bye_player
 
-    def get_pairings_for_round(self, round_index: int) -> Pairings:
+    def get_pairings_for_round(
+        self, round_index: int
+    ) -> Tuple[List[Tuple[Player, Player]], Optional[Player]]:
         """Get pairings for a specific round.
 
         Args:

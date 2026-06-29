@@ -12,7 +12,7 @@ from typing import List, Optional, Set, Tuple
 import pytest
 
 from gambitpairing.exceptions import PairingException
-from gambitpairing.pairing.round_robin import (
+from gambitpairing.controllers.pairing.round_robin import (
     BERGER_TABLES,
     RoundRobin,
     create_round_robin,
@@ -554,24 +554,24 @@ def run_tests():
         # Test valid tournament creation
         players = [create_player(name=f"P{i}") for i in range(4)]
         tournament = RoundRobin(players)
-        print(f"✓ Created tournament with {len(tournament.players)} players")
+        print(f"OK Created tournament with {len(tournament.players)} players")
 
         # Test round pairings
         for i in range(1, tournament.number_of_rounds + 1):
             pairings = tournament.get_round_pairings(i)
-            print(f"✓ Round {i}: {len(pairings[0])} matches")
+            print(f"OK Round {i}: {len(pairings[0])} matches")
 
         # Test invalid player count
         try:
             RoundRobin([create_player(name="Player")])
-            print("✗ Should have failed with too few players")
+            print("FAIL Should have failed with too few players")
         except PairingException:
-            print("✓ Correctly rejected too few players")
+            print("OK Correctly rejected too few players")
 
         print("\nBasic tests passed! Run with pytest for full test suite.")
 
     except Exception as e:
-        print(f"✗ Test failed: {e}")
+        print(f"FAIL Test failed: {e}")
         import traceback
 
         traceback.print_exc()

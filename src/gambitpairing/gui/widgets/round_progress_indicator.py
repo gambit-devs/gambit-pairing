@@ -37,6 +37,7 @@ from gambitpairing.constants import (
     RESULT_WHITE_WIN,
 )
 from gambitpairing.gui.gui_utils import get_colored_icon, set_svg_icon
+from gambitpairing.models.enums import TournamentPhase
 
 
 class RoundProgressIndicator(QtWidgets.QWidget):
@@ -92,8 +93,6 @@ class RoundProgressIndicator(QtWidgets.QWidget):
         phase : TournamentPhase
             Current phase of the tournament
         """
-        from gambitpairing.gui.tabs.tournament_state import TournamentPhase
-
         self._current_round = current_round
         self._total_rounds = total_rounds
 

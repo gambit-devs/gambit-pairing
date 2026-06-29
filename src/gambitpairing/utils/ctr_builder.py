@@ -16,11 +16,14 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # Copyright (C) 2024  Nicolas Vaagen
-from typing import List
+from typing import Any, List
 
-from models import Match, Player
+from gambitpairing.utils import setup_logger
 
-from . import logger
+logger = setup_logger(__name__)
+Match = Any
+Player = Any
+CTR = List[str]
 
 
 class CtrCreationException(Exception):
@@ -116,6 +119,7 @@ def CTR_builder(
     # make sure the tournament has requisite data
     try:
         assert name is not None
+        assert rounds is not None
         assert pairing_system is not None
         assert td_cfc_id is not None
         assert province is not None
@@ -124,6 +128,7 @@ def CTR_builder(
     except AssertionError:
         print(f"make_ctr_report: missing tournament data in {name}")
         raise CtrCreationException("missing tournament data.")
+    round_count = int(rounds)
 
     # get the pairing abbreviation
     if pairing_system == "Swiss":
@@ -142,9 +147,9 @@ def CTR_builder(
     logger.info("CTR_builder(...) made: ctr: %s", ctr)
 
     # add all matches to report
-    for rnd in range(rounds):
+    for rnd in range(round_count):
         # get matches in round
-        matches = Match.objects.filter(round_number=rnd)
+        matches = session.get_matches(round_number=rnd)
 
         logger.info("building round: %s \nw: Matches: %s", rnd, matches)
         for match in matches:
@@ -153,6 +158,7 @@ def CTR_builder(
             # append both players match reports to main report
             for line in match_report:
                 ctr.append(line)
+    return ctr
 
 
 def ctr_to_str(ctr) -> str:

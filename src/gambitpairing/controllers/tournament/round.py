@@ -29,7 +29,6 @@ from gambitpairing.controllers.pairing import (
 )
 from gambitpairing.models.player import Player
 from gambitpairing.models.tournament import PairingHistory, RoundData
-from gambitpairing.type_aliases import Pairings
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)
@@ -193,7 +192,7 @@ class RoundController:
                 self.num_rounds = self.round_robin.number_of_rounds
 
         pairings, bye_player = self.round_robin.get_round_pairings(round_number)
-        return pairings, bye_player
+        return list(pairings), bye_player
 
     def _create_manual_pairings(
         self,

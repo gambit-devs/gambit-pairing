@@ -18,11 +18,10 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
 import sys
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import QFileInfo, Qt
@@ -31,6 +30,10 @@ from PyQt6.QtWidgets import QMessageBox
 
 from gambitpairing import APP_NAME, APP_VERSION, utils
 from gambitpairing.models.tournament import Tournament
+from gambitpairing.representation import (
+    load_tournament_document,
+    save_tournament_document,
+)
 from gambitpairing.update import Updater, UpdateWorker
 from gambitpairing.utils import setup_logger
 
@@ -43,6 +46,7 @@ from .dialogs import (
 )
 from .import_player import ImportPlayer
 from .notification import show_notification
+from .ui_loader import load_ui_into
 from .views.crosstable.crosstable_view import CrosstableView
 from .views.history.history_view import HistoryView
 from .views.players.players_view import PlayersView
@@ -62,7 +66,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         # current_round_index tracks rounds with recorded results.
         # 0 = no results yet. 1 = R1 results are in.
         self.current_round_index: int = 0
-        self.last_recorded_results_data: List[Tuple[str, str, float]] = []
+        self.last_recorded_results_data: List[tuple] = []
         self._current_filepath: Optional[str] = None
         self._dirty: bool = False
         self.is_updating = False
@@ -231,8 +235,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             self._current_filepath = filename
 
         try:
-            data = self.tournament.to_dict()
-            data["gui_state"] = {
+            gui_state = {
                 "current_round_index": self.current_round_index,
                 "last_recorded_results_data": self.last_recorded_results_data,
             }
@@ -247,8 +250,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
                     return False
                 # else continue
 
-            with open(self._current_filepath, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=4)
+            save_tournament_document(self._current_filepath, self.tournament, gui_state)
             self.mark_clean()
             self.statusBar().showMessage(
                 f"Tournament saved to {self._current_filepath}"
@@ -283,28 +285,60 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             logger.warning("Not loading tournament because no filename provided.")
             return
 
-        with open(filename, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        try:
+            tournament, gui_state = load_tournament_document(filename)
 
-        self.reset_tournament_state()
-        self.tournament = Tournament.from_dict(data)
+            self.reset_tournament_state()
+            self.tournament = tournament
 
-        gui_state = data.get("gui_state", {})
-        self.current_round_index = gui_state.get("current_round_index", 0)
-        self.last_recorded_results_data = gui_state.get(
-            "last_recorded_results_data", []
-        )
-        self._current_filepath = filename
+            self.current_round_index = gui_state.get("current_round_index", 0)
+            self.last_recorded_results_data = gui_state.get(
+                "last_recorded_results_data", []
+            )
+            self._current_filepath = filename
 
-        self._set_tournament_on_tabs()
+            self._set_tournament_on_tabs()
 
-        # Refresh all views
+            self._refresh_tournament_views()
+
+            self.mark_clean()
+            self.update_history_log(
+                f"--- Tournament loaded from {QFileInfo(filename).fileName()} ---"
+            )
+            self.statusBar().showMessage(f"Loaded tournament: {self.tournament.name}")
+            try:
+                show_notification(
+                    self,
+                    f"Loaded tournament: {self.tournament.name}",
+                    duration=3000,
+                    notification_type="info",
+                )
+            except Exception:
+                logger.debug("Could not show load notification.", exc_info=True)
+        except Exception as e:
+            logging.exception("Error loading tournament:")
+            self.reset_tournament_state()
+            try:
+                show_notification(
+                    self,
+                    f"Could not load tournament: {e}",
+                    duration=6000,
+                    notification_type="error",
+                )
+            except Exception:
+                QtWidgets.QMessageBox.critical(
+                    self, "Load Error", f"Could not load tournament file:\n{e}"
+                )
+        finally:
+            self._update_ui_state()
+
+    def _refresh_tournament_views(self) -> None:
+        """Refresh all tab displays from the current tournament."""
         self.players_tab.refresh_player_list()
         self.standings_tab.update_standings_table_headers()
         self.standings_tab.update_standings_table()
         self.crosstable_tab.update_crosstable()
 
-        # Display pairings for the current round if they exist
         if self.tournament and 0 <= self.current_round_index < len(
             self.tournament.rounds_pairings_ids
         ):
@@ -316,48 +350,6 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             )
         else:
             self.rounds_tab.reset_display()
-
-        self.mark_clean()
-        self.update_history_log(
-            f"--- Tournament loaded from {QFileInfo(filename).fileName()} ---"
-        )
-        self.statusBar().showMessage(f"Loaded tournament: {self.tournament.name}")
-        try:
-            show_notification(
-                self,
-                f"Loaded tournament: {self.tournament.name}",
-                duration=3000,
-                notification_type="info",
-            )
-        except Exception as e:
-            message = (
-                "exception: '%s' excepted in an `except Exception`. This is bad practice."
-                % str(e)
-            )
-            logging.exception(message)
-            raise RuntimeError(message)
-
-        self.reset_tournament_state()
-        try:
-            show_notification(
-                self,
-                f"Could not load tournament: {e}",
-                duration=6000,
-                notification_type="error",
-            )
-        except Exception as e:
-            message = (
-                "Error loading tournament: '%s' excepted in an `except Exception`. This is bad practice."
-                % str(e)
-            )
-            logging.exception(message)
-            QtWidgets.QMessageBox.critical(
-                self, "Load Error", f"Could not load tournament file:\n{e}"
-            )
-
-            raise RuntimeError(message)
-
-        self._update_ui_state()
 
     def check_save(self) -> bool:
         """Check if progress is saved before proceeding, if not prompt user."""
@@ -394,6 +386,19 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         """Show the About dialog."""
         dialog = AboutDialog(self)
         dialog.exec()
+
+    def get_confirmation(
+        self, action: str = "", message: str = "Are you sure you want to proceed?"
+    ) -> bool:
+        """Ask the user to confirm a potentially destructive action."""
+        reply = QMessageBox.question(
+            self,
+            action,
+            message,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        return reply == QMessageBox.StandardButton.Yes
 
     def check_for_pending_update(self) -> bool:
         """Check for a previously downloaded update and asks to install it."""
@@ -474,7 +479,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         latest_version = self.updater.get_latest_version()
         release_notes = self.updater.get_release_notes()
 
-        if not all([latest_version, release_notes]):
+        if latest_version is None or release_notes is None:
             QtWidgets.QMessageBox.warning(
                 self, "Update Error", "Could not retrieve complete update information."
             )
@@ -498,23 +503,23 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self.statusBar().showMessage("Starting update download...")
         self.download_dialog = UpdateDownloadDialog(self)
 
-        self.thread = QtCore.QThread()
+        self.update_thread = QtCore.QThread()
         self.worker = UpdateWorker(self.updater)
-        self.worker.moveToThread(self.thread)
+        self.worker.moveToThread(self.update_thread)
 
-        self.thread.started.connect(self.worker.run)
+        self.update_thread.started.connect(self.worker.run)
         self.worker.progress.connect(self.download_dialog.update_progress)
         self.worker.status.connect(self.download_dialog.update_status)
         self.worker.done.connect(self.on_update_done)
 
-        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.update_thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
-        self.thread.finished.connect(self.thread.deleteLater)
+        self.update_thread.finished.connect(self.update_thread.deleteLater)
 
-        self.worker.error.connect(self.thread.quit)
+        self.worker.error.connect(self.update_thread.quit)
         self.worker.error.connect(self.worker.deleteLater)
 
-        self.thread.start()
+        self.update_thread.start()
         self.download_dialog.exec()
 
     def on_update_done(self, success: bool, message: str):
@@ -606,11 +611,8 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self._update_ui_state()
 
     def _setup_ui(self):
+        load_ui_into(self, "main_window.ui")
         self.setWindowTitle(APP_NAME)
-        self.setGeometry(100, 100, 1000, 800)
-        self.central_widget = QtWidgets.QWidget()
-        self.setCentralWidget(self.central_widget)
-        self.main_layout = QtWidgets.QVBoxLayout(self.central_widget)
         self._setup_main_panel()
         self._setup_menu()
         self._setup_toolbar()
@@ -619,9 +621,10 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
 
     def _setup_main_panel(self):
         """Create the tab widget and populates it with the modular tab classes."""
-        # Use QStackedWidget to prevent resizing when switching between placeholder and tabs
-        self.stacked_widget = QtWidgets.QStackedWidget()
-        self.main_layout.addWidget(self.stacked_widget)
+        # stacked_widget comes from main_window.ui.
+        if not hasattr(self, "stacked_widget"):
+            self.stacked_widget = QtWidgets.QStackedWidget()
+            self.setCentralWidget(self.stacked_widget)
 
         # Placeholder for no tournament
         self.tournament_placeholder = TournamentPlaceholder(self)
@@ -662,6 +665,20 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self.tabs.addTab(self.standings_tab, "Standings")
         self.tabs.addTab(self.crosstable_tab, "Crosstable")
         self.tabs.addTab(self.history_tab, "History Log")
+
+    def _create_action(
+        self, text: str, slot: callable, shortcut: str = "", tooltip: str = ""
+    ) -> QAction:
+        """Create and configure a QAction."""
+        action = QAction(text, self)
+        action.triggered.connect(slot)
+        if shortcut:
+            action.setShortcut(QtGui.QKeySequence(shortcut))
+        if tooltip:
+            action.setToolTip(tooltip)
+            action.setStatusTip(tooltip)
+        action.setIconVisibleInMenu(False)
+        return action
 
     def _setup_menu(self):
         """Set up the main menu bar, connecting actions to methods in the main window or tabs."""

@@ -170,8 +170,9 @@ def get_fide_player_info(fide_id: str, player_info=None):
 
             # Federation: try to find flag image or country text
             flag = soup.find("img", src=re.compile(r"/images/flags/", re.I))
-            if flag and flag.get("src"):
-                m = re.search(FLAG_RE, flag["src"], flags=re.I)
+            flag_src = flag.get("src") if flag else None
+            if isinstance(flag_src, str):
+                m = re.search(FLAG_RE, flag_src, flags=re.I)
                 if m:
                     code = m.group(1).upper()
                     # map common 2-letter -> 3-letter where possible (partial)
@@ -328,10 +329,8 @@ def search_fide_players(name=None, fide_id=None, limit=50, is_cancelled=None):
         }
 
         if is_cancelled and is_cancelled():
-            try:
-                session.close()
-            finally:
-                return []
+            session.close()
+            return []
 
         response = session.get(search_url, params=params, headers=headers)
 

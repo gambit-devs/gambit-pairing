@@ -1,152 +1,20 @@
-"""Main controller for gambit-pairing."""
+"""Application-level controller placeholder.
 
-# Gambit Pairing
-# Copyright (C) 2025  Gambit Pairing developers
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from pathlib import Path
-import platform
-import sys
+The branch previously contained a recursive copy of ``__main__`` here. Keep a
+small importable controller shell for code that still references the old name
+while tournament behavior continues to move into dedicated controllers.
+"""
 
-from PyQt6 import QtWidgets
-from PyQt6.QtCore import QDir
-from PyQt6.QtGui import QIcon
-from importlib_resources import files
+from __future__ import annotations
 
-from gambitpairing.exceptions import IconException, StyleException
-from gambitpairing.gui import GambitPairingMainWindow
-from gambitpairing.controllers import GampitPairingController
-from gambitpairing.resources.resource_utils import (
-    get_resource_path,
-    get_style_sheet,
-)
-from gambitpairing.utils import setup_logger
-
-logger = setup_logger(__name__)
+from typing import Optional
 
 
-def main():
-    """Entry point."""
-    # Register the icons directory as the "icons:" search-path prefix so QSS
-    # url(icons:arrow-up.svg) references resolve at runtime.
-    icon_path = str(Path(str(files("gambitpairing.resources.icons"))))
-    QDir.setSearchPaths("icons", [icon_path])
-    exit_code = run_app()
-    logger.info("run_app() exited with code: %s", exit_code)
-    sys.exit(exit_code)
+class GampitPairingController:
+    """Minimal application state coordinator used during the MVC transition."""
 
+    def __init__(self) -> None:
+        self.tournament: Optional[object] = None
 
-def set_application_icon(app: QtWidgets.QApplication) -> None:
-    """Set application icon.
-
-    Parameters
-    ----------
-    app : QtWidgets.QApplication
-       The app to set the icon for
-
-    Returns
-    -------
-    None
-
-    Raises
-    ------
-    IconException
-        When icon is not a QIcon
-    """
-    icon_path = get_resource_path("icon.png", subpackage="icons")
-
-    logger.info("icon_path: (%s)\n", icon_path)
-    icon = QIcon(str(icon_path))
-
-    if icon and isinstance(icon, QIcon):
-        app.setWindowIcon(icon)
-        logger.info("Successfully set application icon")
-    else:
-        raise IconException("icon not a QIcon, icon instance of type(%s)", type(icon))
-
-
-def set_application_style(app: QtWidgets.QApplication) -> None:
-    """Set application style.
-
-    Parameters
-    ----------
-    app : QtWidgets.QApplication
-       The app to set the style for
-
-    Returns
-    -------
-    None
-
-    Raises
-    ------
-    StyleException
-        When style fails to be set
-    """
-    # Bind variable here to satisfy static type-checkers even if an exception
-    # is raised before it is assigned inside the try block.
-    style_text = ""
-    try:
-        style_text = get_style_sheet()  # uses the active theme (dark by default)
-
-        logger.debug("style_text: (%s)\n", style_text)
-        app.setStyleSheet(style_text)
-        logger.debug("Applied stylesheet (%d chars)", len(style_text))
-
-    except Exception as e:
-        raise StyleException(
-            "Exception (%s)\n raised when setting app style. style_text: \n %s",
-            e,
-            style_text,
-        )
-
-
-def run_app() -> int:
-    """Run the gui application.
-
-    Returns
-    -------
-    int
-        the exit code from app.exec()
-
-    Raises
-    ------
-    IconException
-        When icon is not a QIcon
-    """
-    app = QtWidgets.QApplication(sys.argv)
-
-    # Set cross-platform application icon
-    set_application_icon(app)
-    # Get current platform
-    system = platform.system()
-
-    if system == "Windows":
-        app.setStyle("WindowsVista")  # windows
-    elif system == "Darwin":  # macOS
-        app.setStyle("macos")
-    else:
-        app.setStyle("fusion")  # Best cross-platform option
-
-    # set app style
-    set_application_style(app)
-    app.controller = GampitPairingController()
-
-    exit_code = app.exec()
-    return exit_code
-
-
-if __name__ == "__main__":
-    main()
-
-#  LocalWords:  IconException QIcon WindowsVista macos StyleException
+    def set_tournament(self, tournament: Optional[object]) -> None:
+        self.tournament = tournament

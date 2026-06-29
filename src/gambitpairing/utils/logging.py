@@ -34,7 +34,7 @@ MAX_BYTES = 5 * 1024 * 1024
 BACKUP_COUNT = 5
 
 
-def _get_log_dir() -> str | None:
+def _get_log_dir() -> str:
     """Return a writable directory for logs, or None if unavailable."""
     paths = QtCore.QStandardPaths
 
@@ -53,17 +53,19 @@ def _get_log_dir() -> str | None:
 
 def _file_handler(formatter: logging.Formatter) -> logging.Handler:
     """Create a rotating file handler if possible."""
-    log_dir = _get_log_dir()
-
-    log_path = os.path.join(log_dir, LOG_FILE_NAME)
-    handler = RotatingFileHandler(
-        log_path,
-        maxBytes=MAX_BYTES,
-        backupCount=BACKUP_COUNT,
-        encoding="utf-8",
-    )
-    handler.setFormatter(formatter)
-    return handler
+    try:
+        log_dir = _get_log_dir()
+        log_path = os.path.join(log_dir, LOG_FILE_NAME)
+        handler = RotatingFileHandler(
+            log_path,
+            maxBytes=MAX_BYTES,
+            backupCount=BACKUP_COUNT,
+            encoding="utf-8",
+        )
+        handler.setFormatter(formatter)
+        return handler
+    except (OSError, RuntimeError):
+        return logging.NullHandler()
 
 
 def setup_logger(name: str, level: int = logging.INFO) -> logging.Logger:

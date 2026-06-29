@@ -139,7 +139,7 @@ class Notification(QWidget):
         """Dismiss the notification early."""
         self._start_slide_out()
 
-    def enterEvent(self, event: QtCore.QEvent):
+    def enterEvent(self, event: QtGui.QEnterEvent | None):
         """Handle mouse entering notification.
 
         Parameters

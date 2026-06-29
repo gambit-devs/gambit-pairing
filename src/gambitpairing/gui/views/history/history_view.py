@@ -24,6 +24,7 @@ from gambitpairing.utils import setup_logger
 from PyQt6 import QtGui, QtWidgets
 from PyQt6.QtCore import QDateTime
 
+from gambitpairing.gui.ui_loader import load_ui_into
 from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 from gambitpairing.gui.widgets.header import TabHeader
 
@@ -34,7 +35,8 @@ class HistoryView(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.tournament = None
-        self.main_layout = QtWidgets.QVBoxLayout(self)
+        load_ui_into(self, "history_view.ui")
+        self.main_layout = self.findChild(QtWidgets.QVBoxLayout, "main_layout")
 
         # Header
         self.header = TabHeader("History Log")

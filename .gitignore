@@ -1,4 +1,8 @@
 SRC
+!src/
+!src/gambitpairing/
+!src/gambitpairing/ui/
+!src/gambitpairing/ui/*.ui
 **/TODO
 src/gambitpairing/ui_gen
 # Byte-compiled / optimized / DLL files

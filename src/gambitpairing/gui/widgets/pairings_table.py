@@ -228,6 +228,8 @@ class PairingsTable(QtWidgets.QWidget):
             # Auto-set result for inactive players
             if not white.is_active and not black.is_active:
                 result_selector.setResult(RESULT_DRAW)  # 0-0 or F-F
+                result_selector.setProperty("white_score_override", LOSS_SCORE)
+                result_selector.setProperty("black_score_override", LOSS_SCORE)
             elif not white.is_active:
                 result_selector.setResult(RESULT_BLACK_WIN)  # Black wins by forfeit
             elif not black.is_active:
@@ -318,8 +320,19 @@ class PairingsTable(QtWidgets.QWidget):
                 elif result_const == RESULT_BLACK_WIN:
                     white_score = LOSS_SCORE
 
+                black_score_override = result_selector.property(
+                    "black_score_override"
+                )
                 if white_score >= 0 and white_id and black_id:
-                    results_data.append((white_id, black_id, white_score))
+                    if black_score_override is not None:
+                        white_score = float(
+                            result_selector.property("white_score_override")
+                        )
+                        results_data.append(
+                            (white_id, black_id, white_score, float(black_score_override))
+                        )
+                    else:
+                        results_data.append((white_id, black_id, white_score))
                 else:
                     logger.error(
                         f"Invalid result data in table row {row}: Result='{result_const}', W_ID='{white_id}', B_ID='{black_id}'"

@@ -30,6 +30,7 @@ from gambitpairing.constants import (
     TB_SONNENBORN_BERGER,
     TIEBREAK_NAMES,
 )
+from gambitpairing.gui.ui_loader import load_ui_into
 from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 from gambitpairing.gui.widgets.header import TabHeader
 from gambitpairing.utils.print import create_print_button
@@ -40,7 +41,8 @@ class StandingsView(QtWidgets.QWidget):
         super().__init__(parent)
         self.tournament = None
         self.parent_window = parent  # Store reference to main window
-        self.main_layout = QtWidgets.QVBoxLayout(self)
+        load_ui_into(self, "standings_view.ui")
+        self.main_layout = self.findChild(QtWidgets.QVBoxLayout, "main_layout")
 
         # ===== STANDINGS HEADER =====
         self.header = TabHeader("Standings")
@@ -190,15 +192,6 @@ class StandingsView(QtWidgets.QWidget):
         header = self.table_standings.horizontalHeader()
         header.setMinimumSectionSize(minimum_width)
         self.table_standings.setColumnWidth(1, minimum_width)
-
-    def _update_visibility(self):
-        """Show/hide content based on tournament existence."""
-        if not self.tournament:
-            self.tournament_placeholder.show()
-            self.standings_group.hide()
-        else:
-            self.tournament_placeholder.hide()
-            self.standings_group.show()
 
     def update_standings_table(self) -> None:
         self._update_visibility()

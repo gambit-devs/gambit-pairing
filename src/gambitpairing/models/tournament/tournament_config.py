@@ -19,7 +19,6 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, List
 
-from gambitpairing.models.pairing import PairingSystemABC
 from gambitpairing.constants import DEFAULT_TIEBREAK_SORT_ORDER
 
 
@@ -33,7 +32,7 @@ class TournamentConfig:
         Tournament name.
     num_rounds : int
         Number of rounds in the tournament.
-    pairing_system : PairingSystemABC
+    pairing_system : str
         Pairing system used for generating pairings.
     tiebreak_order : list of str
         Ordered list of tiebreak criteria in priority order.
@@ -43,12 +42,41 @@ class TournamentConfig:
 
     name: str
     num_rounds: int
-    pairing_system: PairingSysteABC
+    pairing_system: str = "dutch_swiss"
+    tournament_mode: str = "standard"
+    fide_strict_mode: bool = False
     tiebreak_order: List[str] = field(
         default_factory=lambda: list(DEFAULT_TIEBREAK_SORT_ORDER)
     )
     # Is the tournament complete?
     tournament_over: bool = False
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize configuration to dictionary."""
+        return {
+            "name": self.name,
+            "num_rounds": self.num_rounds,
+            "pairing_system": self.pairing_system,
+            "tournament_mode": self.tournament_mode,
+            "fide_strict_mode": self.fide_strict_mode,
+            "tiebreak_order": list(self.tiebreak_order),
+            "tournament_over": self.tournament_over,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "TournamentConfig":
+        """Deserialize configuration from dictionary."""
+        return cls(
+            name=data.get("name", "Untitled Tournament"),
+            num_rounds=data["num_rounds"],
+            pairing_system=data.get("pairing_system", "dutch_swiss"),
+            tournament_mode=data.get("tournament_mode", "standard"),
+            fide_strict_mode=data.get("fide_strict_mode", False),
+            tiebreak_order=list(
+                data.get("tiebreak_order", DEFAULT_TIEBREAK_SORT_ORDER)
+            ),
+            tournament_over=data.get("tournament_over", False),
+        )
 
 
 #  LocalWords:  TournamentConfig PairingSystemABC

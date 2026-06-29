@@ -20,7 +20,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Any, Optional
 
 
 class PlayerABC(ABC):
@@ -109,8 +109,8 @@ class PlayerABC(ABC):
 
     @property
     @abstractmethod
-    def federation(self) -> Federation:
-        """Player's rating."""
+    def federation(self) -> Any:
+        """Player's federation or federation code."""
         raise NotImplementedError
 
     @property

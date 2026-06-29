@@ -1,10 +1,10 @@
-"""Backward-compatible aliases for misspelled representation imports."""
+"""Serialization and document helpers for Gambit Pairing models."""
 
-from gambitpairing.representation.tournament import (
+from .tournament import (
     load_tournament_document,
-    save_tournament_document,
     tournament_from_dict,
     tournament_to_dict,
+    save_tournament_document,
 )
 
 __all__ = [

@@ -1203,7 +1203,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
                 return
 
             def _fetch_one() -> List[Dict[str, Any]]:
-                info = get_fide_player_info(fid)
+                info = get_fide_player_info(str(fid))
                 return [info] if info else []
 
             # Set cancellation flag for uniformity
@@ -1258,9 +1258,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         self._worker.moveToThread(self._thread)
 
         # Connect signals with unique connection to prevent multiple connections
-        self._worker.finished.connect(
-            self._on_fide_finished, QtCore.Qt.ConnectionType.UniqueConnection
-        )
+        self._worker.finished.connect(self._on_fide_finished)
         self._thread.started.connect(self._worker.run)
         self._thread.setParent(self)  # ensure dialog owns lifetime
 

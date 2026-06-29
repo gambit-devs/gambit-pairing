@@ -21,16 +21,28 @@ from __future__ import annotations
 from enum import Enum
 from functools import lru_cache
 from itertools import permutations
+from collections.abc import Sequence
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from gambitpairing.models.player import Player
 from gambitpairing.models.enums import Colour
 
+WHITE = Colour.WHITE
+BLACK = Colour.BLACK
 
-def _get_lexicographic_key(perm_list: List[Player], N1: int) -> tuple:
+
+def _pairing_number(player: Player) -> int:
+    return player.pairing_number or 0
+
+
+def _bsn(player: Player) -> int:
+    return player.bsn or player.pairing_number or 0
+
+
+def _get_lexicographic_key(perm_list: Sequence[Player], N1: int) -> tuple:
     """Get lexicographic key for FIDE transposition sorting."""
     comparison_length = min(N1, len(perm_list))
-    return tuple(perm_list[i].bsn for i in range(comparison_length))
+    return tuple(_bsn(perm_list[i]) for i in range(comparison_length))
 
 
 def _colors_satisfy_preferences_unified(
@@ -138,7 +150,7 @@ def _compute_edge_weight(
     previous_matches: Set[frozenset],
     current_round: int,
     bye_assignee_score: float = 0.0,
-    next_bracket_players: List[Player] = None,
+    next_bracket_players: Optional[List[Player]] = None,
     total_rounds: int = 0,
 ) -> int:
     """
@@ -1378,12 +1390,12 @@ def _generate_score_based_transpositions(
 
     try:
         # Sort by score for potential improvements
-        score_sorted = sorted(S2, key=lambda p: (-p.score, p.pairing_number))
+        score_sorted = sorted(S2, key=lambda p: (-p.score, _pairing_number(p)))
         if score_sorted != S2:
             transpositions.append(score_sorted)
 
         # Reverse sort
-        score_reverse = sorted(S2, key=lambda p: (p.score, -p.pairing_number))
+        score_reverse = sorted(S2, key=lambda p: (p.score, -_pairing_number(p)))
         if score_reverse != S2 and score_reverse not in transpositions:
             transpositions.append(score_reverse)
 
@@ -1562,13 +1574,13 @@ def _generate_resident_exchanges(
             new_s1[i], new_s2[j] = new_s2[j], new_s1[i]
 
             # Re-sort according to Article 1.2 (score, then pairing number)
-            new_s1.sort(key=lambda p: (-p.score, p.pairing_number))
-            new_s2.sort(key=lambda p: (-p.score, p.pairing_number))
+            new_s1.sort(key=lambda p: (-p.score, _pairing_number(p)))
+            new_s2.sort(key=lambda p: (-p.score, _pairing_number(p)))
 
             # FIDE 4.3.3: Priority criteria for sorting exchanges
-            bsn_sum_diff = abs(S2[j].bsn - S1[i].bsn)  # Criterion 2
-            highest_s1_to_s2 = S1[i].bsn  # Criterion 3
-            lowest_s2_to_s1 = S2[j].bsn  # Criterion 4
+            bsn_sum_diff = abs(_bsn(S2[j]) - _bsn(S1[i]))  # Criterion 2
+            highest_s1_to_s2 = _bsn(S1[i])  # Criterion 3
+            lowest_s2_to_s1 = _bsn(S2[j])  # Criterion 4
 
             exchanges.append(
                 (
@@ -1596,14 +1608,15 @@ def _generate_resident_exchanges(
                         new_s1[i2], new_s2[j2] = new_s2[j2], new_s1[i2]
 
                         # Re-sort
-                        new_s1.sort(key=lambda p: (-p.score, p.pairing_number))
-                        new_s2.sort(key=lambda p: (-p.score, p.pairing_number))
+                        new_s1.sort(key=lambda p: (-p.score, _pairing_number(p)))
+                        new_s2.sort(key=lambda p: (-p.score, _pairing_number(p)))
 
                         bsn_sum_diff = abs(
-                            (S2[j1].bsn + S2[j2].bsn) - (S1[i1].bsn + S1[i2].bsn)
+                            (_bsn(S2[j1]) + _bsn(S2[j2]))
+                            - (_bsn(S1[i1]) + _bsn(S1[i2]))
                         )
-                        highest_s1_to_s2 = max(S1[i1].bsn, S1[i2].bsn)
-                        lowest_s2_to_s1 = min(S2[j1].bsn, S2[j2].bsn)
+                        highest_s1_to_s2 = max(_bsn(S1[i1]), _bsn(S1[i2]))
+                        lowest_s2_to_s1 = min(_bsn(S2[j1]), _bsn(S2[j2]))
 
                         exchanges.append(
                             (
@@ -2029,7 +2042,7 @@ def _assign_colors_fide(
 
     # 5.2.5: Use pairing number parity with initial-colour
     # Higher ranked player: odd pairing number = initial-colour (W), even = opposite (B)
-    if higher_ranked.pairing_number % 2 == 1:
+    if _pairing_number(higher_ranked) % 2 == 1:
         return (higher_ranked, lower_ranked)  # Give initial-colour (White)
     else:
         return (
@@ -2662,13 +2675,13 @@ def _assign_by_color_balance(
     # Final tiebreaker: use rating and round number for deterministic assignment
     if player1.rating >= player2.rating:
         # Higher rated player gets color based on round parity and some determinism
-        if (current_round + player1.pairing_number) % 2 == 0:
+        if (current_round + _pairing_number(player1)) % 2 == 0:
             return (player1, player2)
         else:
             return (player2, player1)
     else:
         # Lower rated player gets opposite treatment
-        if (current_round + player2.pairing_number) % 2 == 0:
+        if (current_round + _pairing_number(player2)) % 2 == 0:
             return (player2, player1)
         else:
             return (player1, player2)
@@ -2906,7 +2919,7 @@ def _get_float_type(player: Player, rounds_back: int, current_round: int) -> Flo
         if (
             match_index < len(player.results)
             and player.results[match_index]
-            and player.results[match_index] > 0
+            and (player.results[match_index] or 0.0) > 0
         ):
             return FloatType.FLOAT_DOWN  # Bye is considered floating down
         return FloatType.FLOAT_NONE

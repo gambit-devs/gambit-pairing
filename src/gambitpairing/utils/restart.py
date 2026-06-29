@@ -17,12 +17,18 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from PyQt6 import QtCore
-from PyQt6.QtCore import QDateTime
-from PyQt6.QtWidgets import QApplication, QListWidget
+import logging
+import os
+import subprocess
+import sys
+import time
+
+from PyQt6.QtWidgets import QApplication
+
+from gambitpairing.utils.logging import setup_logger
 
 
-def restart_application() -> None:
+def restart_application() -> bool:
     """Restart the entire application to ensure clean state reload.
 
     Raises
@@ -33,7 +39,7 @@ def restart_application() -> None:
     app = QApplication.instance()
     if app is None:
         logging.error("app is None in restart_application")
-        return
+        return False
 
     # Get command line arguments for restart
     args = sys.argv[:]

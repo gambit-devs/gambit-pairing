@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Optional
+from typing import Any, Optional
 from gambitpairing.models.enums import TournamentPhase
 
 
@@ -85,7 +85,7 @@ class TournamentState:
 
     @classmethod
     def compute(
-        cls, tournament: Optional[Tournament], current_round_index: int
+        cls, tournament: Optional[Any], current_round_index: int
     ) -> TournamentState:
         """
         Compute the current tournament state.

@@ -1,8 +1,8 @@
 """Utilities for managing the GUI."""
 
+from collections.abc import Callable
+
 from PyQt6 import QtGui, QtWidgets
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtGui import QCursor
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QCursor
 from PyQt6.QtWidgets import QApplication
@@ -54,7 +54,7 @@ def get_colored_icon(
     return QtGui.QIcon()
 
 
-def update_widget_style(widget: QWidget) -> None:
+def update_widget_style(widget: QtWidgets.QWidget) -> None:
     """Change the style on a widget."""
     widget.style().unpolish(widget)
     widget.style().polish(widget)
@@ -72,8 +72,8 @@ def reset_and_set_cursor(cursor_shape: Qt.CursorShape):
 
 
 def create_action(
-    self, text: str, slot: callable, shortcut: str = "", tooltip: str = ""
-) -> QAction:
+    self, text: str, slot: Callable, shortcut: str = "", tooltip: str = ""
+) -> QtGui.QAction:
     """Create and configure a QAction.
 
     Parameters
@@ -92,7 +92,7 @@ def create_action(
     -------
         The configured QAction.
     """
-    action = QAction(text, self)
+    action = QtGui.QAction(text, self)
     action.triggered.connect(slot)
     if shortcut:
         action.setShortcut(QtGui.QKeySequence(shortcut))

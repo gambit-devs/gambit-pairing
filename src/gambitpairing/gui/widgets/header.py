@@ -18,6 +18,7 @@
 
 from __future__ import annotations
 
+from typing import Optional
 
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
@@ -31,7 +32,7 @@ class TabHeader(QtWidgets.QWidget):
     Displays a title, an optional icon, and a container for action buttons.
     """
 
-    def __init__(self, title: str, icon_name: str = None, parent=None):
+    def __init__(self, title: str, icon_name: Optional[str] = None, parent=None):
         super().__init__(parent)
         self.setProperty("class", "TabHeader")
 

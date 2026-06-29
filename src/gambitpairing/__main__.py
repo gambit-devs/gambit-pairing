@@ -27,7 +27,6 @@ from importlib_resources import files
 
 from gambitpairing.exceptions import IconException, StyleException
 from gambitpairing.gui import GambitPairingMainWindow
-from gambitpairing.controllers import GampitPairingController
 from gambitpairing.resources.resource_utils import (
     get_resource_path,
     get_style_sheet,
@@ -141,7 +140,10 @@ def run_app() -> int:
 
     # set app style
     set_application_style(app)
-    app.controller = GampitPairingController()
+
+    window = GambitPairingMainWindow()
+    window.set_app_instance(app)
+    window.show()
 
     exit_code = app.exec()
     return exit_code

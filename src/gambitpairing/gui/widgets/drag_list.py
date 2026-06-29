@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Any, Optional
+from typing import Any, Optional, TYPE_CHECKING
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import QMimeData, Qt
@@ -28,6 +28,11 @@ from PyQt6.QtGui import (
     QDropEvent,
     QMouseEvent,
 )
+
+from gambitpairing.gui.gui_utils import reset_and_set_cursor
+
+if TYPE_CHECKING:
+    from gambitpairing.models.player import Player
 
 
 class DragListWidget(QtWidgets.QListWidget):

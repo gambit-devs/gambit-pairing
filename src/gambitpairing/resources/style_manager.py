@@ -235,7 +235,8 @@ def _load_partials() -> str:
     """
     styles_pkg = files("gambitpairing.resources.styles")
     qss_files = sorted(
-        entry for entry in styles_pkg.iterdir() if entry.name.endswith(".qss")
+        (entry for entry in styles_pkg.iterdir() if entry.name.endswith(".qss")),
+        key=lambda entry: entry.name,
     )
 
     if not qss_files:

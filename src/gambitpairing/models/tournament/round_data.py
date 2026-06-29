@@ -17,9 +17,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
-from gambitpairing.constants import DEFAULT_TIEBREAK_SORT_ORDER
+from .match_result import MatchResult
 
 
 @dataclass
@@ -45,3 +45,24 @@ class RoundData:
     bye_player_id: Optional[str] = None
     results: List[MatchResult] = field(default_factory=list)
     is_completed: bool = False
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize round data to dictionary."""
+        return {
+            "round_number": self.round_number,
+            "pairings": self.pairings,
+            "bye_player_id": self.bye_player_id,
+            "results": [result.to_dict() for result in self.results],
+            "is_completed": self.is_completed,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "RoundData":
+        """Deserialize round data from dictionary."""
+        return cls(
+            round_number=data["round_number"],
+            pairings=[tuple(pair) for pair in data.get("pairings", [])],
+            bye_player_id=data.get("bye_player_id"),
+            results=[MatchResult.from_dict(result) for result in data.get("results", [])],
+            is_completed=data.get("is_completed", False),
+        )

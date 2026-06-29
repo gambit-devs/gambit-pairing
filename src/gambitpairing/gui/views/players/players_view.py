@@ -23,7 +23,7 @@ import csv
 from datetime import datetime
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt, pyqtSignal
@@ -34,6 +34,7 @@ from gambitpairing.controllers.player import (
 )
 from gambitpairing.gui.dialogs import PlayerManagementDialog
 from gambitpairing.gui.notification import show_notification
+from gambitpairing.gui.ui_loader import load_ui_into
 from gambitpairing.gui.widgets import NumericTableWidgetItem, TabHeader
 from gambitpairing.gui.widgets.player_placeholder import PlayerPlaceholder
 from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
@@ -119,7 +120,8 @@ class PlayersView(QtWidgets.QWidget):
 
         self.main_window = main_window
         self.tournament = None
-        self.main_layout = QtWidgets.QVBoxLayout(self)
+        load_ui_into(self, "players_view.ui")
+        self.main_layout = self.findChild(QtWidgets.QVBoxLayout, "main_layout")
 
         # --- Header ---
         self.header = TabHeader("Players")
@@ -217,6 +219,12 @@ class PlayersView(QtWidgets.QWidget):
         self.table_players.setCurrentItem(None)
 
         # Compute correct UI state
+        self.update_ui_state()
+
+    def set_tournament(self, tournament: Any) -> None:
+        """Set the active tournament and refresh this view from model state."""
+        self.tournament = tournament
+        self.refresh_player_list()
         self.update_ui_state()
 
     def update_ui_state(self):
@@ -606,9 +614,16 @@ class PlayersView(QtWidgets.QWidget):
         file_name, _ = QtWidgets.QFileDialog.getOpenFileName(
             self, "Import Players", "", "CSV Files (*.csv);;Text Files (*.txt)"
         )
-        added_players, imported_players = import_players_from_csv(file_name)
+        if not file_name:
+            return
 
-        if added_players > 0:
+        added_count, imported_players = import_players_from_csv(
+            file_name, self.tournament.players.values()
+        )
+        for player in imported_players:
+            self.tournament.players[player.id] = player
+
+        if added_count > 0:
             self.history_message.emit(
                 f"Imported {added_count} players from {file_name}."
             )

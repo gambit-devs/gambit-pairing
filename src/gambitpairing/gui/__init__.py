@@ -1,3 +1,3 @@
 """gui __init__."""
 
-from .main_window import GambitPairingMainWindow
+from .mainwindow import GambitPairingMainWindow

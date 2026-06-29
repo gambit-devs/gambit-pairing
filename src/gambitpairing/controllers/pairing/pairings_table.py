@@ -59,13 +59,12 @@ class PairingsTableController:
         pairings: List[Tuple[Player, Player]],
         bye_players: List[Player],
         current_round_index: int,
-    ):
+    ) -> None:
         self.table.clearContents()
         self.table.setRowCount(len(pairings))
 
         for row, pair in enumerate(pairings):
-
-            _build_row(row, pair.white, pair.black)
+            self._build_row(row, pair[0], pair[1])
 
         # Handle bye players display
         if bye_players:
@@ -109,7 +108,7 @@ class PairingsTableController:
         self.table.setColumnWidth(0, 55)
         self.table.verticalHeader().setDefaultSectionSize(58)
 
-    def get_results(self) -> Tuple[Optional[List[Tuple[str, str, float]]], bool]:
+    def get_results(self) -> Tuple[Optional[List[tuple]], bool]:
         results_data = []
         all_entered = True
         if (
@@ -139,8 +138,19 @@ class PairingsTableController:
                 elif result_const == RESULT_BLACK_WIN:
                     white_score = LOSS_SCORE
 
+                black_score_override = result_selector.property(
+                    "black_score_override"
+                )
                 if white_score >= 0 and white_id and black_id:
-                    results_data.append((white_id, black_id, white_score))
+                    if black_score_override is not None:
+                        white_score = float(
+                            result_selector.property("white_score_override")
+                        )
+                        results_data.append(
+                            (white_id, black_id, white_score, float(black_score_override))
+                        )
+                    else:
+                        results_data.append((white_id, black_id, white_score))
                 else:
                     logger.error(
                         f"Invalid result data in table row {row}: Result='{result_const}', W_ID='{white_id}', B_ID='{black_id}'"
@@ -191,17 +201,6 @@ class PairingsTableController:
         self, row: int, white: Player, black: Player, result: Optional[Colour] = None
     ) -> None:
         """Populate a single table row with board number, player names, and result selector."""
-        # Support (Player, Player, color) tuples
-        if len(pair) == 3:
-            p1, p2, result = pair
-            if result == Colour.WHITE:
-                white, black = p1, p2
-            else:
-                white, black = p2, p1
-        else:
-            white, black = pair
-            result = None
-
         # Board number column
         board_num = row + 1
         item_board = QtWidgets.QTableWidgetItem(str(board_num))
@@ -246,6 +245,8 @@ class PairingsTableController:
         # Auto-set result for inactive players
         if not white.is_active and not black.is_active:
             result_selector.setResult(RESULT_DRAW)  # 0-0 or F-F
+            result_selector.setProperty("white_score_override", LOSS_SCORE)
+            result_selector.setProperty("black_score_override", LOSS_SCORE)
         elif not white.is_active:
             result_selector.setResult(RESULT_BLACK_WIN)  # Black wins by forfeit
         elif not black.is_active:

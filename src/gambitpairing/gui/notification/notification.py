@@ -16,12 +16,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Optional
-
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import QEasingCurve, QPropertyAnimation
 from PyQt6.QtGui import QPainter, QPainterPath
 from PyQt6.QtWidgets import QLabel, QProgressBar, QVBoxLayout, QWidget
+
+from .event_filter import NotificationEventFilter
 
 # Layout/animation constants
 _MARGIN = 20
@@ -237,7 +237,7 @@ class Notification(QWidget):
         """Public method to dismiss the notification early."""
         self._start_slide_out()
 
-    def enterEvent(self, event: QtCore.QEvent):
+    def enterEvent(self, event: QtGui.QEnterEvent | None):
         """Handle mouse entering notification.
 
         Parameters
@@ -249,6 +249,7 @@ class Notification(QWidget):
             and self.progress_anim.state() == QtCore.QAbstractAnimation.State.Running
         ):
             self.progress_anim.pause()
+            self._paused = True
 
         super().enterEvent(event)
 
@@ -261,6 +262,7 @@ class Notification(QWidget):
         """
         if self._paused and not self._closing:
             self.progress_anim.resume()
+            self._paused = False
 
         super().leaveEvent(event)
 
@@ -310,7 +312,7 @@ def show_notification(
         parent._notification_event_filter = NotificationEventFilter(parent)
         parent.installEventFilter(parent._notification_event_filter)
 
-    parent._reposition_notifications = _reposition_notifications
+    parent._reposition_notifications = lambda: _reposition_notifications(parent)
 
     notification = Notification(parent, message, duration, notification_type)
     parent._notification_stack.append(notification)
@@ -321,17 +323,19 @@ def show_notification(
     except Exception:
         pass
 
-    notification.destroyed.connect(_cleanup)
+    notification.destroyed.connect(
+        lambda: _cleanup_notification(parent, notification)
+    )
 
     return notification
 
 
-def _reposition_notifications(note_stack):
+def _reposition_notifications(parent: QWidget):
     y_offset = _MARGIN
     p_w = parent.width()
     p_h = parent.height()
 
-    for notif in list(note_stack):
+    for notif in list(parent._notification_stack):
         if notif is None:
             continue
 
@@ -358,7 +362,7 @@ def _reposition_notifications(note_stack):
             notif.move(notif.pos().x(), new_y)
 
 
-def _cleanup_notifications(parent: QWidget):
+def _cleanup_notification(parent: QWidget, notification: Notification):
     if notification in parent._notification_stack:
         parent._notification_stack.remove(notification)
         parent._reposition_notifications()

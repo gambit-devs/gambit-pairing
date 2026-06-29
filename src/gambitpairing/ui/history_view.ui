@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>HistoryView</class>
+ <widget class="QWidget" name="HistoryView">
+  <layout class="QVBoxLayout" name="main_layout"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,122 +1,70 @@
-"""Player controller for managing chess players."""
-
-# Gambit Pairing
-# Copyright (C) 2025  Gambit Pairing developers
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""Backend helpers for importing and exporting tournament players."""
 
 from __future__ import annotations
 
+import csv
+from collections.abc import Iterable, Mapping
+from pathlib import Path
+from typing import List, Tuple
 
-def import_players_from_csv() -> Players | None:
-    """Import players from a CSV file chosen via a file dialog.
+from gambitpairing.models.player import Player, create_player
 
-    Expects a CSV with at minimum a ``Name`` column. Optionally reads
-    ``Rating``, ``Gender``, ``Date of Birth``, ``Phone``, ``Email``,
-    ``Club``, and ``Federation`` columns. Skips rows with empty names
-    or names that already exist in the tournament. Uses
-    ``create_player`` to construct each player object.
 
-    Emits ``dirty`` and calls ``refresh_player_list`` if at least one
-    player was added. Shows a success notification via
-    ``show_notification`` if available, otherwise falls back to a
-    ``QMessageBox``.
+def import_players_from_csv(
+    file_path: str | Path,
+    existing_players: Iterable[Player] = (),
+) -> Tuple[int, List[Player]]:
+    """Read players from a CSV file without touching GUI state."""
+    if not file_path:
+        return 0, []
 
-    Returns
-    -------
-    tuple(int, Players)
-        tuple of the number of players found and Players found.
+    existing_names = {player.name for player in existing_players}
+    imported_players: List[Player] = []
 
-    Raises
-    ------
-    FileNotFoundError
-        File Not Found, The file was not found.
-    PermissionError
-        Cannot read this file.
-    UnicodeDecodeError:
-        Encoding error
-    CsvError
-        Malformed CSV file.
-    OSError
-        File Error
-    """
-    player_count = 0
-    players: Players = []
-    with open(filename, "r", encoding="utf-8-sig") as f:
-        reader = csv.DictReader(f)
+    with Path(file_path).open("r", encoding="utf-8-sig", newline="") as file_obj:
+        reader = csv.DictReader(file_obj)
         for row in reader:
-            name = row.get("Name")
-            if not name or any(
-                p.name == name for p in self.tournament.players.values()
-            ):
-                continue  # Skip empty names or duplicates
-            rating_str = row.get("Rating")
-            rating = int(rating_str) if rating_str and rating_str.isdigit() else None
+            name = (row.get("Name") or row.get("name") or "").strip()
+            if not name or name in existing_names:
+                continue
 
-            # Use factory to create player
+            rating_text = (row.get("Rating") or row.get("rating") or "").strip()
+            rating = int(rating_text) if rating_text.isdigit() else None
+
             player = create_player(
                 name=name,
                 rating=rating,
-                gender=row.get("Gender"),
-                date_of_birth=row.get("Date of Birth"),
-                phone=row.get("Phone"),
-                email=row.get("Email"),
-                federation=row.get("Federation"),
+                gender=row.get("Gender") or row.get("gender"),
+                date_of_birth=row.get("Date of Birth")
+                or row.get("date_of_birth")
+                or row.get("dob"),
+                phone=row.get("Phone") or row.get("phone"),
+                email=row.get("Email") or row.get("email"),
+                club=row.get("Club") or row.get("club"),
+                federation=row.get("Federation") or row.get("federation"),
             )
+            imported_players.append(player)
+            existing_names.add(name)
 
-            players.append(player)
-            player_count += 1
-
-    return (player_count, players)
+    return len(imported_players), imported_players
 
 
-def export_players_to_csv(players: Players, file_path: Path) -> None:
-    """Export all players to a CSV file at file_path.
+def export_players_to_csv(
+    players: Iterable[Player] | Mapping[str, Player],
+    file_path: str | Path,
+) -> None:
+    """Write players to a CSV file without depending on Qt widgets."""
+    if isinstance(players, Mapping):
+        player_iterable = players.values()
+    else:
+        player_iterable = players
 
-    Writes one row per player sorted alphabetically by name, with
-    columns: Name, Rating, Gender, Date of Birth, Phone, Email, Club,
-    Federation, Active, ID.
+    sorted_players = sorted(player_iterable, key=lambda player: player.name)
+    if not file_path:
+        raise RuntimeError("export_players_to_csv(...) needs a file path.")
 
-    Parameters
-    ----------
-    players : Players
-        An iterable of players to export
-    file_path : Path
-        The path to write csv file
-
-    Raises
-    ------
-    FileNotFoundError
-        File Not Found, The file was not found.
-    PermissionError
-        Cannot read this file.
-    UnicodeDecodeError:
-        Encoding error
-    CsvError
-        Malformed CSV file.
-    OSError
-        File Error
-    RuntimeError
-        if ether players or file_path are not provided.
-    """
-    if not filename:
-        raise RuntimeError("export_players_csv(...) needs a filename.")
-    if not players:
-        raise RuntimeError("export_players_csv(...) needs a players.")
-
-    with open(filename, "w", encoding="utf-8", newline="") as f:
-        writer = csv.writer(f)
+    with Path(file_path).open("w", encoding="utf-8", newline="") as file_obj:
+        writer = csv.writer(file_obj)
         writer.writerow(
             [
                 "Name",
@@ -125,14 +73,13 @@ def export_players_to_csv(players: Players, file_path: Path) -> None:
                 "Date of Birth",
                 "Phone",
                 "Email",
+                "Club",
                 "Federation",
                 "Active",
                 "ID",
             ]
         )
-        for player in sorted(
-            list(self.tournament.players.values()), key=lambda p: p.name
-        ):
+        for player in sorted_players:
             writer.writerow(
                 [
                     player.name,
@@ -141,6 +88,7 @@ def export_players_to_csv(players: Players, file_path: Path) -> None:
                     player.dob or "",
                     player.phone or "",
                     player.email or "",
+                    player.club or "",
                     player.federation or "",
                     "Yes" if player.is_active else "No",
                     player.id,

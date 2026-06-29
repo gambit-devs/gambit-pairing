@@ -27,7 +27,7 @@ The TournamentController handles:
 
 from __future__ import annotations
 
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple, TYPE_CHECKING
 
 from gambitpairing.constants import (
     BYE_SCORE,
@@ -46,6 +46,10 @@ from gambitpairing.models.pairing import (
 )
 
 logger = setup_logger(__name__)
+
+if TYPE_CHECKING:
+    from gambitpairing.models.player import Player
+    from gambitpairing.models.tournament.tournament import Tournament
 
 
 class TournamentController:
@@ -72,7 +76,7 @@ class TournamentController:
     def __init__(self, tournament: Optional["Tournament"] = None):
         self.tournament = tournament
         self.current_round_index = 0
-        self.last_recorded_results_data: List[Tuple[str, str, float]] = []
+        self.last_recorded_results_data: List[tuple] = []
 
     def set_tournament(self, tournament: Optional["Tournament"]):
         """Set the tournament to manage."""
@@ -274,8 +278,8 @@ class TournamentController:
         return pairings, bye_player
 
     def record_results(
-        self, round_index: int, results_data: List[Tuple[str, str, float]]
-    ) -> ResultRecordingResult:
+        self, round_index: int, results_data: List[tuple]
+    ) -> RecordingResult:
         """
         Record results for a round.
 
@@ -292,12 +296,12 @@ class TournamentController:
             Contains success status and tournament completion state
         """
         if not self.tournament:
-            return ResultRecordingResult(
+            return RecordingResult(
                 success=False, error_message="No tournament loaded."
             )
 
         if round_index >= len(self.tournament.rounds_pairings_ids):
-            return ResultRecordingResult(
+            return RecordingResult(
                 success=False,
                 error_message="No pairings available to record results for this round.",
             )
@@ -310,17 +314,17 @@ class TournamentController:
                 tournament_finished = (
                     self.current_round_index >= self.tournament.num_rounds
                 )
-                return ResultRecordingResult(
+                return RecordingResult(
                     success=True, tournament_finished=tournament_finished
                 )
             else:
-                return ResultRecordingResult(
+                return RecordingResult(
                     success=False,
                     error_message="Some results may not have been recorded properly.",
                 )
         except Exception as e:
             logger.exception(f"Error recording results for round {round_index + 1}:")
-            return ResultRecordingResult(
+            return RecordingResult(
                 success=False, error_message=f"Recording results failed: {e}"
             )
 
@@ -370,7 +374,8 @@ class TournamentController:
             round_index_being_undone = self.current_round_index - 1
 
             # Revert player stats for each game
-            for white_id, black_id, _ in self.last_recorded_results_data:
+            for result_entry in self.last_recorded_results_data:
+                white_id, black_id = result_entry[:2]
                 p_white = self.tournament.players.get(white_id)
                 p_black = self.tournament.players.get(black_id)
                 if p_white:
@@ -480,7 +485,7 @@ class TournamentController:
         return self.tournament.pairing_system == "manual"
 
     def _format_results_for_log(
-        self, results_data: List[Tuple[str, str, float]], round_index: int
+        self, results_data: List[tuple], round_index: int
     ) -> List[str]:
         """
         Format results data for logging/history.
@@ -503,15 +508,14 @@ class TournamentController:
         messages = []
 
         # Log paired game results
-        for w_id, b_id, score_w in results_data:
+        for result_entry in results_data:
+            w_id, b_id, score_w = result_entry[:3]
+            score_b = result_entry[3] if len(result_entry) > 3 else WIN_SCORE - score_w
             w = self.tournament.players.get(w_id)
             b = self.tournament.players.get(b_id)
-            score_b_display = f"{WIN_SCORE - score_w:.1f}"
             w_name = w.name if w else w_id
             b_name = b.name if b else b_id
-            messages.append(
-                f"  {w_name} ({score_w:.1f}) - {b_name} ({score_b_display})"
-            )
+            messages.append(f"  {w_name} ({score_w:.1f}) - {b_name} ({score_b:.1f})")
 
         # Log bye
         if round_index < len(self.tournament.rounds_byes_ids):

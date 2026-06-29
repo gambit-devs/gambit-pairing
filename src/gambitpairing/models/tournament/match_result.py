@@ -17,6 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from dataclasses import dataclass
+from typing import Any, Dict, Optional
 
 
 @dataclass
@@ -38,8 +39,32 @@ class MatchResult:
     white_id: str
     black_id: str
     white_score: float
+    black_score_override: Optional[float] = None
 
     @property
     def black_score(self) -> float:
         """Calculate black's score based on white's score."""
+        if self.black_score_override is not None:
+            return self.black_score_override
         return 1.0 - self.white_score
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize match result to dictionary."""
+        data = {
+            "white_id": self.white_id,
+            "black_id": self.black_id,
+            "white_score": self.white_score,
+        }
+        if self.black_score_override is not None:
+            data["black_score"] = self.black_score_override
+        return data
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "MatchResult":
+        """Deserialize match result from dictionary."""
+        return cls(
+            white_id=data["white_id"],
+            black_id=data["black_id"],
+            white_score=data["white_score"],
+            black_score_override=data.get("black_score"),
+        )

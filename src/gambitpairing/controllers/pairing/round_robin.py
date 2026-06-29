@@ -34,12 +34,14 @@ Examples
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
 
-from typing import Iterable, List, Optional, Tuple
+from collections.abc import Iterable
+from typing import List, Optional, Tuple
 
 from gambitpairing.exceptions import PairingException
 from gambitpairing.models.player import Player
-from gambitpairing.type_aliases import Pairing, Players
+from gambitpairing.type_aliases import Pairing
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)
@@ -47,6 +49,8 @@ logger = setup_logger(__name__)
 # Type aliases for clarity
 RoundSchedule = Tuple[Pairing, ...]
 BergerTable = Tuple[RoundSchedule, ...]  # Complete tournament schedule
+RoundRobinMatch = Tuple[Player, Player]
+RoundRobinPairings = Tuple[Tuple[RoundRobinMatch, ...], Optional[Player]]
 
 
 # FIDE Berger Tables for Round-Robin Tournaments
@@ -250,7 +254,7 @@ class RoundRobin:
             self.berger_table,
         )
 
-        self.round_pairings: List[Pairings] = []
+        self.round_pairings: List[RoundRobinPairings] = []
 
         for round_idx in range(self.number_of_rounds):
             pairings = self._generate_round_pairings(round_idx)
@@ -262,7 +266,7 @@ class RoundRobin:
             len(self.players),
         )
 
-    def _generate_round_pairings(self, round_idx: int) -> Pairings:
+    def _generate_round_pairings(self, round_idx: int) -> RoundRobinPairings:
         """Generate pairings for a specific round.
 
         Parameters
@@ -288,7 +292,7 @@ class RoundRobin:
         round_schedule = self.berger_table[round_idx]
         logger.debug("Processing round %d: %s", round_idx, round_schedule)
 
-        matches = []
+        matches: List[RoundRobinMatch] = []
         bye_player = None
 
         for match_pairing in round_schedule:
@@ -326,7 +330,7 @@ class RoundRobin:
 
         return (tuple(matches), bye_player)
 
-    def get_round_pairings(self, round_number: int) -> Pairings:
+    def get_round_pairings(self, round_number: int) -> RoundRobinPairings:
         """Get pairings for a specific round.
 
         Parameters
@@ -354,7 +358,7 @@ class RoundRobin:
 
         return self.round_pairings[round_number - 1]  # Convert to 0-indexed
 
-    def get_all_pairings(self) -> Tuple[Pairings, ...]:
+    def get_all_pairings(self) -> Tuple[RoundRobinPairings, ...]:
         """Get pairings for all rounds.
 
         Returns
@@ -429,7 +433,7 @@ class RoundRobin:
         )
 
 
-def create_round_robin(players: Players) -> RoundRobin:
+def create_round_robin(players: Iterable[Player]) -> RoundRobin:
     """
     Create a complete FIDE round-robin tournament.
 

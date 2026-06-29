@@ -139,7 +139,7 @@ class TiebreakCalculator:
 
         # Calculate player's percentage from played games (excluding byes)
         score_from_games = sum(
-            player.results[i]
+            player.results[i] or 0.0
             for i, opp_id in enumerate(player.opponent_ids)
             if opp_id is not None and i < len(player.results)
         )
