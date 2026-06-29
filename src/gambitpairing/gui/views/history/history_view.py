@@ -24,7 +24,7 @@ from gambitpairing.utils import setup_logger
 from PyQt6 import QtGui, QtWidgets
 from PyQt6.QtCore import QDateTime
 
-from gambitpairing.gui.ui_loader import load_ui_into
+from gambitpairing.gui.ui_loader import load_ui_into, required_child
 from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 from gambitpairing.gui.widgets.header import TabHeader
 
@@ -36,25 +36,28 @@ class HistoryView(QtWidgets.QWidget):
         super().__init__(parent)
         self.tournament = None
         load_ui_into(self, "history_view.ui")
-        self.main_layout = self.findChild(QtWidgets.QVBoxLayout, "main_layout")
+        self.main_layout = required_child(
+            self, QtWidgets.QVBoxLayout, "main_layout"
+        )
+        header_layout = required_child(self, QtWidgets.QVBoxLayout, "header_layout")
+        placeholder_layout = required_child(
+            self, QtWidgets.QVBoxLayout, "placeholder_layout"
+        )
 
         # Header
         self.header = TabHeader("History Log")
-        self.main_layout.addWidget(self.header)
+        header_layout.addWidget(self.header)
 
         # History group
-        self.history_group = QtWidgets.QGroupBox()
-        self.history_group.setStyleSheet("QGroupBox { border: none; margin-top: 0px; }")
-        history_layout = QtWidgets.QVBoxLayout(self.history_group)
-        history_layout.setContentsMargins(0, 0, 0, 0)
+        self.history_group = required_child(
+            self, QtWidgets.QGroupBox, "history_group"
+        )
 
-        self.history_log_widget = QtWidgets.QPlainTextEdit()
-        self.history_log_widget.setReadOnly(True)
-        self.history_log_widget.setToolTip("Log of pairings, results, and actions.")
+        self.history_log_widget = required_child(
+            self, QtWidgets.QPlainTextEdit, "history_log_widget"
+        )
         font = QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.SystemFont.FixedFont)
         self.history_log_widget.setFont(font)
-        history_layout.addWidget(self.history_log_widget)
-        self.main_layout.addWidget(self.history_group)
 
         # Add no tournament placeholder
         self.tournament_placeholder = TournamentPlaceholder(self, "History Log")
@@ -65,7 +68,7 @@ class HistoryView(QtWidgets.QWidget):
             self._trigger_import_tournament
         )
         self.tournament_placeholder.hide()
-        self.main_layout.addWidget(self.tournament_placeholder)
+        placeholder_layout.addWidget(self.tournament_placeholder)
 
     def reset_display(self) -> None:
         """Reset the UI to default state."""

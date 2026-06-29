@@ -30,7 +30,7 @@ from gambitpairing.constants import (
     TB_SONNENBORN_BERGER,
     TIEBREAK_NAMES,
 )
-from gambitpairing.gui.ui_loader import load_ui_into
+from gambitpairing.gui.ui_loader import load_ui_into, required_child
 from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 from gambitpairing.gui.widgets.header import TabHeader
 from gambitpairing.utils.print import create_print_button
@@ -42,51 +42,39 @@ class StandingsView(QtWidgets.QWidget):
         self.tournament = None
         self.parent_window = parent  # Store reference to main window
         load_ui_into(self, "standings_view.ui")
-        self.main_layout = self.findChild(QtWidgets.QVBoxLayout, "main_layout")
+        self.main_layout = required_child(
+            self, QtWidgets.QVBoxLayout, "main_layout"
+        )
+        header_layout = required_child(self, QtWidgets.QVBoxLayout, "header_layout")
+        placeholder_layout = required_child(
+            self, QtWidgets.QVBoxLayout, "placeholder_layout"
+        )
 
         # ===== STANDINGS HEADER =====
         self.header = TabHeader("Standings")
         self.btn_print_standings = self.header.add_action_button(
             "print.svg", "Print Standings", self.open_print_dialog
         )
-        self.main_layout.addWidget(self.header)
+        header_layout.addWidget(self.header)
 
         # ===== STANDINGS TABLE =====
-        self.standings_group = QtWidgets.QGroupBox()
-        self.standings_group.setStyleSheet(
-            "QGroupBox { border: none; margin-top: 0px; }"
+        self.standings_group = required_child(
+            self, QtWidgets.QGroupBox, "standings_group"
         )
-        standings_layout = QtWidgets.QVBoxLayout(self.standings_group)
-        standings_layout.setContentsMargins(0, 0, 0, 0)
 
         # Add round info label
-        self.lbl_round_info = QtWidgets.QLabel("")
-        self.lbl_round_info.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_round_info = required_child(self, QtWidgets.QLabel, "lbl_round_info")
         font = self.lbl_round_info.font()
         font.setPointSize(font.pointSize() + 1)
         font.setBold(True)
         self.lbl_round_info.setFont(font)
-        self.lbl_round_info.setStyleSheet("color: #666; margin: 5px;")
-        standings_layout.addWidget(self.lbl_round_info)
 
-        self.table_standings = QtWidgets.QTableWidget(0, 3)
-        self.table_standings.setHorizontalHeaderLabels(["Rank", "Player", "Score"])
-        self.table_standings.setToolTip(
-            "Player standings sorted by Score and configured Tiebreakers."
+        self.table_standings = required_child(
+            self, QtWidgets.QTableWidget, "table_standings"
         )
         self.table_standings.horizontalHeader().setSectionResizeMode(
             1, QtWidgets.QHeaderView.ResizeMode.Stretch
         )
-        self.table_standings.setEditTriggers(
-            QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
-        )
-        self.table_standings.setSelectionBehavior(
-            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
-        )
-        self.table_standings.setAlternatingRowColors(True)
-        standings_layout.addWidget(self.table_standings)
-
-        self.main_layout.addWidget(self.standings_group)
 
         # Add no tournament placeholder
         self.tournament_placeholder = TournamentPlaceholder(self, "Standings")
@@ -97,7 +85,7 @@ class StandingsView(QtWidgets.QWidget):
             self._trigger_import_tournament
         )
         self.tournament_placeholder.hide()
-        self.main_layout.addWidget(self.tournament_placeholder)
+        placeholder_layout.addWidget(self.tournament_placeholder)
 
     def reset_display(self) -> None:
         """Reset the UI to default state."""

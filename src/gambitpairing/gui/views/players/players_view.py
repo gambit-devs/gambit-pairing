@@ -34,7 +34,7 @@ from gambitpairing.controllers.player import (
 )
 from gambitpairing.gui.dialogs import PlayerManagementDialog
 from gambitpairing.gui.notification import show_notification
-from gambitpairing.gui.ui_loader import load_ui_into
+from gambitpairing.gui.ui_loader import load_ui_into, required_child
 from gambitpairing.gui.widgets import NumericTableWidgetItem, TabHeader
 from gambitpairing.gui.widgets.player_placeholder import PlayerPlaceholder
 from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
@@ -121,26 +121,26 @@ class PlayersView(QtWidgets.QWidget):
         self.main_window = main_window
         self.tournament = None
         load_ui_into(self, "players_view.ui")
-        self.main_layout = self.findChild(QtWidgets.QVBoxLayout, "main_layout")
+        self.main_layout = required_child(
+            self, QtWidgets.QVBoxLayout, "main_layout"
+        )
+        header_layout = required_child(self, QtWidgets.QVBoxLayout, "header_layout")
+        placeholder_layout = required_child(
+            self, QtWidgets.QVBoxLayout, "placeholder_layout"
+        )
 
         # --- Header ---
         self.header = TabHeader("Players")
-        self.main_layout.addWidget(self.header)
+        header_layout.addWidget(self.header)
 
-        self.player_group = QtWidgets.QGroupBox()
+        self.player_group = required_child(
+            self, QtWidgets.QGroupBox, "player_group"
+        )
         self.player_group.setProperty("class", "PlayerGroup")
-        self.player_group.setToolTip("Manage players. Right-click a row for actions.")
-        player_group_layout = QtWidgets.QVBoxLayout(self.player_group)
-        player_group_layout.setContentsMargins(0, 0, 0, 0)
 
         # --- Player Table ---
-        self.table_players = QtWidgets.QTableWidget()
-        self.table_players.setToolTip(
-            "Registered players. Right-click to Edit/Withdraw/Reactivate/Remove."
-        )
-        self.table_players.setColumnCount(4)  # Name, Rating, Age, Active
-        self.table_players.setHorizontalHeaderLabels(
-            ["Name", "Rating", "Age", "Status"]
+        self.table_players = required_child(
+            self, QtWidgets.QTableWidget, "table_players"
         )
         self.table_players.setContextMenuPolicy(
             QtCore.Qt.ContextMenuPolicy.CustomContextMenu
@@ -148,14 +148,6 @@ class PlayersView(QtWidgets.QWidget):
         self.table_players.customContextMenuRequested.connect(
             self.on_player_context_menu
         )
-        self.table_players.setAlternatingRowColors(True)
-        self.table_players.setSelectionBehavior(
-            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
-        )
-        self.table_players.setEditTriggers(
-            QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
-        )
-        self.table_players.setSortingEnabled(True)
 
         # Resize columns
         header = self.table_players.horizontalHeader()
@@ -171,17 +163,13 @@ class PlayersView(QtWidgets.QWidget):
         header.setSectionsClickable(True)
         header.setSectionsMovable(True)
         header.setHighlightSections(True)
-        player_group_layout.addWidget(self.table_players)
 
         self.table_players.hide()  # Hide table initially
 
-        self.btn_add_player_detail = QtWidgets.QPushButton(" Add New Player...")
-        self.btn_add_player_detail.setToolTip(
-            "Open dialog to add a new player with full details."
+        self.btn_add_player_detail = required_child(
+            self, QtWidgets.QPushButton, "btn_add_player_detail"
         )
         self.btn_add_player_detail.clicked.connect(self.add_player_detailed)
-        player_group_layout.addWidget(self.btn_add_player_detail)
-        self.main_layout.addWidget(self.player_group)
 
         # Ensure sufficient row height for padded cells
         vheader = self.table_players.verticalHeader()
@@ -205,8 +193,8 @@ class PlayersView(QtWidgets.QWidget):
         # Hide placeholders initially
         self.tournament_placeholder.hide()
         self.players_placeholder.hide()
-        self.main_layout.addWidget(self.tournament_placeholder)
-        self.main_layout.addWidget(self.players_placeholder)
+        placeholder_layout.addWidget(self.tournament_placeholder)
+        placeholder_layout.addWidget(self.players_placeholder)
 
     def reset_display(self) -> None:
         """Reset the UI."""

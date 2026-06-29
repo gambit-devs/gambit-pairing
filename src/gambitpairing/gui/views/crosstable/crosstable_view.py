@@ -19,7 +19,7 @@ from PyQt6 import QtGui, QtWidgets
 from PyQt6.QtCore import Qt
 
 from gambitpairing.constants import DRAW_SCORE, LOSS_SCORE, WIN_SCORE
-from gambitpairing.gui.ui_loader import load_ui_into
+from gambitpairing.gui.ui_loader import load_ui_into, required_child
 from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 from gambitpairing.gui.widgets.header import TabHeader
 
@@ -29,29 +29,27 @@ class CrosstableView(QtWidgets.QWidget):
         super().__init__(parent)
         self.tournament = None
         load_ui_into(self, "crosstable_view.ui")
-        self.main_layout = self.findChild(QtWidgets.QVBoxLayout, "main_layout")
+        self.main_layout = required_child(
+            self, QtWidgets.QVBoxLayout, "main_layout"
+        )
+        header_layout = required_child(self, QtWidgets.QVBoxLayout, "header_layout")
+        placeholder_layout = required_child(
+            self, QtWidgets.QVBoxLayout, "placeholder_layout"
+        )
 
         # Header
         self.header = TabHeader("Crosstable")
-        self.main_layout.addWidget(self.header)
+        header_layout.addWidget(self.header)
 
-        self.crosstable_group = QtWidgets.QGroupBox()
-        self.crosstable_group.setStyleSheet(
-            "QGroupBox { border: none; margin-top: 0px; }"
+        self.crosstable_group = required_child(
+            self, QtWidgets.QGroupBox, "crosstable_group"
         )
-        crosstable_layout = QtWidgets.QVBoxLayout(self.crosstable_group)
-        crosstable_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.table_crosstable = QtWidgets.QTableWidget(0, 0)
-        self.table_crosstable.setToolTip("Grid showing results between players.")
-        self.table_crosstable.setEditTriggers(
-            QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
+        self.table_crosstable = required_child(
+            self, QtWidgets.QTableWidget, "table_crosstable"
         )
-        self.table_crosstable.setAlternatingRowColors(True)
         font = QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.SystemFont.FixedFont)
         self.table_crosstable.setFont(font)
-        crosstable_layout.addWidget(self.table_crosstable)
-        self.main_layout.addWidget(self.crosstable_group)
 
         # Add no tournament placeholder
         self.tournament_placeholder = TournamentPlaceholder(self, "Crosstable")
@@ -62,7 +60,7 @@ class CrosstableView(QtWidgets.QWidget):
             self._trigger_import_tournament
         )
         self.tournament_placeholder.hide()
-        self.main_layout.addWidget(self.tournament_placeholder)
+        placeholder_layout.addWidget(self.tournament_placeholder)
 
     def set_tournament(self, tournament):
         self.tournament = tournament

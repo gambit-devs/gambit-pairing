@@ -36,7 +36,7 @@ from gambitpairing.controllers import (
     TournamentController,
 )
 from gambitpairing.gui.dialogs import ManualPairingDialog
-from gambitpairing.gui.ui_loader import load_ui_into
+from gambitpairing.gui.ui_loader import load_ui_into, required_child
 from gambitpairing.utils import PairingsPrinter
 from gambitpairing.gui.widgets import (
     ResultSelector,
@@ -140,7 +140,16 @@ class TournamentView(QtWidgets.QWidget):
         self.printer = PairingsPrinter(self)
 
         load_ui_into(self, "tournament_view.ui")
-        self.main_layout = self.findChild(QtWidgets.QVBoxLayout, "main_layout")
+        self.main_layout = required_child(
+            self, QtWidgets.QVBoxLayout, "main_layout"
+        )
+        header_layout = required_child(self, QtWidgets.QVBoxLayout, "header_layout")
+        pre_tournament_layout = required_child(
+            self, QtWidgets.QVBoxLayout, "pre_tournament_layout"
+        )
+        placeholder_layout = required_child(
+            self, QtWidgets.QVBoxLayout, "placeholder_layout"
+        )
 
         # ===== TOURNAMENT INFO HEADER =====
         self.header = TabHeader("No Tournament Loaded")
@@ -155,7 +164,7 @@ class TournamentView(QtWidgets.QWidget):
                 default_pairings=True, default_standings=False
             ),
         )
-        self.main_layout.addWidget(self.header)
+        header_layout.addWidget(self.header)
 
         # ===== ROUND CARD CONTAINER =====
         # This is the main content area that holds pairings and results
@@ -165,7 +174,7 @@ class TournamentView(QtWidgets.QWidget):
         self.pre_tournament_start_widget = PreTournamentStart(self)
         self.pre_tournament_start_widget.start_requested.connect(self.start_tournament)
         self.pre_tournament_start_widget.hide()
-        self.main_layout.addWidget(self.pre_tournament_start_widget)
+        pre_tournament_layout.addWidget(self.pre_tournament_start_widget)
 
         # ===== NO TOURNAMENT PLACEHOLDER =====
         self.tournament_placeholder = TournamentPlaceholder(self, "Rounds")
@@ -176,35 +185,35 @@ class TournamentView(QtWidgets.QWidget):
             self._trigger_import_tournament
         )
         self.tournament_placeholder.hide()
-        self.main_layout.addWidget(self.tournament_placeholder)
+        placeholder_layout.addWidget(self.tournament_placeholder)
 
         # Set initial UI state
         self.update_ui_state()
 
     def _setup_round_card(self):
         """Create the round card container with pairings table and action footer."""
-        # Main card container with rounded corners and shadow effect
-        self.round_card = QtWidgets.QFrame()
+        self.round_card = required_child(self, QtWidgets.QFrame, "round_card")
         self.round_card.setProperty("class", "RoundCard")
-        self.round_card.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
-        card_layout = QtWidgets.QVBoxLayout(self.round_card)
-        card_layout.setContentsMargins(0, 0, 0, 0)
-        card_layout.setSpacing(0)
+        pairings_layout = required_child(
+            self, QtWidgets.QVBoxLayout, "pairings_layout"
+        )
+        round_controls_layout = required_child(
+            self, QtWidgets.QVBoxLayout, "round_controls_layout"
+        )
 
         # ===== STATUS BAR =====
-        self.lbl_status_instruction = QtWidgets.QLabel("")
-        self.lbl_status_instruction.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_status_instruction.setWordWrap(True)
+        self.lbl_status_instruction = required_child(
+            self, QtWidgets.QLabel, "lbl_status_instruction"
+        )
         self.lbl_status_instruction.setProperty("class", "StatusInstruction")
         self.lbl_status_instruction.setProperty("state", "default")
-        card_layout.addWidget(self.lbl_status_instruction)
 
         # ===== PAIRINGS TABLE =====
         self.pairings_table = PairingsTable()
         self.pairings_table.context_menu_requested.connect(
             self.show_pairing_context_menu
         )
-        card_layout.addWidget(self.pairings_table, 1)  # Give table stretch priority
+        pairings_layout.addWidget(self.pairings_table, 1)
 
         # ===== ACTION FOOTER =====
         self.round_controls = RoundControlsWidget()
@@ -212,9 +221,7 @@ class TournamentView(QtWidgets.QWidget):
         self.round_controls.prepare_requested.connect(self.prepare_next_round)
         self.round_controls.record_requested.connect(self.record_and_advance)
         self.round_controls.undo_requested.connect(self.undo_last_results)
-        card_layout.addWidget(self.round_controls)
-
-        self.main_layout.addWidget(self.round_card, 1)  # Give card stretch priority
+        round_controls_layout.addWidget(self.round_controls)
 
     def set_tournament(self, tournament):
         """Set the tournament and update controller."""

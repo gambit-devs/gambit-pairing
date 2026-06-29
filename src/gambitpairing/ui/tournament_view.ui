@@ -2,22 +2,122 @@
 <ui version="4.0">
  <class>TournamentView</class>
  <widget class="QWidget" name="TournamentView">
+  <property name="windowTitle">
+   <string>Tournament</string>
+  </property>
   <layout class="QVBoxLayout" name="main_layout">
+   <property name="spacing">
+    <number>12</number>
+   </property>
    <property name="leftMargin">
-    <number>16</number>
+    <number>12</number>
    </property>
    <property name="topMargin">
-    <number>16</number>
+    <number>12</number>
    </property>
    <property name="rightMargin">
-    <number>16</number>
+    <number>12</number>
    </property>
    <property name="bottomMargin">
-    <number>16</number>
+    <number>12</number>
    </property>
-   <property name="spacing">
-    <number>0</number>
-   </property>
+   <item>
+    <widget class="QWidget" name="header_container">
+     <layout class="QVBoxLayout" name="header_layout">
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="round_card">
+     <property name="frameShape">
+      <enum>QFrame::StyledPanel</enum>
+     </property>
+     <layout class="QVBoxLayout" name="round_card_layout">
+      <property name="spacing">
+       <number>0</number>
+      </property>
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="lbl_status_instruction">
+        <property name="text">
+         <string/>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="pairings_layout"/>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="round_controls_layout"/>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="pre_tournament_container">
+     <layout class="QVBoxLayout" name="pre_tournament_layout">
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="placeholder_container">
+     <layout class="QVBoxLayout" name="placeholder_layout">
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+     </layout>
+    </widget>
+   </item>
   </layout>
  </widget>
  <resources/>
