@@ -18,6 +18,23 @@ QFrame[class="RoundCard"] {
 }
 
 /* --- Tournament tab header ------------------------------------------------ */
+QWidget[class="TabHeader"] {
+  background: transparent;
+}
+
+QLabel[class="TabTitle"] {
+  color:       {{color_primary}};
+  font-size:   {{font_size_3xl}};
+  font-weight: 700;
+  background:  transparent;
+  padding-top: 4px;
+}
+
+QFrame[class="TabHeaderSeparator"] {
+  background-color: {{border_medium}};
+  margin-top:       4px;
+}
+
 QWidget[class="TournamentHeader"] {
   background: transparent;
 }

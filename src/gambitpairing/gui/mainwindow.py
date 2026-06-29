@@ -45,6 +45,7 @@ from .dialogs import (
     UpdatePromptDialog,
 )
 from .import_player import ImportPlayer
+from .main_window_state import build_main_window_ui_state
 from .notification import show_notification
 from .ui_loader import load_ui_into
 from .views.crosstable.crosstable_view import CrosstableView
@@ -820,75 +821,46 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         - Player operations state
         - Window title and status bar updates
         """
-        tournament_exists = self.tournament is not None
+        state = build_main_window_ui_state(
+            tournament=self.tournament,
+            current_round_index=self.current_round_index,
+            last_recorded_results_data=self.last_recorded_results_data,
+            dirty=self._dirty,
+            current_filepath=self._current_filepath,
+            app_name=APP_NAME,
+        )
 
         # Switch between placeholder and tabs using stacked widget
-        if tournament_exists:
+        if state.tournament_exists:
             self.stacked_widget.setCurrentWidget(self.tabs)
         else:
             self.stacked_widget.setCurrentWidget(self.tournament_placeholder)
 
-        pairings_generated = (
-            len(self.tournament.rounds_pairings_ids) if tournament_exists else 0
-        )
-        results_recorded = self.current_round_index
-        total_rounds = self.tournament.num_rounds if tournament_exists else 0
-        tournament_started = tournament_exists and pairings_generated > 0
-        tournament_finished = (
-            tournament_exists and results_recorded >= total_rounds and total_rounds > 0
-        )
-
-        # Determine action states for menu items
-        can_start = tournament_exists and not tournament_started
-        can_prepare = (
-            tournament_exists
-            and tournament_started
-            and pairings_generated == results_recorded
-            and not tournament_finished
-        )
-        can_record = (
-            tournament_exists
-            and tournament_started
-            and pairings_generated > results_recorded
-            and not tournament_finished
-        )
-        can_undo = (
-            tournament_exists
-            and results_recorded > 0
-            and bool(self.last_recorded_results_data)
-        )
-
         # Update menu actions (still accessible via menus)
-        self.start_action.setEnabled(can_start)
-        self.prepare_round_action.setEnabled(can_prepare)
-        self.record_results_action.setEnabled(can_record)
-        self.undo_results_action.setEnabled(can_undo)
+        self.start_action.setEnabled(state.can_start)
+        self.prepare_round_action.setEnabled(state.can_prepare)
+        self.record_results_action.setEnabled(state.can_record)
+        self.undo_results_action.setEnabled(state.can_undo)
 
         # Update toolbar visibility
-        self.start_action.setVisible(can_start)
-        self.record_results_action.setVisible(can_record)
-        self.prepare_round_action.setVisible(can_prepare)
+        self.start_action.setVisible(state.can_start)
+        self.record_results_action.setVisible(state.can_record)
+        self.prepare_round_action.setVisible(state.can_prepare)
         self.file_separator.setVisible(
             True
         )  # Always show separator between file actions and info
-        self.tournament_separator.setVisible(tournament_exists)
+        self.tournament_separator.setVisible(state.tournament_exists)
 
         # File operations
-        self.save_action.setEnabled(tournament_exists)
-        self.save_as_action.setEnabled(tournament_exists)
-        self.export_standings_action.setEnabled(
-            tournament_exists and results_recorded > 0
-        )
+        self.save_action.setEnabled(state.can_save)
+        self.save_as_action.setEnabled(state.can_save)
+        self.export_standings_action.setEnabled(state.can_export_standings)
 
         # Player operations
-        self.import_players_action.setEnabled(
-            tournament_exists and not tournament_started
-        )
-        self.export_players_action.setEnabled(
-            tournament_exists and len(self.tournament.players) > 0
-        )
-        self.add_player_action.setEnabled(not tournament_started)
-        self.settings_action.setEnabled(tournament_exists)
+        self.import_players_action.setEnabled(state.can_import_players)
+        self.export_players_action.setEnabled(state.can_export_players)
+        self.add_player_action.setEnabled(state.can_add_player)
+        self.settings_action.setEnabled(state.can_open_settings)
 
         # Delegate UI state updates to the tabs themselves
         self.players_tab.update_ui_state()
@@ -897,49 +869,9 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self.crosstable_tab.update_ui_state()
         self.history_tab.update_ui_state()
 
-        # Update window title
-        title = APP_NAME
-        if self.tournament:
-            base_name = self.tournament.name
-            if self._dirty:
-                base_name += "*"
-
-            if self._current_filepath:
-                file_name = QFileInfo(self._current_filepath).fileName()
-                title = f"{base_name} - {file_name} - {APP_NAME}"
-            else:
-                title = f"{base_name} - {APP_NAME}"
-        else:
-            if self._current_filepath:
-                title = f"{QFileInfo(self._current_filepath).fileName()} - {APP_NAME}"
-
-        self.setWindowTitle(title)
-
-        # Update status bar
-        status = "Ready"
-        if tournament_exists:
-            if not tournament_started:
-                status = f"Tournament '{self.tournament.name}': Add players, then Start. {len(self.tournament.players)} players registered."
-            elif can_record:
-                status = f"Round {results_recorded + 1} pairings ready for '{self.tournament.name}'. Please enter results."
-            elif can_prepare:
-                status = f"Round {results_recorded} results recorded for '{self.tournament.name}'. Prepare Round {results_recorded + 1}."
-            elif tournament_finished:
-                status = f"Tournament '{self.tournament.name}' finished. Final standings are available."
-            else:
-                status = f"Tournament '{self.tournament.name}' in progress. Completed rounds: {results_recorded}/{total_rounds}."
-        else:
-            status = "Ready - Create New or Load Tournament."
-        self.statusBar().showMessage(status)
-
-        # Update toolbar labels
-        if tournament_exists:
-            tournament_name = self.tournament.name
-            if self._dirty:
-                tournament_name += " *"
-            self.toolbar_tournament_label.setText(tournament_name)
-        else:
-            self.toolbar_tournament_label.setText("No Tournament Loaded")
+        self.setWindowTitle(state.window_title)
+        self.statusBar().showMessage(state.status_message)
+        self.toolbar_tournament_label.setText(state.toolbar_tournament_label)
 
 
 #  LocalWords:  bbb px msgbox MainToolbar

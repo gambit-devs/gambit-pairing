@@ -16,8 +16,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from PyQt6 import QtCore, QtGui, QtWidgets
-from PyQt6.QtCore import Qt, pyqtSignal
+from __future__ import annotations
+
+from PyQt6 import QtWidgets
+from PyQt6.QtCore import pyqtSignal
+
+from gambitpairing.gui.ui_loader import load_ui_into, required_child
 
 
 class PlayerPlaceholder(QtWidgets.QWidget):
@@ -26,54 +30,26 @@ class PlayerPlaceholder(QtWidgets.QWidget):
     import_players_requested = pyqtSignal()
     add_player_requested = pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
         self._setup_ui()
 
-    def _setup_ui(self):
+    def _setup_ui(self) -> None:
         """Set up the placeholder UI."""
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(48, 48, 48, 48)
-        layout.setSpacing(0)
+        self.setProperty("class", "PlayerPlaceholder")
+        load_ui_into(self, "player_placeholder.ui")
 
-        # Add spacer to center content vertically
-        layout.addStretch()
+        self.icon_label = required_child(self, QtWidgets.QLabel, "icon_label")
+        self.title_label = required_child(self, QtWidgets.QLabel, "title_label")
+        self.desc_label = required_child(self, QtWidgets.QLabel, "desc_label")
+        self.import_btn = required_child(self, QtWidgets.QPushButton, "import_btn")
+        self.add_btn = required_child(self, QtWidgets.QPushButton, "add_btn")
 
-        # Icon/Symbol
-        icon_label = QtWidgets.QLabel("👥")
-        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        icon_label.setProperty("class", "PlayerPlaceHolderIcon")
-        layout.addWidget(icon_label)
+        self.icon_label.setText("👥")
+        self.title_label.setText("No Players Added")
+        self.desc_label.setText("Add players to your tournament to get started.")
+        self.import_btn.setText("Import Players")
+        self.add_btn.setText("Add Player")
 
-        # Main message
-        title_label = QtWidgets.QLabel("No Players Added")
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_label.setProperty("class", "PlayerPlaceholderTitle")
-        layout.addWidget(title_label)
-
-        # Description
-        desc_label = QtWidgets.QLabel("Add players to your tournament to get started.")
-        desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        desc_label.setWordWrap(True)
-        desc_label.setProperty("class", "PlayerPlaceholderDesc")
-        layout.addWidget(desc_label)
-
-        # Action buttons
-        button_layout = QtWidgets.QHBoxLayout()
-        button_layout.setSpacing(18)
-
-        self.import_btn = QtWidgets.QPushButton("Import Players")
         self.import_btn.clicked.connect(self.import_players_requested.emit)
-        self.import_btn.setProperty("class", "ImportPlayerButton")
-
-        self.add_btn = QtWidgets.QPushButton("Add Player")
         self.add_btn.clicked.connect(self.add_player_requested.emit)
-        self.add_btn.setProperty("class", "ImportPlayerButton")
-        button_layout.addStretch()
-        button_layout.addWidget(self.import_btn)
-        button_layout.addWidget(self.add_btn)
-        button_layout.addStretch()
-        layout.addLayout(button_layout)
-
-        # Add spacer to center content vertically
-        layout.addStretch()

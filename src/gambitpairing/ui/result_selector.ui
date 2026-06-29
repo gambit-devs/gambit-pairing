@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ResultSelector</class>
+ <widget class="QWidget" name="ResultSelector">
+  <property name="class" stdset="0">
+   <string>ResultSelector</string>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>150</width>
+    <height>40</height>
+   </size>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <layout class="QHBoxLayout" name="main_layout">
+   <property name="spacing">
+    <number>0</number>
+   </property>
+   <property name="leftMargin">
+    <number>2</number>
+   </property>
+   <property name="topMargin">
+    <number>2</number>
+   </property>
+   <property name="rightMargin">
+    <number>8</number>
+   </property>
+   <property name="bottomMargin">
+    <number>16</number>
+   </property>
+   <item>
+    <widget class="CheckableButton" name="btn_white_win"/>
+   </item>
+   <item>
+    <widget class="CheckableButton" name="btn_draw"/>
+   </item>
+   <item>
+    <widget class="CheckableButton" name="btn_black_win"/>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>CheckableButton</class>
+   <extends>QPushButton</extends>
+   <header>gambitpairing.gui.widgets.checkable_button</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

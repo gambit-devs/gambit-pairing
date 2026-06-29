@@ -1022,10 +1022,7 @@ class TournamentView(QtWidgets.QWidget):
 
         self.round_controls.update_state(control_state)
         self.round_controls.set_undo_enabled(state.can_undo)
-        # Undo button visibility is handled by the widget layout, but we can enforce it if needed
-        # The widget currently always shows it but disables it.
-        # If we want to hide it when tournament not started:
-        self.round_controls.btn_undo.setVisible(state.tournament_started)
+        self.round_controls.set_undo_visible(state.tournament_started)
 
         # ===== UPDATE STATUS/INSTRUCTION LABEL =====
         num_pairings = self.pairings_table.rowCount()

@@ -9,12 +9,19 @@ from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
 
 from gambitpairing.constants import DEFAULT_TIEBREAK_SORT_ORDER
+from gambitpairing.constants import RESULT_BLACK_WIN, RESULT_DRAW, RESULT_WHITE_WIN
 from gambitpairing.gui.dialogs.about_dialog import AboutDialog
 from gambitpairing.gui.dialogs.new_tournament_dialog import NewTournamentDialog
 from gambitpairing.gui.dialogs.print_options_dialog import PrintOptionsDialog
 from gambitpairing.gui.dialogs.tournament_settings_dialoug import SettingsDialog
 from gambitpairing.gui.dialogs.update_dialog import UpdateDownloadDialog
 from gambitpairing.gui.dialogs.update_prompt_dialog import UpdatePromptDialog
+from gambitpairing.gui.widgets.header import TabHeader
+from gambitpairing.gui.widgets.player_placeholder import PlayerPlaceholder
+from gambitpairing.gui.widgets.pre_tournament_start import PreTournamentStart
+from gambitpairing.gui.widgets.result_selector import ResultSelector
+from gambitpairing.gui.widgets.round_controls import RoundControlsWidget
+from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 
 _APP: QtWidgets.QApplication | None = None
 
@@ -117,3 +124,181 @@ def test_designer_backed_dialogs_wire_expected_controls():
     update_prompt.close()
     new_tournament.close()
     about_dialog.close()
+
+
+def test_designer_backed_placeholder_widgets_preserve_api_and_signals():
+    _app()
+
+    player_placeholder = PlayerPlaceholder()
+    player_signals = {"import": 0, "add": 0}
+    player_placeholder.import_players_requested.connect(
+        lambda: player_signals.__setitem__("import", player_signals["import"] + 1)
+    )
+    player_placeholder.add_player_requested.connect(
+        lambda: player_signals.__setitem__("add", player_signals["add"] + 1)
+    )
+
+    assert player_placeholder.title_label.text() == "No Players Added"
+    assert (
+        player_placeholder.desc_label.text()
+        == "Add players to your tournament to get started."
+    )
+    assert player_placeholder.import_btn.text() == "Import Players"
+    assert player_placeholder.add_btn.text() == "Add Player"
+
+    player_placeholder.import_btn.click()
+    player_placeholder.add_btn.click()
+    assert player_signals == {"import": 1, "add": 1}
+
+    default_tournament_placeholder = TournamentPlaceholder()
+    assert (
+        default_tournament_placeholder.desc_label.text()
+        == "Create a tournament to begin managing your chess competition."
+    )
+
+    tournament_placeholder = TournamentPlaceholder(tab_name="Standings")
+    tournament_signals = {"create": 0, "import": 0}
+    tournament_placeholder.create_tournament_requested.connect(
+        lambda: tournament_signals.__setitem__(
+            "create", tournament_signals["create"] + 1
+        )
+    )
+    tournament_placeholder.import_tournament_requested.connect(
+        lambda: tournament_signals.__setitem__(
+            "import", tournament_signals["import"] + 1
+        )
+    )
+
+    assert tournament_placeholder.title_label.text() == "No Tournament Loaded"
+    assert (
+        tournament_placeholder.desc_label.text()
+        == "The Standings tab will be available once you create a tournament."
+    )
+    assert tournament_placeholder.create_btn.text() == "Create Tournament"
+    assert tournament_placeholder.import_btn.text() == "Import Tournament"
+
+    tournament_placeholder.create_btn.click()
+    tournament_placeholder.import_btn.click()
+    assert tournament_signals == {"create": 1, "import": 1}
+
+    player_placeholder.close()
+    default_tournament_placeholder.close()
+    tournament_placeholder.close()
+
+
+def test_designer_backed_tab_header_preserves_actions_and_title_api():
+    _app()
+
+    header = TabHeader("Players")
+    calls = {"refresh": 0}
+    button = header.add_action_button(
+        "refresh.svg",
+        "Refresh",
+        lambda: calls.__setitem__("refresh", calls["refresh"] + 1),
+    )
+
+    assert header.title_label.text() == "Players"
+    assert header.icon_label.isHidden()
+    assert button.toolTip() == "Refresh"
+
+    button.click()
+    assert calls == {"refresh": 1}
+
+    header.set_title("Updated")
+    assert header.title_label.text() == "Updated"
+
+    icon_header = TabHeader("Rounds", "play.svg")
+    assert not icon_header.icon_label.isHidden()
+
+    header.close()
+    icon_header.close()
+
+
+def test_designer_backed_round_controls_preserve_state_api_and_signals():
+    _app()
+
+    controls = RoundControlsWidget()
+    signals = {"start": 0, "prepare": 0, "record": 0, "undo": 0}
+    controls.start_requested.connect(
+        lambda: signals.__setitem__("start", signals["start"] + 1)
+    )
+    controls.prepare_requested.connect(
+        lambda: signals.__setitem__("prepare", signals["prepare"] + 1)
+    )
+    controls.record_requested.connect(
+        lambda: signals.__setitem__("record", signals["record"] + 1)
+    )
+    controls.undo_requested.connect(
+        lambda: signals.__setitem__("undo", signals["undo"] + 1)
+    )
+
+    controls.update_state("start")
+    assert controls.btn_primary_action.text() == "Start Tournament"
+    controls.btn_primary_action.click()
+
+    controls.update_state("prepare")
+    assert controls.btn_primary_action.text() == "Prepare Next Round"
+    controls.btn_primary_action.click()
+
+    controls.update_state("record")
+    assert controls.btn_primary_action.text() == "Record Results"
+    controls.btn_primary_action.click()
+
+    controls.set_undo_enabled(False)
+    assert not controls.btn_undo.isEnabled()
+    controls.set_undo_enabled(True)
+    controls.set_undo_visible(False)
+    assert controls.btn_undo.isHidden()
+    controls.set_undo_visible(True)
+    controls.btn_undo.click()
+
+    controls.update_state("finished")
+    assert controls.btn_primary_action.text() == "Tournament Finished"
+    assert not controls.btn_primary_action.isEnabled()
+    assert signals == {"start": 1, "prepare": 1, "record": 1, "undo": 1}
+
+    controls.close()
+
+
+def test_designer_backed_pre_tournament_start_preserves_signal_and_runtime_text():
+    _app()
+
+    widget = PreTournamentStart()
+    signals = {"start": 0}
+    widget.start_requested.connect(
+        lambda: signals.__setitem__("start", signals["start"] + 1)
+    )
+
+    assert widget.title_label.text() == "Ready to Start"
+    assert "generate the first round pairings" in widget.desc_label.text()
+    assert widget.btn_start.text() == "Start Tournament"
+
+    widget.btn_start.click()
+    assert signals == {"start": 1}
+
+    widget.close()
+
+
+def test_designer_backed_result_selector_preserves_selection_api():
+    _app()
+
+    selector = ResultSelector()
+
+    assert selector.selectedResult() == ""
+    assert selector.btn_white_win.text() == "1-0"
+    assert selector.btn_draw.text() == "½-½"
+    assert selector.btn_black_win.text() == "0-1"
+
+    selector.setResult(RESULT_WHITE_WIN)
+    assert selector.selectedResult() == RESULT_WHITE_WIN
+
+    selector.setResult(RESULT_DRAW)
+    assert selector.selectedResult() == RESULT_DRAW
+
+    selector.btn_black_win.click()
+    assert selector.selectedResult() == RESULT_BLACK_WIN
+
+    selector.setResult("unknown")
+    assert selector.selectedResult() == ""
+
+    selector.close()

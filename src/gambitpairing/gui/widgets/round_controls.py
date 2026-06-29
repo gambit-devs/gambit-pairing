@@ -16,10 +16,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
+
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import pyqtSignal
 
 from gambitpairing.gui.gui_utils import get_colored_icon
+from gambitpairing.gui.ui_loader import load_ui_into, required_child
 from gambitpairing.resources.resource_utils import get_resource_path
 
 
@@ -31,41 +34,31 @@ class RoundControlsWidget(QtWidgets.QWidget):
     record_requested = pyqtSignal()
     undo_requested = pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setProperty("class", "ActionFooter")
+        load_ui_into(self, "round_controls.ui")
 
-        layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(20, 16, 20, 16)
-        layout.setSpacing(12)
+        self.btn_undo = required_child(self, QtWidgets.QPushButton, "btn_undo")
+        self.btn_primary_action = required_child(
+            self, QtWidgets.QPushButton, "btn_primary_action"
+        )
 
-        # Left side: Secondary actions
-        left_actions = QtWidgets.QHBoxLayout()
-        left_actions.setSpacing(8)
-
-        # Undo button
-        self.btn_undo = QtWidgets.QPushButton("Undo")
+        self.btn_undo.setText("Undo")
         self.btn_undo.setIcon(get_colored_icon("undo.svg", "#2d5a27", 16))
         self.btn_undo.setToolTip("Undo the last recorded round results")
         self.btn_undo.clicked.connect(self.undo_requested.emit)
-        left_actions.addWidget(self.btn_undo)
 
-        layout.addLayout(left_actions)
-        layout.addStretch()
-
-        # Right side: Primary action
-        self.btn_primary_action = QtWidgets.QPushButton("Start Tournament")
+        self.btn_primary_action.setText("Start Tournament")
         self.btn_primary_action.setIconSize(QtCore.QSize(16, 16))
         self.btn_primary_action.setToolTip(
             "Start the tournament and generate first round pairings"
         )
         self.btn_primary_action.clicked.connect(self._on_primary_action_clicked)
-        layout.addWidget(self.btn_primary_action)
 
         # Internal state to track what the primary button should do
         self._primary_action_state = "start"  # start, prepare, record
 
-    def update_state(self, state: str):
+    def update_state(self, state: str) -> None:
         """
         Update the state of the controls based on tournament phase.
 
@@ -101,10 +94,14 @@ class RoundControlsWidget(QtWidgets.QWidget):
             self.btn_primary_action.setEnabled(False)
             self.btn_primary_action.setToolTip("All rounds completed")
 
-    def set_undo_enabled(self, enabled: bool):
+    def set_undo_enabled(self, enabled: bool) -> None:
         self.btn_undo.setEnabled(enabled)
 
-    def _on_primary_action_clicked(self):
+    def set_undo_visible(self, visible: bool) -> None:
+        """Show or hide the undo control."""
+        self.btn_undo.setVisible(visible)
+
+    def _on_primary_action_clicked(self) -> None:
         if self._primary_action_state == "start":
             self.start_requested.emit()
         elif self._primary_action_state == "prepare":

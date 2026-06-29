@@ -16,12 +16,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
 
-from PyQt6 import QtCore, QtGui, QtWidgets
+from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtCore import Qt
 
-from gambitpairing.gui.gui_utils import get_colored_icon, set_svg_icon
-from gambitpairing.resources.resource_utils import get_resource_path
+from gambitpairing.gui.gui_utils import set_svg_icon
+from gambitpairing.gui.ui_loader import load_ui_into, required_child
 
 
 class PreTournamentStart(QtWidgets.QWidget):
@@ -29,62 +30,24 @@ class PreTournamentStart(QtWidgets.QWidget):
 
     start_requested = QtCore.pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setProperty("class", "PreTournamentWidget")
+        load_ui_into(self, "pre_tournament_start.ui")
 
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.setContentsMargins(48, 48, 48, 48)
-        layout.setSpacing(0)
+        self.icon_label = required_child(self, QtWidgets.QLabel, "icon_label")
+        self.title_label = required_child(self, QtWidgets.QLabel, "title_label")
+        self.desc_label = required_child(self, QtWidgets.QLabel, "desc_label")
+        self.btn_start = required_child(self, QtWidgets.QPushButton, "btn_start")
 
-        # Add spacer to center content vertically
-        layout.addStretch()
-
-        # Icon
-        self.icon_label = QtWidgets.QLabel()
-        self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        # Use play icon but with consistent styling
         set_svg_icon(self.icon_label, "play.svg", "#2d5a27", 64)
-        self.icon_label.setProperty("class", "PreTournamentIconLabel")
-        layout.addWidget(self.icon_label)
-
-        # Title
-        self.title_label = QtWidgets.QLabel("Ready to Start")
-        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.title_label.setProperty("class", "PreTournamentTitle")
-        layout.addWidget(self.title_label)
-
-        # Description
-        self.desc_label = QtWidgets.QLabel(
+        self.title_label.setText("Ready to Start")
+        self.desc_label.setText(
             "The tournament is set up and ready to begin.\n"
             "Click the button below to generate the first round pairings."
         )
-        self.desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.desc_label.setWordWrap(True)
-        self.desc_label.setProperty("class", "PreTournamentLabel")
-
-        layout.addWidget(self.desc_label)
-
-        # Start Button
-        self.btn_start = QtWidgets.QPushButton("Start Tournament")
+        self.btn_start.setText("Start Tournament")
         self.btn_start.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_start.setMinimumWidth(200)
-
-        # Style the button to match PreTournamentPlaceholder
-        self.btn_start.setProperty("class", "PreTournamentButton")
         self.btn_start.clicked.connect(self.start_requested.emit)
-
-        # Center button
-        btn_layout = QtWidgets.QHBoxLayout()
-        btn_layout.addStretch()
-        btn_layout.addWidget(self.btn_start)
-        btn_layout.addStretch()
-        layout.addLayout(btn_layout)
-
-        # Add spacer to center content vertically
-        layout.addStretch()
 
 
 #  LocalWords:  PreTournamentLabel PreTournamentTitle PreTournamentWidget

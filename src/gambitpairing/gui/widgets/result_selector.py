@@ -16,10 +16,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
 
 from PyQt6 import QtWidgets
 
 from gambitpairing.constants import RESULT_BLACK_WIN, RESULT_DRAW, RESULT_WHITE_WIN
+from gambitpairing.gui.ui_loader import load_ui_into, required_child
 
 from .checkable_button import CheckableButton
 
@@ -37,39 +39,32 @@ class ResultSelector(QtWidgets.QWidget):
     programmatically set via setResult().
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
-        # Set QT class for styling
-        self.setProperty("class", "ResultSelector")
-
-        layout = QtWidgets.QHBoxLayout(self)
-        # Add margins to prevent clipping of borders/shadows
-        # Increased margins to fix clipping on bottom/right
-        layout.setContentsMargins(2, 2, 8, 16)
-        layout.setSpacing(0)
-
-        # Enforce minimum size to prevent squashing in table
-        self.setMinimumWidth(150)
-        self.setMinimumHeight(40)
-        self.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Fixed
-        )
+        load_ui_into(self, "result_selector.ui")
 
         self.button_group = QtWidgets.QButtonGroup(self)
         self.button_group.setExclusive(True)
 
-        # Create buttons with clear, readable labels
-        self.btn_white_win = CheckableButton("1-0")
+        self.btn_white_win = required_child(
+            self, CheckableButton, "btn_white_win"
+        )
+        self.btn_draw = required_child(self, CheckableButton, "btn_draw")
+        self.btn_black_win = required_child(
+            self, CheckableButton, "btn_black_win"
+        )
+
+        self.btn_white_win.setText("1-0")
         self.btn_white_win.setProperty("result_const", RESULT_WHITE_WIN)
         self.btn_white_win.setProperty("result_type", "white")
         self.btn_white_win.setToolTip("White wins")
 
-        self.btn_draw = CheckableButton("½-½")
+        self.btn_draw.setText("½-½")
         self.btn_draw.setProperty("result_const", RESULT_DRAW)
         self.btn_draw.setProperty("result_type", "draw")
         self.btn_draw.setToolTip("Draw")
 
-        self.btn_black_win = CheckableButton("0-1")
+        self.btn_black_win.setText("0-1")
         self.btn_black_win.setProperty("result_const", RESULT_BLACK_WIN)
         self.btn_black_win.setProperty("result_type", "black")
         self.btn_black_win.setToolTip("Black wins")
@@ -77,7 +72,6 @@ class ResultSelector(QtWidgets.QWidget):
         buttons = [self.btn_white_win, self.btn_draw, self.btn_black_win]
         for btn in buttons:
             self.button_group.addButton(btn)
-            layout.addWidget(btn)
 
     def selectedResult(self) -> str:
         """
@@ -92,7 +86,7 @@ class ResultSelector(QtWidgets.QWidget):
         checked_button = self.button_group.checkedButton()
         return checked_button.property("result_const") if checked_button else ""
 
-    def setResult(self, result_constant: str):
+    def setResult(self, result_constant: str) -> None:
         """
         Programmatically set the selected result.
 

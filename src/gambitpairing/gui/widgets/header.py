@@ -18,12 +18,13 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from collections.abc import Callable
 
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
 
 from gambitpairing.gui.gui_utils import get_colored_icon, set_svg_icon
+from gambitpairing.gui.ui_loader import load_ui_into, required_child
 
 
 class TabHeader(QtWidgets.QWidget):
@@ -32,54 +33,32 @@ class TabHeader(QtWidgets.QWidget):
     Displays a title, an optional icon, and a container for action buttons.
     """
 
-    def __init__(self, title: str, icon_name: Optional[str] = None, parent=None):
+    def __init__(
+        self,
+        title: str,
+        icon_name: str | None = None,
+        parent: QtWidgets.QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
-        self.setProperty("class", "TabHeader")
+        load_ui_into(self, "tab_header.ui")
 
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 16)
-        layout.setSpacing(12)
+        self.icon_label = required_child(self, QtWidgets.QLabel, "icon_label")
+        self.title_label = required_child(self, QtWidgets.QLabel, "title_label")
+        self.actions_layout = required_child(
+            self, QtWidgets.QHBoxLayout, "actions_layout"
+        )
 
-        # Top row: Icon, Title, Spacer, Actions
-        top_row = QtWidgets.QHBoxLayout()
-        top_row.setSpacing(12)
-
+        self.title_label.setText(title)
         if icon_name:
-            self.icon_label = QtWidgets.QLabel()
             set_svg_icon(self.icon_label, icon_name, "#2d5a27", 24)
-            top_row.addWidget(self.icon_label)
+            self.icon_label.show()
 
-        self.title_label = QtWidgets.QLabel(title)
-        self.title_label.setProperty("class", "TabTitle")
-        font = self.title_label.font()
-        font.setPointSize(20)
-        font.setBold(True)
-        self.title_label.setFont(font)
-        self.title_label.setStyleSheet("color: #2d5a27; padding-top: 4px;")
-        top_row.addWidget(self.title_label)
-
-        top_row.addStretch()
-
-        # Action buttons container
-        self.actions_layout = QtWidgets.QHBoxLayout()
-        self.actions_layout.setSpacing(8)
-        top_row.addLayout(self.actions_layout)
-
-        layout.addLayout(top_row)
-
-        # Separator line
-        line = QtWidgets.QFrame()
-        line.setFrameShape(QtWidgets.QFrame.Shape.HLine)
-        line.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
-        line.setStyleSheet("background-color: #e0e0e0; margin-top: 4px;")
-        layout.addWidget(line)
-
-    def set_title(self, title: str):
+    def set_title(self, title: str) -> None:
         """Set the title."""
         self.title_label.setText(title)
 
     def add_action_button(
-        self, icon_name: str, tooltip: str, callback
+        self, icon_name: str, tooltip: str, callback: Callable[[], object]
     ) -> QtWidgets.QPushButton:
         """Add action button to the header."""
         btn = QtWidgets.QPushButton()
