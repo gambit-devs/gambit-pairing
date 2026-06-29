@@ -4,58 +4,61 @@ from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
 
 from gambitpairing.constants import TIEBREAK_NAMES
+from gambitpairing.gui.ui_loader import load_ui_into, required_child
 from gambitpairing.utils import resize_list_to_show_all_items
 
 
 class SettingsDialog(QtWidgets.QDialog):
     def __init__(self, num_rounds: int, tiebreak_order: List[str], parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Tournament Settings")
-        self.setMinimumWidth(350)
         self.current_tiebreak_order = list(tiebreak_order)
-        layout = QtWidgets.QVBoxLayout(self)
-        rounds_group = QtWidgets.QGroupBox("General")
-        rounds_layout = QtWidgets.QFormLayout(rounds_group)
-        self.spin_num_rounds = QtWidgets.QSpinBox()
-        self.spin_num_rounds.setRange(1, 50)
-        self.spin_num_rounds.setValue(num_rounds)
-        self.spin_num_rounds.setToolTip("Set the total number of rounds.")
-        rounds_layout.addRow("Number of Rounds:", self.spin_num_rounds)
-        layout.addWidget(rounds_group)
-        tiebreak_group = QtWidgets.QGroupBox("Tiebreak Order")
-        tiebreak_layout = QtWidgets.QHBoxLayout(tiebreak_group)
-        self.tiebreak_list = QtWidgets.QListWidget()
-        self.tiebreak_list.setToolTip(
-            "Order in which tiebreaks are applied (higher is better). Drag to reorder."
+
+        load_ui_into(self, "tournament_settings_dialog.ui")
+
+        self.rounds_group = required_child(
+            self, QtWidgets.QGroupBox, "rounds_group"
         )
-        self.tiebreak_list.setDragDropMode(
-            QtWidgets.QAbstractItemView.DragDropMode.InternalMove
+        self.rounds_label = required_child(self, QtWidgets.QLabel, "rounds_label")
+        self.spin_num_rounds = required_child(
+            self, QtWidgets.QSpinBox, "spin_num_rounds"
+        )
+        self.spin_num_rounds.setValue(num_rounds)
+
+        self.tiebreak_list = required_child(
+            self, QtWidgets.QListWidget, "tiebreak_list"
         )
         self.populate_tiebreak_list()
         resize_list_to_show_all_items(self.tiebreak_list)
-        tiebreak_layout.addWidget(self.tiebreak_list)
-        move_button_layout = QtWidgets.QVBoxLayout()
-        btn_up = QtWidgets.QPushButton("Up")
-        btn_down = QtWidgets.QPushButton("Down")
-        btn_up.clicked.connect(self.move_tiebreak_up)
-        btn_down.clicked.connect(self.move_tiebreak_down)
-        move_button_layout.addStretch()
-        move_button_layout.addWidget(btn_up)
-        move_button_layout.addWidget(btn_down)
-        move_button_layout.addStretch()
-        tiebreak_layout.addLayout(move_button_layout)
-        layout.addWidget(tiebreak_group)
-        self.buttons = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.StandardButton.Ok
-            | QtWidgets.QDialogButtonBox.StandardButton.Cancel
+
+        self.btn_tiebreak_up = required_child(
+            self, QtWidgets.QPushButton, "btn_tiebreak_up"
         )
-        self.buttons.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum
+        self.btn_tiebreak_down = required_child(
+            self, QtWidgets.QPushButton, "btn_tiebreak_down"
         )
-        self.buttons.setMinimumHeight(40)
+        self.btn_tiebreak_up.clicked.connect(self.move_tiebreak_up)
+        self.btn_tiebreak_down.clicked.connect(self.move_tiebreak_down)
+
+        self.buttons = required_child(self, QtWidgets.QDialogButtonBox, "buttons")
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
-        layout.addWidget(self.buttons)
+
+    def configure_round_count_controls(
+        self, pairing_system: str | None, tournament_started: bool
+    ) -> None:
+        """Apply pairing-system rules to the editable round count controls."""
+        is_round_robin = pairing_system == "round_robin"
+        self.rounds_label.setVisible(not is_round_robin)
+        self.spin_num_rounds.setVisible(not is_round_robin)
+
+        if is_round_robin:
+            self.spin_num_rounds.setToolTip(
+                "Number of rounds is fixed for Round Robin: players - 1."
+            )
+            return
+
+        self.spin_num_rounds.setEnabled(not tournament_started)
+        self.spin_num_rounds.setToolTip("")
 
     def populate_tiebreak_list(self):
         self.tiebreak_list.clear()

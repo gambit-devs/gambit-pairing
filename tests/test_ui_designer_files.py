@@ -6,9 +6,14 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from importlib_resources import as_file, files
 from PyQt6 import QtWidgets
+from PyQt6.QtCore import Qt
 
+from gambitpairing.constants import DEFAULT_TIEBREAK_SORT_ORDER
+from gambitpairing.gui.dialogs.new_tournament_dialog import NewTournamentDialog
 from gambitpairing.gui.dialogs.print_options_dialog import PrintOptionsDialog
+from gambitpairing.gui.dialogs.tournament_settings_dialoug import SettingsDialog
 from gambitpairing.gui.dialogs.update_dialog import UpdateDownloadDialog
+from gambitpairing.gui.dialogs.update_prompt_dialog import UpdatePromptDialog
 
 _APP: QtWidgets.QApplication | None = None
 
@@ -59,5 +64,45 @@ def test_designer_backed_dialogs_wire_expected_controls():
     assert update_dialog.progress_bar.value() == 45
     assert update_dialog.status_label.text() == "Downloading..."
 
+    settings_dialog = SettingsDialog(5, ["solkoff", "median"])
+    settings_dialog.configure_round_count_controls("round_robin", False)
+    assert settings_dialog.spin_num_rounds.isHidden()
+    assert settings_dialog.rounds_label.isHidden()
+
+    settings_dialog.configure_round_count_controls("dutch_swiss", True)
+    assert not settings_dialog.spin_num_rounds.isHidden()
+    assert not settings_dialog.spin_num_rounds.isEnabled()
+
+    update_prompt = UpdatePromptDialog("2.0.0", "1.0.0", "## Changes")
+    assert "Gambit Pairing" in update_prompt.title_label.text()
+    assert "2.0.0" in update_prompt.version_info_label.text()
+
+    new_tournament = NewTournamentDialog()
+    assert new_tournament.get_data() == (
+        "My Swiss Tournament",
+        5,
+        list(DEFAULT_TIEBREAK_SORT_ORDER),
+        "dutch_swiss",
+    )
+
+    new_tournament.tiebreak_list.setCurrentRow(1)
+    moved_item = new_tournament.tiebreak_list.item(1)
+    assert moved_item is not None
+    moved_tiebreak = moved_item.data(Qt.ItemDataRole.UserRole)
+    new_tournament.move_tiebreak_up()
+    new_tournament.update_order_from_list()
+    assert new_tournament.current_tiebreak_order[0] == moved_tiebreak
+
+    new_tournament.pairing_combo.setCurrentIndex(
+        new_tournament.pairing_combo.findData("round_robin")
+    )
+    new_tournament.set_player_count(8)
+    assert new_tournament.rounds_spin.value() == 7
+    assert new_tournament.rounds_spin.isHidden()
+    assert new_tournament.rounds_label.isHidden()
+
     print_dialog.close()
     update_dialog.close()
+    settings_dialog.close()
+    update_prompt.close()
+    new_tournament.close()

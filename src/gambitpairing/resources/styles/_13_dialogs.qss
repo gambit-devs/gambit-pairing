@@ -101,3 +101,52 @@ QProgressBar[class="UpdateProgressBar"]::chunk {
   background-color: {{color_primary}};
   border-radius:    14px;
 }
+
+/* --- Update prompt dialog -------------------------------------------------- */
+QDialog[class="UpdatePromptDialog"] {
+  background: {{bg_page}};
+}
+
+QLabel[class="UpdatePromptTitle"] {
+  color:       {{text_heading}};
+  font-size:   14pt;
+  font-weight: 700;
+}
+
+QLabel[class="UpdatePromptVersionInfo"] {
+  font-size: 11pt;
+}
+
+QTextBrowser[class="ReleaseNotesText"] {
+  background:    {{bg_surface}};
+  border:        1px solid {{border_light}};
+  border-radius: {{radius_sm}};
+}
+
+/* --- Pairing-system info dialog ------------------------------------------- */
+QDialog[class="PairingInfoDialog"] {
+  background: {{bg_page}};
+}
+
+QListWidget[class="PairingInfoToc"] {
+  font-size: 11pt;
+}
+
+QLabel[class="PairingInfoTitle"] {
+  color:         {{text_heading}};
+  font-size:     15pt;
+  font-weight:   700;
+  margin-bottom: 6px;
+}
+
+QLabel[class="PairingInfoDescription"] {
+  font-size:     11pt;
+  margin-bottom: 8px;
+}
+
+QTextBrowser[class="PairingInfoDetails"] {
+  background:    {{bg_surface}};
+  border:        1px solid {{border_light}};
+  border-radius: {{radius_sm}};
+  font-size:     10.5pt;
+}
