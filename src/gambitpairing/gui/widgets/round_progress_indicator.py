@@ -28,15 +28,11 @@ from __future__ import annotations  # this removes the need for " around types
 # and removes the need for:
 # from typing import TYPE_CHECKING
 
-from PyQt6 import QtCore, QtGui, QtWidgets
+from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
 
-from gambitpairing.constants import (
-    RESULT_BLACK_WIN,
-    RESULT_DRAW,
-    RESULT_WHITE_WIN,
-)
-from gambitpairing.gui.gui_utils import get_colored_icon, set_svg_icon
+from gambitpairing.gui.gui_utils import set_svg_icon
+from gambitpairing.gui.ui_loader import load_ui_into, required_child
 from gambitpairing.models.enums import TournamentPhase
 
 
@@ -54,27 +50,18 @@ class RoundProgressIndicator(QtWidgets.QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setProperty("class", "RoundProgressIndicator")
+        load_ui_into(self, "round_progress_indicator.ui")
+        self.dots_container = required_child(
+            self, QtWidgets.QWidget, "dots_container"
+        )
+        self.dots_layout = required_child(
+            self, QtWidgets.QHBoxLayout, "dots_layout"
+        )
+        self.progress_label = required_child(
+            self, QtWidgets.QLabel, "progress_label"
+        )
 
-        layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(0, 8, 0, 8)
-        layout.setSpacing(12)
-
-        # Progress dots container
-        self.dots_container = QtWidgets.QWidget()
-        self.dots_layout = QtWidgets.QHBoxLayout(self.dots_container)
-        self.dots_layout.setContentsMargins(0, 0, 0, 0)
-        self.dots_layout.setSpacing(8)
-        layout.addWidget(self.dots_container)
-
-        layout.addStretch()
-
-        # Progress text label
-        self.progress_label = QtWidgets.QLabel("")
-        self.progress_label.setProperty("class", "ProgressLabel")
-        layout.addWidget(self.progress_label)
-
-        self._dots = []
+        self._dots: list[QtWidgets.QLabel] = []
         self._current_round = 0
         self._total_rounds = 0
 

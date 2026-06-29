@@ -19,11 +19,10 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from typing import List, Optional
 
 from PyQt6 import QtCore, QtGui, QtWidgets
-from PyQt6.QtCore import QFileInfo, Qt
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction, QCloseEvent
 from PyQt6.QtWidgets import QMessageBox
 
@@ -42,7 +41,29 @@ from .dialogs import (
     SettingsDialog,
 )
 from .import_player import ImportPlayer
+from .main_window_file_flow import (
+    build_load_error_prompt,
+    build_load_failure_notification,
+    build_load_success_history,
+    build_load_success_notification,
+    build_load_success_status,
+    build_overwrite_confirmation_prompt,
+    build_save_error_prompt,
+    build_save_history,
+    build_save_status,
+    should_request_save_path,
+)
+from .main_window_save_flow import (
+    build_unsaved_changes_prompt,
+    should_continue_after_save_prompt,
+    should_prompt_for_unsaved_changes,
+)
 from .main_window_state import build_main_window_ui_state
+from .main_window_tournament_flow import (
+    build_new_tournament_history,
+    build_new_tournament_notification,
+    project_new_tournament_data,
+)
 from .notification import show_notification
 from .ui_loader import load_ui_into
 from .update_workflow import UpdateWorkflowController
@@ -133,19 +154,17 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         if dialog.exec():
             data = dialog.get_data()
             if data:
-                name, num_rounds, tiebreak_order, pairing_system = data
+                projection = project_new_tournament_data(data)
                 self.reset_tournament_state()
                 self.tournament = Tournament(
-                    name=name,
+                    name=projection.name,
                     players=[],
-                    num_rounds=num_rounds,
-                    tiebreak_order=tiebreak_order,
-                    pairing_system=pairing_system,
+                    num_rounds=projection.num_rounds,
+                    tiebreak_order=projection.tiebreak_order,
+                    pairing_system=projection.pairing_system,
                 )
-                self.pairing_system = pairing_system
-                self.update_history_log(
-                    f"--- New Tournament '{name}' Created (Rounds: {num_rounds}, Pairing: {pairing_system}) ---"
-                )
+                self.pairing_system = projection.pairing_system
+                self.update_history_log(build_new_tournament_history(projection))
                 self.mark_dirty()
                 self._set_tournament_on_tabs()
                 self.standings_tab.update_standings_table_headers()
@@ -153,7 +172,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
                 try:
                     show_notification(
                         self,
-                        f"New tournament '{name}' created.",
+                        build_new_tournament_notification(projection),
                         duration=3500,
                         notification_type="success",
                     )
@@ -217,7 +236,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
     def save_tournament(self, save_as=False):
         if not self.tournament:
             return False
-        if not self._current_filepath or save_as:
+        if should_request_save_path(self._current_filepath, save_as):
             filename, _ = QtWidgets.QFileDialog.getSaveFileName(
                 self, "Save Tournament", "", "JSON Files (*.json)"
             )
@@ -225,28 +244,27 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
                 return False
             self._current_filepath = filename
 
+        filepath = self._current_filepath
+        assert filepath is not None
         try:
             # check to see if file exists, and confirm prior to overwrite
-            if Path(self._current_filepath).exists():
+            if QtCore.QFileInfo(filepath).exists():
 
                 logger.warning("save_tournament is trying to right over a file.")
                 # confirm before over write
+                prompt = build_overwrite_confirmation_prompt()
                 if not self.get_confirmation(
-                    action="will overwrite tournament", message="Is that what you want?"
+                    action=prompt.title, message=prompt.message
                 ):
                     return False
                 # else continue
 
             self.persistence_service.save(
-                self._current_filepath, self.tournament, self._collect_gui_state()
+                filepath, self.tournament, self._collect_gui_state()
             )
             self.mark_clean()
-            self.statusBar().showMessage(
-                f"Tournament saved to {self._current_filepath}"
-            )
-            self.update_history_log(
-                f"Tournament saved as: {QFileInfo(self._current_filepath).fileName()}"
-            )
+            self.statusBar().showMessage(build_save_status(filepath))
+            self.update_history_log(build_save_history(filepath))
             return True
 
         except Exception as e:
@@ -255,8 +273,9 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
                 % str(e)
             )
             logging.exception("Error saving tournament:")
+            prompt = build_save_error_prompt(e)
             QtWidgets.QMessageBox.critical(
-                self, "Save Error", f"Could not save tournament:\n{e}"
+                self, prompt.title, prompt.message
             )
             raise RuntimeError(message)
 
@@ -287,14 +306,14 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             self._refresh_tournament_views()
 
             self.mark_clean()
-            self.update_history_log(
-                f"--- Tournament loaded from {QFileInfo(filename).fileName()} ---"
+            self.update_history_log(build_load_success_history(filename))
+            self.statusBar().showMessage(
+                build_load_success_status(self.tournament.name)
             )
-            self.statusBar().showMessage(f"Loaded tournament: {self.tournament.name}")
             try:
                 show_notification(
                     self,
-                    f"Loaded tournament: {self.tournament.name}",
+                    build_load_success_notification(self.tournament.name),
                     duration=3000,
                     notification_type="info",
                 )
@@ -306,13 +325,14 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             try:
                 show_notification(
                     self,
-                    f"Could not load tournament: {e}",
+                    build_load_failure_notification(e),
                     duration=6000,
                     notification_type="error",
                 )
             except Exception:
+                prompt = build_load_error_prompt(e)
                 QtWidgets.QMessageBox.critical(
-                    self, "Load Error", f"Could not load tournament file:\n{e}"
+                    self, prompt.title, prompt.message
                 )
         finally:
             self._update_ui_state()
@@ -338,19 +358,20 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
 
     def check_save(self) -> bool:
         """Check if progress is saved before proceeding, if not prompt user."""
-        if not self._dirty:
+        if not should_prompt_for_unsaved_changes(self._dirty):
             logger.info("check_save_before_proceeding: fount state to be clean.")
             return True
         logger.info("check_save_before_proceeding: fount state to be dirty.")
+        prompt = build_unsaved_changes_prompt()
         msgbox = QtWidgets.QMessageBox(self)
-        msgbox.setWindowTitle("Unsaved Changes")
-        msgbox.setText("You have unsaved changes. Do you want to save them?")
+        msgbox.setWindowTitle(prompt.title)
+        msgbox.setText(prompt.message)
         msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
 
         # Create custom buttons
-        btn_save = QtWidgets.QPushButton("Save")
-        btn_discard = QtWidgets.QPushButton("Close without Saving")
-        btn_cancel = QtWidgets.QPushButton("Cancel")
+        btn_save = QtWidgets.QPushButton(prompt.save_label)
+        btn_discard = QtWidgets.QPushButton(prompt.discard_label)
+        btn_cancel = QtWidgets.QPushButton(prompt.cancel_label)
 
         # Add buttons to msgbox
         msgbox.addButton(btn_save, QtWidgets.QMessageBox.ButtonRole.AcceptRole)
@@ -361,11 +382,10 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         clicked = msgbox.clickedButton()
 
         if clicked == btn_save:
-            return self.save_tournament()
-        elif clicked == btn_discard:
-            return True
-        else:
-            return False
+            return should_continue_after_save_prompt("save", self.save_tournament())
+        if clicked == btn_discard:
+            return should_continue_after_save_prompt("discard", save_succeeded=False)
+        return should_continue_after_save_prompt("cancel", save_succeeded=False)
 
     def show_about_dialog(self):
         """Show the About dialog."""

@@ -32,6 +32,7 @@ from gambitpairing.constants import (
     RESULT_WHITE_WIN,
     WIN_SCORE,
 )
+from gambitpairing.gui.ui_loader import load_ui_into, required_child
 from .result_selector import (
     ResultSelector,
 )
@@ -77,16 +78,13 @@ class PairingsTable(QtWidgets.QWidget):
             Parent widget, by default ``None``.
         """
         super().__init__(parent)
-        self.setProperty("class", "PairingsTableContainer")
-
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
+        load_ui_into(self, "pairings_table.ui")
 
         # ===== PAIRINGS TABLE =====
-        self.table = QtWidgets.QTableWidget(0, 4)
+        self.table = required_child(self, QtWidgets.QTableWidget, "table")
+        self.table.setRowCount(0)
+        self.table.setColumnCount(4)
         self.table.setHorizontalHeaderLabels(["Board", "White", "Black", "Result"])
-        self.table.setProperty("class", "PairingsTable")
 
         self.table.verticalHeader().setVisible(False)
         self.table.setAlternatingRowColors(True)
@@ -111,26 +109,11 @@ class PairingsTable(QtWidgets.QWidget):
 
         self.table.setColumnWidth(0, 70)  # Board column - wider for header
 
-        layout.addWidget(self.table, 1)  # Give table stretch priority
-
         # ===== BYE INFO BAR =====
-        self.bye_container = QtWidgets.QWidget()
-        self.bye_container.setProperty("class", "ByeInfoBar")
-        bye_layout = QtWidgets.QHBoxLayout(self.bye_container)
-        bye_layout.setContentsMargins(16, 12, 16, 12)
-        bye_layout.setSpacing(8)
-
-        bye_icon = QtWidgets.QLabel("👤")
-        bye_icon.setProperty("class", "ByeIcon")
-        bye_layout.addWidget(bye_icon)
-
-        self.lbl_bye = QtWidgets.QLabel("Bye: None")
-        self.lbl_bye.setProperty("class", "ByeLabel")
-        bye_layout.addWidget(self.lbl_bye)
-        bye_layout.addStretch()
-
+        self.bye_container = required_child(self, QtWidgets.QWidget, "bye_container")
+        self.bye_icon = required_child(self, QtWidgets.QLabel, "bye_icon")
+        self.lbl_bye = required_child(self, QtWidgets.QLabel, "lbl_bye")
         self.bye_container.hide()
-        layout.addWidget(self.bye_container)
 
     def display_pairings(
         self,
@@ -354,7 +337,7 @@ class PairingsTable(QtWidgets.QWidget):
         self.lbl_bye.setText("No bye this round")
         self.bye_container.hide()
 
-    def rowCount(self):
+    def rowCount(self) -> int:
         """Return the number of rows in the inner table.
 
         Returns
@@ -364,7 +347,7 @@ class PairingsTable(QtWidgets.QWidget):
         """
         return self.table.rowCount()
 
-    def itemAt(self, pos):
+    def itemAt(self, pos: QtCore.QPoint) -> QtWidgets.QTableWidgetItem | None:
         """Return the item at the given viewport position.
 
         Delegates to ``self.table.itemAt``.
@@ -380,7 +363,7 @@ class PairingsTable(QtWidgets.QWidget):
         """
         return self.table.itemAt(pos)
 
-    def cellWidget(self, row, col):
+    def cellWidget(self, row: int, col: int) -> QtWidgets.QWidget | None:
         """Return the widget in the given cell, if any.
 
         Delegates to ``self.table.cellWidget``.
@@ -398,7 +381,7 @@ class PairingsTable(QtWidgets.QWidget):
         """
         return self.table.cellWidget(row, col)
 
-    def viewport(self):
+    def viewport(self) -> QtWidgets.QWidget:
         """Return the inner table's viewport widget.
 
         Useful for mapping coordinates or installing event filters on the
@@ -408,9 +391,11 @@ class PairingsTable(QtWidgets.QWidget):
         -------
         QtWidgets.QWidget
         """
-        return self.table.viewport()
+        viewport = self.table.viewport()
+        assert viewport is not None
+        return viewport
 
-    def item(self, row, col):
+    def item(self, row: int, col: int) -> QtWidgets.QTableWidgetItem | None:
         """Return the item at the given cell, if any.
 
         Delegates to ``self.table.item``.

@@ -43,9 +43,21 @@ from gambitpairing.gui.widgets.round_controls import (
 from gambitpairing.gui.widgets.tournament_placeholder import (
     TournamentPlaceholder,
 )
+from gambitpairing.gui.views.tournament.tournament_printing import (
+    PairingsPrintRow,
+    build_combined_tournament_print_html,
+    build_page_separator,
+    build_pairings_print_section,
+    build_standings_print_section,
+)
 from gambitpairing.gui.views.tournament.tournament_view_workflow import (
     active_players_for_manual_pairing,
+    build_pairing_exception_prompt,
+    build_pairing_generation_failure_prompt,
     build_recorded_round_view_update,
+    build_reprepare_round_prompt,
+    build_round_end_prompt,
+    build_round_preparation_messages,
     build_tournament_view_state,
     evaluate_minimum_player_check,
     evaluate_undo_availability,
@@ -55,6 +67,8 @@ from gambitpairing.gui.views.tournament.tournament_view_workflow import (
     players_to_revert_for_undo,
     revert_player_round_data,
     resolve_existing_round_pairings,
+    round_preparation_mode,
+    should_report_empty_pairings_failure,
     undo_confirmation_message,
 )
 from gambitpairing.models import (
@@ -221,21 +235,24 @@ class TournamentView(QtWidgets.QWidget):
             return False
 
         if round_index >= self.tournament.num_rounds:
+            prompt = build_round_end_prompt()
             QtWidgets.QMessageBox.information(
                 self,
-                "Tournament End",
-                "All tournament rounds have been generated and processed.",
+                prompt.title,
+                prompt.message,
             )
             self.update_ui_state()
             return False
 
         # Check if pairings for this round already exist
+        display_round_number = round_index + 1
+        messages = build_round_preparation_messages(display_round_number)
         if round_index < len(self.tournament.rounds_pairings_ids):
+            prompt = build_reprepare_round_prompt(round_index)
             reply = QtWidgets.QMessageBox.question(
                 self,
-                "Re-Prepare Round?",
-                f"Pairings for Round {round_index + 1} already exist. Re-generate them?\n"
-                "This is usually not needed unless player active status changed significantly.",
+                prompt.title,
+                prompt.message,
                 QtWidgets.QMessageBox.StandardButton.Yes
                 | QtWidgets.QMessageBox.StandardButton.No,
                 QtWidgets.QMessageBox.StandardButton.No,
@@ -248,30 +265,23 @@ class TournamentView(QtWidgets.QWidget):
                 self.tournament.rounds_byes_ids = self.tournament.rounds_byes_ids[
                     :round_index
                 ]
-                self.history_message.emit(
-                    f"--- Re-preparing pairings for Round {round_index + 1} ---"
-                )
+                self.history_message.emit(messages.reprepare_history_line)
             else:
                 # Just display existing pairings
-                display_round_num = round_index + 1
                 existing = resolve_existing_round_pairings(
                     self.tournament, round_index
                 )
-                self.header.set_title(f"Round {display_round_num} Pairings & Results")
+                self.header.set_title(messages.header_title)
                 self.display_pairings_for_input(existing.pairings, existing.bye_players)
                 self.update_ui_state()
                 return True
 
-        display_round_number = round_index + 1
-
         # Check if this is a manual pairing tournament
-        if self.tournament.pairing_system == "manual":
+        if round_preparation_mode(self.tournament) == "manual":
             self._handle_manual_pairing_round(display_round_number, round_index)
             return True
 
-        self.status_message.emit(
-            f"Generating pairings for Round {display_round_number}..."
-        )
+        self.status_message.emit(messages.started_status)
         QtWidgets.QApplication.processEvents()
 
         try:
@@ -280,24 +290,24 @@ class TournamentView(QtWidgets.QWidget):
                 allow_repeat_pairing_callback=self.prompt_repeat_pairing,
             )
 
-            if (
-                not pairings
-                and len(self.tournament._get_active_players()) > 1
-                and not bye_player
+            active_players = self.tournament._get_active_players()
+            if should_report_empty_pairings_failure(
+                pairings, len(active_players), bye_player
             ):
-                if len(self.tournament._get_active_players()) % 2 == 0:
+                if len(active_players) % 2 == 0:
+                    prompt = build_pairing_generation_failure_prompt(
+                        display_round_number
+                    )
                     QtWidgets.QMessageBox.critical(
                         self,
-                        "Pairing Error",
-                        f"Pairing generation failed for Round {display_round_number}. No pairings returned. Check logs and player statuses.",
+                        prompt.title,
+                        prompt.message,
                     )
-                    self.status_message.emit(
-                        f"Error generating pairings for Round {display_round_number}."
-                    )
+                    self.status_message.emit(messages.error_status)
                     self.update_ui_state()
                     return False
 
-            self.header.set_title(f"Round {display_round_number} Pairings & Results")
+            self.header.set_title(messages.header_title)
             self.display_pairings_for_input(
                 pairings, [bye_player] if bye_player else []
             )
@@ -306,21 +316,18 @@ class TournamentView(QtWidgets.QWidget):
             ):
                 self.history_message.emit(line)
             self.dirty.emit()
-            self.status_message.emit(
-                f"Round {display_round_number} pairings ready. Enter results."
-            )
+            self.status_message.emit(messages.ready_status)
         except Exception as e:
             logging.exception(
                 f"Error generating pairings for Round {display_round_number}:"
             )
+            prompt = build_pairing_exception_prompt(display_round_number, e)
             QtWidgets.QMessageBox.critical(
                 self,
-                "Pairing Error",
-                f"Pairing generation failed for Round {display_round_number}:\n{e}",
+                prompt.title,
+                prompt.message,
             )
-            self.status_message.emit(
-                f"Error generating pairings for Round {display_round_number}."
-            )
+            self.status_message.emit(messages.error_status)
             return False
 
         return True
@@ -577,10 +584,8 @@ class TournamentView(QtWidgets.QWidget):
 
     def _print_combined(self, separate_pages: bool):
         """Print both pairings and standings in a combined document."""
-        from PyQt6.QtCore import QDateTime
         from PyQt6.QtGui import QTextDocument
 
-        from gambitpairing.constants import TIEBREAK_NAMES
         from gambitpairing.utils.print import TournamentPrintUtils
 
         tournament_name = self.tournament.name if self.tournament else ""
@@ -610,88 +615,51 @@ class TournamentView(QtWidgets.QWidget):
         """Generate combined HTML for pairings and standings."""
         from PyQt6.QtCore import QDateTime
 
-        from gambitpairing.constants import TIEBREAK_NAMES
+        # Build pairings section
+        pairings_rows = []
+        for row in range(self.pairings_table.rowCount()):
+            white_item = self.pairings_table.item(row, 1)
+            black_item = self.pairings_table.item(row, 2)
+            pairings_rows.append(
+                PairingsPrintRow(
+                    board=row + 1,
+                    white=white_item.text() if white_item else "",
+                    black=black_item.text() if black_item else "",
+                )
+            )
 
-        page_break = (
-            '<div style="page-break-before: always;"></div>'
-            if separate_pages
-            else '<hr style="margin: 2em 0; border: none; border-top: 2px solid #222;">'
+        bye_text = ""
+        if (
+            self.pairings_table.bye_container.isVisible()
+            and self.pairings_table.lbl_bye.text()
+            and self.pairings_table.lbl_bye.text() != "Bye: None"
+        ):
+            bye_text = self.pairings_table.lbl_bye.text()
+
+        pairings_html = build_pairings_print_section(
+            tournament_name, round_title, pairings_rows, bye_text
         )
 
-        # Build pairings section
-        pairings_html = ""
-        if self.pairings_table.rowCount() > 0:
-            pairings_html = f"""
-            <h2>Pairings{' - ' + tournament_name if tournament_name else ''}</h2>
-            <div class="subtitle">{round_title}</div>
-            <table class="pairings">
-                <tr>
-                    <th style="width:7%;">Bd</th>
-                    <th style="width:46%;">White</th>
-                    <th style="width:46%;">Black</th>
-                </tr>
-            """
-            for row in range(self.pairings_table.rowCount()):
-                white_item = self.pairings_table.item(row, 1)  # Column 1 is White
-                black_item = self.pairings_table.item(row, 2)  # Column 2 is Black
-                white_name = white_item.text() if white_item else ""
-                black_name = black_item.text() if black_item else ""
-                pairings_html += f"<tr><td>{row + 1}</td><td>{white_name}</td><td>{black_name}</td></tr>"
-
-            if (
-                self.pairings_table.bye_container.isVisible()
-                and self.pairings_table.lbl_bye.text()
-                and self.pairings_table.lbl_bye.text() != "Bye: None"
-            ):
-                pairings_html += f'<tr class="bye-row"><td colspan="3">{self.pairings_table.lbl_bye.text()}</td></tr>'
-
-            pairings_html += "</table>"
-
         # Build standings section
-        standings_html = ""
+        standings_html_content = ""
         main_window = self.window()
         if hasattr(main_window, "standings_tab") and hasattr(
             main_window.standings_tab, "get_standings_html"
         ):
             standings_html_content = main_window.standings_tab.get_standings_html()
-            if standings_html_content:
-                standings_html = f"""
-                {page_break}
-                <h2>Standings{' - ' + tournament_name if tournament_name else ''}</h2>
-                <div class="subtitle">After Round {self.current_round_index}</div>
-                {standings_html_content}
-                """
 
-        # Combine into full HTML document
-        html = f"""
-        <html>
-        <head>
-            <style>
-                body {{ font-family: Arial, sans-serif; color: #000; background: #fff; margin: 0; padding: 20px; }}
-                h2 {{ text-align: center; margin: 0 0 0.5em 0; font-size: 1.35em; font-weight: bold; letter-spacing: 0.03em; }}
-                .subtitle {{ text-align: center; font-size: 1.05em; margin-bottom: 1.2em; color: #444; }}
-                table.pairings, table.standings {{ border-collapse: collapse; width: 100%; margin: 0 auto 1.5em auto; }}
-                table.pairings th, table.pairings td,
-                table.standings th, table.standings td {{ border: 1px solid #222; padding: 6px 10px; text-align: center; font-size: 11pt; }}
-                table.pairings th, table.standings th {{ font-weight: bold; background: #f0f0f0; }}
-                table.pairings td:nth-child(2), table.pairings td:nth-child(3) {{ text-align: left; }}
-                table.standings td:nth-child(2) {{ text-align: left; }}
-                .bye-row td {{ font-style: italic; font-weight: bold; text-align: center; border-top: 2px solid #222; }}
-                .legend {{ margin-top: 1em; font-size: 10pt; color: #444; }}
-                .footer {{ text-align: center; font-size: 9pt; margin-top: 2em; color: #888; }}
-            </style>
-        </head>
-        <body>
-            {pairings_html}
-            {standings_html}
-            <div class="footer">
-                Printed by Gambit Pairing &mdash; {QDateTime.currentDateTime().toString('yyyy-MM-dd hh:mm')}
-            </div>
-        </body>
-        </html>
-        """
+        standings_html = build_standings_print_section(
+            tournament_name,
+            self.current_round_index,
+            standings_html_content,
+            build_page_separator(separate_pages),
+        )
 
-        return html
+        return build_combined_tournament_print_html(
+            pairings_html,
+            standings_html,
+            QDateTime.currentDateTime().toString("yyyy-MM-dd hh:mm"),
+        )
 
     def get_results_from_table(
         self,

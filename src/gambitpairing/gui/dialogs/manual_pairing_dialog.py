@@ -26,6 +26,19 @@ from PyQt6.QtWidgets import QApplication, QDockWidget, QHBoxLayout, QVBoxLayout,
 
 from gambitpairing.gui.gui_utils import reset_and_set_cursor, update_widget_style
 from gambitpairing.gui.widgets.drag_list import DragListWidget
+from gambitpairing.gui.dialogs.manual_pairing_io import (
+    build_pairings_export_data,
+    parse_pairings_import_data,
+)
+from gambitpairing.gui.dialogs.manual_pairing_state import (
+    SUCCESS_VALIDATION_STYLE,
+    WARNING_VALIDATION_STYLE,
+    build_stats_text,
+    build_unresolved_players_message,
+    build_validation_projection,
+    repeat_pairing_boards,
+    unresolved_active_players,
+)
 from gambitpairing.controllers.pairing.dutch_swiss import create_dutch_swiss_pairings
 from gambitpairing.models.player import Player
 
@@ -893,121 +906,32 @@ class ManualPairingDialog(QtWidgets.QDialog):
 
     def _update_stats(self):
         """Update pairing statistics display."""
-        total_players = len(self.players)
-        active_players = len([p for p in self.players if p.is_active])
-        withdrawn_players = total_players - active_players
-
-        paired_players = sum(1 for white, black in self.pairings if white and black) * 2
-        incomplete_pairings = sum(
-            1 for white, black in self.pairings if not (white and black)
+        self.stats_label.setText(
+            build_stats_text(self.players, self.pairings, self.bye_players)
         )
-        bye_count = len(self.bye_players)
-        remaining_active_players = active_players - paired_players - bye_count
-
-        stats_text = (
-            f"Players: {paired_players}/{active_players} active paired • "
-            f"{remaining_active_players} active remaining • "
-            f"{incomplete_pairings} incomplete boards"
-        )
-
-        if withdrawn_players > 0:
-            stats_text += f" • {withdrawn_players} withdrawn"
-
-        if self.bye_players:
-            if len(self.bye_players) == 1:
-                status = " (Withdrawn)" if not self.bye_players[0].is_active else ""
-                stats_text += f" • Bye: {self.bye_players[0].name}{status}"
-            else:
-                active_byes = [p for p in self.bye_players if p.is_active]
-                withdrawn_byes = [p for p in self.bye_players if not p.is_active]
-                bye_text = f" • Byes: {len(self.bye_players)} players"
-                if withdrawn_byes:
-                    bye_text += f" ({len(withdrawn_byes)} withdrawn)"
-                stats_text += bye_text
-
-        self.stats_label.setText(stats_text)
 
     def _update_validation(self):
         """Update validation status and warnings."""
-        warnings = []
-
-        # Check for incomplete pairings
-        incomplete_count = sum(
-            1 for white, black in self.pairings if not (white and black)
+        previous_matches = (
+            self.tournament.previous_matches
+            if hasattr(self.tournament, "previous_matches")
+            else None
         )
-        if incomplete_count > 0:
-            warnings.append(f"{incomplete_count} incomplete boards need completion")
-
-        # Check for unpaired active players
-        active_unpaired = []
-        accounted_players = set()
-
-        # Add players in pairings
-        for white, black in self.pairings:
-            if white:
-                accounted_players.add(white.id)
-            if black:
-                accounted_players.add(black.id)
-
-        # Add bye players
-        for bye_player in self.bye_players:
-            accounted_players.add(bye_player.id)
-
-        # Find active players not accounted for
-        for player in self.players:
-            if player.is_active and player.id not in accounted_players:
-                active_unpaired.append(player)
-
-        if active_unpaired:
-            player_names = ", ".join([p.name for p in active_unpaired])
-            warnings.append(
-                f"{len(active_unpaired)} active player(s) not paired: {player_names}"
-            )
-
-        # Check for repeat pairings
-        if (
-            hasattr(self.tournament, "previous_matches")
-            and self.tournament.previous_matches
-        ):
-            repeat_boards = self._check_repeat_pairings()
-            if repeat_boards:
-                warnings.append(
-                    f"Repeat pairings on boards: {', '.join(repeat_boards)}"
-                )
-
-        # Update display
-        if warnings:
-            warning_text = "⚠️ " + " • ".join(warnings)
-            self.validation_label.setText(warning_text)
-            self.validation_label.setStyleSheet(
-                "padding: 10px; border-radius: 5px; font-weight: bold; "
-                "background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7;"
-            )
-        else:
-            self.validation_label.setText("✅ All validations passed")
-            self.validation_label.setStyleSheet(
-                "padding: 10px; border-radius: 5px; font-weight: bold; "
-                "background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;"
-            )
+        projection = build_validation_projection(
+            self.players, self.pairings, self.bye_players, previous_matches
+        )
+        self.validation_label.setText(projection.text)
+        self.validation_label.setStyleSheet(
+            WARNING_VALIDATION_STYLE
+            if projection.has_warnings
+            else SUCCESS_VALIDATION_STYLE
+        )
 
     def _check_repeat_pairings(self) -> List[str]:
         """Check for repeat pairings and return list of board numbers."""
-        repeat_boards = []
-
-        for i, (white, black) in enumerate(self.pairings):
-            if white and black:
-                # Check against previous matches (frozensets of player IDs)
-                for player_pair in self.tournament.previous_matches:
-                    if (
-                        isinstance(player_pair, frozenset)
-                        and len(player_pair) == 2
-                        and white.id in player_pair
-                        and black.id in player_pair
-                    ):
-                        repeat_boards.append(str(i + 1))
-                        break
-
-        return repeat_boards
+        return repeat_pairing_boards(
+            self.pairings, getattr(self.tournament, "previous_matches", [])
+        )
 
     # === Undo System ===
 
@@ -1284,24 +1208,9 @@ class ManualPairingDialog(QtWidgets.QDialog):
 
         if filename:
             try:
-                export_data = {
-                    "round_number": self.round_number,
-                    "pairings": [
-                        {
-                            "white": (
-                                {"id": white.id, "name": white.name} if white else None
-                            ),
-                            "black": (
-                                {"id": black.id, "name": black.name} if black else None
-                            ),
-                        }
-                        for white, black in self.pairings
-                    ],
-                    "bye_players": [
-                        {"id": player.id, "name": player.name}
-                        for player in self.bye_players
-                    ],
-                }
+                export_data = build_pairings_export_data(
+                    self.round_number, self.pairings, self.bye_players
+                )
 
                 with open(filename, "w", encoding="utf-8") as f:
                     json.dump(export_data, f, indent=2, ensure_ascii=False)
@@ -1326,38 +1235,12 @@ class ManualPairingDialog(QtWidgets.QDialog):
                 with open(filename, "r", encoding="utf-8") as f:
                     import_data = json.load(f)
 
-                # Validate import data
-                if not isinstance(import_data, dict) or "pairings" not in import_data:
-                    raise ValueError("Invalid pairings file format")
-
                 # Create player lookup
                 player_lookup = {p.id: p for p in self.players}
 
-                # Import pairings
-                imported_pairings = []
-                for pairing_data in import_data["pairings"]:
-                    white_data = pairing_data.get("white")
-                    black_data = pairing_data.get("black")
-
-                    white = player_lookup.get(white_data["id"]) if white_data else None
-                    black = player_lookup.get(black_data["id"]) if black_data else None
-
-                    imported_pairings.append((white, black))
-
-                # Import bye players - handle both legacy single bye and new multi-bye format
-                imported_byes = []
-                if "bye_players" in import_data:
-                    # New format with multiple bye players
-                    for bye_data in import_data["bye_players"]:
-                        bye_player = player_lookup.get(bye_data["id"])
-                        if bye_player:
-                            imported_byes.append(bye_player)
-                elif "bye_player" in import_data and import_data["bye_player"]:
-                    # Legacy format with single bye player
-                    bye_data = import_data["bye_player"]
-                    bye_player = player_lookup.get(bye_data["id"])
-                    if bye_player:
-                        imported_byes.append(bye_player)
+                imported_pairings, imported_byes = parse_pairings_import_data(
+                    import_data, player_lookup
+                )
 
                 # Apply imported data
                 self._save_state_for_undo()
@@ -1596,34 +1479,12 @@ class ManualPairingDialog(QtWidgets.QDialog):
     def accept(self):
         """Override accept to validate all players are accounted for, then finalize immediately."""
         # Find unresolved active players: not paired, not bye, and also those in pairings with no opponent
-        accounted_players = set()
-        unresolved_players = set()
-
-        # Add paired/bye player IDs
-        for white, black in self.pairings:
-            if white:
-                accounted_players.add(white.id)
-            if black:
-                accounted_players.add(black.id)
-        for bye_player in self.bye_players:
-            accounted_players.add(bye_player.id)
-
-        # Find players in pairings with no opponent (single player on a board)
-        for i, (white, black) in enumerate(self.pairings):
-            if white and not black and white.is_active:
-                unresolved_players.add(white)
-            if black and not white and black.is_active:
-                unresolved_players.add(black)
-
-        # Find active players not accounted for at all
-        for player in self.players:
-            if player.is_active and player.id not in accounted_players:
-                unresolved_players.add(player)
+        unresolved_players = unresolved_active_players(
+            self.players, self.pairings, self.bye_players
+        )
 
         if unresolved_players:
-            player_names = [f"• {p.name} ({p.rating})" for p in unresolved_players]
-            names_text = "\n".join(player_names)
-            message = f"The following {len(unresolved_players)} active player(s) are not paired, given a bye, or withdrawn:\n\n{names_text}\n\nWould you like to withdraw all these players from the tournament?"
+            message = build_unresolved_players_message(unresolved_players)
             reply = QtWidgets.QMessageBox.question(
                 self,
                 "Unpaired Active Players",

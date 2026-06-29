@@ -20,20 +20,17 @@ import logging
 from PyQt6 import QtGui, QtWidgets
 from PyQt6.QtCore import QDateTime, Qt
 
-from gambitpairing.constants import (
-    CSV_FILTER,
-    TB_CUMULATIVE,
-    TB_CUMULATIVE_OPP,
-    TB_MEDIAN,
-    TB_MOST_BLACKS,
-    TB_SOLKOFF,
-    TB_SONNENBORN_BERGER,
-    TIEBREAK_NAMES,
+from gambitpairing.constants import CSV_FILTER
+from gambitpairing.gui.views.standings.standings_presentation import (
+    build_export_rows,
+    build_print_standings_html,
+    build_standings_headers,
+    build_standings_table_html,
+    project_standings_rows,
 )
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
 from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 from gambitpairing.gui.widgets.header import TabHeader
-from gambitpairing.utils.print import create_print_button
 
 
 class StandingsView(QtWidgets.QWidget):
@@ -124,27 +121,18 @@ class StandingsView(QtWidgets.QWidget):
     def update_standings_table_headers(self):
         if not self.tournament:
             return
-        base_headers = ["Rank", "Player", "Score"]
-        tb_headers = [
-            TIEBREAK_NAMES.get(key, key.upper())
-            for key in self.tournament.tiebreak_order
-        ]  # Use upper for unknown keys
-        full_headers = base_headers + tb_headers
-        self.table_standings.setColumnCount(len(full_headers))
-        self.table_standings.setHorizontalHeaderLabels(full_headers)
+        projection = build_standings_headers(self.tournament.tiebreak_order)
+        self.table_standings.setColumnCount(len(projection.headers))
+        self.table_standings.setHorizontalHeaderLabels(projection.headers)
         self.table_standings.horizontalHeader().setSectionResizeMode(
             1, QtWidgets.QHeaderView.ResizeMode.Stretch
         )  # Player name
-        for i in range(len(full_headers)):
+        for i in range(len(projection.headers)):
             if i != 1:
                 self.table_standings.horizontalHeader().setSectionResizeMode(
                     i, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
                 )
-        header_tooltips = ["Rank", "Player Name (Rating)", "Total Score"] + [
-            TIEBREAK_NAMES.get(key, f"Tiebreak: {key}")
-            for key in self.tournament.tiebreak_order
-        ]
-        for i, tip in enumerate(header_tooltips):
+        for i, tip in enumerate(projection.tooltips):
             if i < self.table_standings.columnCount():  # Check index is valid
                 header_item = self.table_standings.horizontalHeaderItem(i)
                 if header_item:  # Ensure the QTableWidgetItem for header exists
@@ -208,29 +196,16 @@ class StandingsView(QtWidgets.QWidget):
             # )
             # standings = all_players_sorted # Use this if showing all players.
 
-            self.table_standings.setRowCount(len(standings))
+            rows = project_standings_rows(
+                standings, self.tournament.tiebreak_order
+            )
+            self.table_standings.setRowCount(len(rows))
 
-            tb_formats = {
-                TB_MEDIAN: ".2f",
-                TB_SOLKOFF: ".2f",
-                TB_CUMULATIVE: ".1f",  # Using .2f for Median/Solkoff for finer detail
-                TB_CUMULATIVE_OPP: ".1f",
-                TB_SONNENBORN_BERGER: ".2f",
-                TB_MOST_BLACKS: ".0f",
-            }
-
-            for rank, player in enumerate(standings):
+            for rank, row_projection in enumerate(rows):
                 row = rank
-                rank_str = str(rank + 1)
-                status_str = ""  # Standings usually only show active players from get_standings()
-                # If inactive players were included in `standings`:
-                # status_str = "" if player.is_active else " (I)"
-
-                item_rank = QtWidgets.QTableWidgetItem(rank_str)
-                item_player = QtWidgets.QTableWidgetItem(
-                    f"{player.name} ({player.rating or 'NR'})" + status_str
-                )  # NR for No Rating
-                item_score = QtWidgets.QTableWidgetItem(f"{player.score:.1f}")
+                item_rank = QtWidgets.QTableWidgetItem(row_projection.rank)
+                item_player = QtWidgets.QTableWidgetItem(row_projection.player)
+                item_score = QtWidgets.QTableWidgetItem(row_projection.score)
 
                 item_rank.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 item_score.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -249,10 +224,8 @@ class StandingsView(QtWidgets.QWidget):
                 self.table_standings.setItem(row, 2, item_score)
 
                 col_offset = 3
-                for i, tb_key in enumerate(self.tournament.tiebreak_order):
-                    value = player.tiebreakers.get(tb_key, 0.0)
-                    format_spec = tb_formats.get(tb_key, ".2f")  # Default format .2f
-                    item_tb = QtWidgets.QTableWidgetItem(f"{value:{format_spec}}")
+                for i, value in enumerate(row_projection.tiebreaks):
+                    item_tb = QtWidgets.QTableWidgetItem(value)
                     item_tb.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                     item_tb.setForeground(row_color)
                     self.table_standings.setItem(row, col_offset + i, item_tb)
@@ -294,37 +267,18 @@ class StandingsView(QtWidgets.QWidget):
                 delimiter = "," if is_csv else "\t"
                 writer = csv.writer(f, delimiter=delimiter) if is_csv else None
 
-                header = [
-                    self.table_standings.horizontalHeaderItem(i).text()
-                    for i in range(self.table_standings.columnCount())
-                ]
+                header = build_standings_headers(
+                    self.tournament.tiebreak_order
+                ).headers
                 if writer:
                     writer.writerow(header)
                 else:
                     f.write(delimiter.join(header) + "\n")
 
-                tb_formats = {
-                    TB_MEDIAN: ".2f",
-                    TB_SOLKOFF: ".2f",
-                    TB_CUMULATIVE: ".1f",
-                    TB_CUMULATIVE_OPP: ".1f",
-                    TB_SONNENBORN_BERGER: ".2f",
-                    TB_MOST_BLACKS: ".0f",
-                }
-
-                for rank, player in enumerate(standings):
-                    rank_str = str(rank + 1)
-                    player_str = f"{player.name} ({player.rating or 'NR'})"
-                    # If exporting all players, including inactive:
-                    # player_str += (" (I)" if not player.is_active else "")
-                    score_str = f"{player.score:.1f}"
-                    data_row = [rank_str, player_str, score_str]
-
-                    for tb_key in self.tournament.tiebreak_order:
-                        value = player.tiebreakers.get(tb_key, 0.0)
-                        format_spec = tb_formats.get(tb_key, ".2f")
-                        data_row.append(f"{value:{format_spec}}")
-
+                rows = project_standings_rows(
+                    standings, self.tournament.tiebreak_order
+                )
+                for data_row in build_export_rows(rows):
                     if writer:
                         writer.writerow(data_row)
                     else:
@@ -377,174 +331,19 @@ class StandingsView(QtWidgets.QWidget):
 
             # Get proper round information using unified utility
             round_subtitle = self._get_current_round_info()
-
-            # Build title with optional tournament name
-            main_title = "Standings"
-            if include_tournament_name and tournament_name:
-                main_title += f" - {tournament_name}"
-
-            tb_keys = []
-            tb_legend = []
-            for i, tb_key in enumerate(self.tournament.tiebreak_order):
-                short = f"TB{i+1}"
-                tb_keys.append(short)
-                tb_legend.append((short, TIEBREAK_NAMES.get(tb_key, tb_key.title())))
-            # Determine table width based on number of players
-            num_players = self.table_standings.rowCount()
-            if num_players <= 8:
-                table_width = "70%"  # Small tournaments - more centered
-            elif num_players <= 16:
-                table_width = "85%"  # Medium tournaments
-            else:
-                table_width = "95%"  # Large tournaments
-
-            html = f"""
-            <html>
-            <head>
-                <style>
-                    body {{
-                        font-family: Arial, sans-serif;
-                        color: #000;
-                        background: #fff;
-                        margin: 0;
-                        padding: 0;
-                    }}
-                    h2 {{
-                        text-align: center;
-                        margin: 0 0 0.5em 0;
-                        font-size: 1.35em;
-                        font-weight: normal;
-                        letter-spacing: 0.03em;
-                    }}
-                    .subtitle {{
-                        text-align: center;
-                        font-size: 1.05em;
-                        margin-bottom: 1.2em;
-                    }}
-                    table.standings {{
-                        border-collapse: collapse;
-                        width: {table_width};
-                        margin: 0 auto 1.5em auto;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                    }}
-                    table.standings th, table.standings td {{
-                        border: 1px solid #222;
-                        padding: 8px 10px;
-                        text-align: center;
-                        font-size: 11pt;
-                        white-space: nowrap;
-                    }}
-                    table.standings th {{
-                        font-weight: bold;
-                        background: #f8f8f8;
-                        border-bottom: 2px solid #222;
-                    }}
-                    .rank-column {{
-                        width: 8%;
-                        font-weight: bold;
-                    }}
-                    .player-column {{
-                        width: 35%;
-                        text-align: left;
-                    }}
-                    .score-column {{
-                        width: 12%;
-                        font-weight: bold;
-                    }}
-                    .tiebreak-column {{
-                        width: 7%;
-                    }}
-                    .legend {{
-                        width: {table_width};
-                        margin: 0 auto 1.5em auto;
-                        font-size: 10.5pt;
-                        color: #222;
-                        border: 2px solid #666;
-                        border-radius: 5px;
-                        background: #f9f9f9;
-                        padding: 12px 15px;
-                        text-align: left;
-                        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-                    }}
-                    .legend-title {{
-                        font-weight: bold;
-                        font-size: 1.1em;
-                        margin-bottom: 0.8em;
-                        display: block;
-                        letter-spacing: 0.02em;
-                        color: #333;
-                        border-bottom: 1px solid #ccc;
-                        padding-bottom: 0.3em;
-                    }}
-                    .legend-table {{
-                        border-collapse: collapse;
-                        margin-top: 0.2em;
-                        width: 100%;
-                    }}
-                    .legend-table td {{
-                        border: none;
-                        padding: 3px 12px 3px 0;
-                        font-size: 10.5pt;
-                        vertical-align: top;
-                    }}
-                    .legend-table td:first-child {{
-                        font-weight: bold;
-                        color: #444;
-                        width: 15%;
-                    }}
-                    .legend-table td:last-child {{
-                        color: #555;
-                    }}
-                    .footer {{
-                        text-align: center;
-                        font-size: 9pt;
-                        margin-top: 2em;
-                        color: #888;
-                        letter-spacing: 0.04em;
-                    }}
-                </style>
-            </head>
-            <body>
-                <h2>{main_title}</h2>
-                <div class="subtitle">{round_subtitle}</div>
-                <div class="legend">
-                    <span class="legend-title">Tiebreaker Explanations</span>
-                    <table class="legend-table">
-            """
-            for short, name in tb_legend:
-                html += f"<tr><td>{short}:</td><td>{name}</td></tr>"
-            html += """
-                    </table>
-                </div>
-                <table class="standings">
-                    <tr>
-                        <th class="rank-column">#</th>
-                        <th class="player-column">Player</th>
-                        <th class="score-column">Score</th>
-            """
-            for short in tb_keys:
-                html += f'<th class="tiebreak-column">{short}</th>'
-            html += "</tr>"
-            # --- Table Rows ---
-            for row in range(self.table_standings.rowCount()):
-                html += "<tr>"
-                for col in range(self.table_standings.columnCount()):
-                    item = self.table_standings.item(row, col)
-                    cell = item.text() if item else ""
-                    # Rank and Score columns bold
-                    if col == 0 or col == 2:
-                        html += f'<td style="font-weight:bold;">{cell}</td>'
-                    else:
-                        html += f"<td>{cell}</td>"
-                html += "</tr>"
-            html += f"""
-                </table>
-                <div class="footer">
-                    Printed by Gambit Pairing &mdash; {QDateTime.currentDateTime().toString("yyyy-MM-dd hh:mm")}
-                </div>
-            </body>
-            </html>
-            """
+            rows = project_standings_rows(
+                self.tournament.get_standings(), self.tournament.tiebreak_order
+            )
+            html = build_print_standings_html(
+                tournament_name=tournament_name,
+                round_subtitle=round_subtitle,
+                rows=rows,
+                tiebreak_order=self.tournament.tiebreak_order,
+                printed_at=QDateTime.currentDateTime().toString(
+                    "yyyy-MM-dd hh:mm"
+                ),
+                include_tournament_name=include_tournament_name,
+            )
             doc.setHtml(html)
             doc.print(printer_obj)
 
@@ -577,43 +376,13 @@ class StandingsView(QtWidgets.QWidget):
 
     def get_standings_html(self) -> str:
         """Generate HTML for the standings table."""
-        if self.table_standings.rowCount() == 0:
+        if (
+            self.table_standings.rowCount() == 0
+            or not self.tournament
+            or not hasattr(self.tournament, "tiebreak_order")
+        ):
             return ""
-
-        html = """
-        <table class="standings">
-            <tr>
-                <th>Rank</th>
-                <th>Player</th>
-                <th>Score</th>
-        """
-
-        # Add tiebreak columns
-        if self.tournament and hasattr(self.tournament, "tiebreak_order"):
-            for i, tb_key in enumerate(self.tournament.tiebreak_order):
-                html += f"<th>TB{i+1}</th>"
-
-        html += "</tr>"
-
-        for row in range(self.table_standings.rowCount()):
-            html += "<tr>"
-            for col in range(self.table_standings.columnCount()):
-                item = self.table_standings.item(row, col)
-                value = item.text() if item else ""
-                html += f"<td>{value}</td>"
-            html += "</tr>"
-
-        html += "</table>"
-
-        # Add tiebreak legend
-        if self.tournament and hasattr(self.tournament, "tiebreak_order"):
-            html += '<div class="legend"><strong>Tiebreakers:</strong> '
-            legend_items = []
-            for i, tb_key in enumerate(self.tournament.tiebreak_order):
-                legend_items.append(
-                    f"TB{i+1} = {TIEBREAK_NAMES.get(tb_key, tb_key.title())}"
-                )
-            html += ", ".join(legend_items)
-            html += "</div>"
-
-        return html
+        rows = project_standings_rows(
+            self.tournament.get_standings(), self.tournament.tiebreak_order
+        )
+        return build_standings_table_html(rows, self.tournament.tiebreak_order)

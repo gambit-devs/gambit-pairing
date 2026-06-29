@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>PairingsTable</class>
+ <widget class="QWidget" name="PairingsTable">
+  <property name="class" stdset="0">
+   <string>PairingsTableContainer</string>
+  </property>
+  <layout class="QVBoxLayout" name="main_layout">
+   <property name="spacing">
+    <number>0</number>
+   </property>
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <widget class="QTableWidget" name="table">
+     <property name="class" stdset="0">
+      <string>PairingsTable</string>
+     </property>
+     <property name="alternatingRowColors">
+      <bool>true</bool>
+     </property>
+     <property name="selectionBehavior">
+      <enum>QAbstractItemView::SelectRows</enum>
+     </property>
+     <property name="contextMenuPolicy">
+      <enum>Qt::CustomContextMenu</enum>
+     </property>
+     <column>
+      <property name="text">
+       <string>Board</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>White</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Black</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Result</string>
+      </property>
+     </column>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="bye_container">
+     <property name="class" stdset="0">
+      <string>ByeInfoBar</string>
+     </property>
+     <layout class="QHBoxLayout" name="bye_layout">
+      <property name="spacing">
+       <number>8</number>
+      </property>
+      <property name="leftMargin">
+       <number>16</number>
+      </property>
+      <property name="topMargin">
+       <number>12</number>
+      </property>
+      <property name="rightMargin">
+       <number>16</number>
+      </property>
+      <property name="bottomMargin">
+       <number>12</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="bye_icon">
+        <property name="class" stdset="0">
+         <string>ByeIcon</string>
+        </property>
+        <property name="text">
+         <string>👤</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="lbl_bye">
+        <property name="class" stdset="0">
+         <string>ByeLabel</string>
+        </property>
+        <property name="text">
+         <string>Bye: None</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="bye_spacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

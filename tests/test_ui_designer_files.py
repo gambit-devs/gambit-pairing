@@ -17,11 +17,15 @@ from gambitpairing.gui.dialogs.tournament_settings_dialoug import SettingsDialog
 from gambitpairing.gui.dialogs.update_dialog import UpdateDownloadDialog
 from gambitpairing.gui.dialogs.update_prompt_dialog import UpdatePromptDialog
 from gambitpairing.gui.widgets.header import TabHeader
+from gambitpairing.gui.widgets.pairings_table import PairingsTable
 from gambitpairing.gui.widgets.player_placeholder import PlayerPlaceholder
 from gambitpairing.gui.widgets.pre_tournament_start import PreTournamentStart
 from gambitpairing.gui.widgets.result_selector import ResultSelector
+from gambitpairing.gui.widgets.round_progress_indicator import RoundProgressIndicator
 from gambitpairing.gui.widgets.round_controls import RoundControlsWidget
 from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
+from gambitpairing.models import Player
+from gambitpairing.models.enums import TournamentPhase
 
 _APP: QtWidgets.QApplication | None = None
 
@@ -302,3 +306,63 @@ def test_designer_backed_result_selector_preserves_selection_api():
     assert selector.selectedResult() == ""
 
     selector.close()
+
+
+def test_designer_backed_pairings_table_preserves_public_api_and_results():
+    _app()
+
+    white = Player("Ada", rating=2100)
+    black = Player("Bert", rating=2000)
+    bye_player = Player("Cora", rating=1900)
+    table = PairingsTable()
+
+    table.display_pairings([(white, black)], [bye_player], current_round_index=0)
+
+    assert table.rowCount() == 1
+    board_item = table.item(0, 0)
+    white_item = table.item(0, 1)
+    black_item = table.item(0, 2)
+    assert board_item is not None
+    assert white_item is not None
+    assert black_item is not None
+    assert board_item.text() == "1"
+    assert white_item.text() == "Ada (2100)"
+    assert black_item.text() == "Bert (2000)"
+    model = table.table.model()
+    assert model is not None
+    cell_center = table.table.visualRect(model.index(0, 0)).center()
+    assert table.itemAt(cell_center) is not None
+    assert table.viewport() is table.table.viewport()
+    assert not table.bye_container.isHidden()
+    assert "Cora" in table.lbl_bye.text()
+
+    result_selector = table.cellWidget(0, 3)
+    assert isinstance(result_selector, ResultSelector)
+    assert table.get_results() == ([], False)
+
+    result_selector.setResult(RESULT_WHITE_WIN)
+    assert table.get_results() == ([(white.id, black.id, 1.0)], True)
+
+    table.reset_display()
+    assert table.rowCount() == 0
+    assert table.bye_container.isHidden()
+
+    table.close()
+
+
+def test_designer_backed_round_progress_indicator_keeps_dynamic_dots():
+    _app()
+
+    indicator = RoundProgressIndicator()
+    indicator.update_progress(2, 4, TournamentPhase.AWAITING_RESULTS)
+
+    assert indicator.progress_label.text() == "Round 2 of 4"
+    assert len(indicator._dots) == 4
+    assert indicator._dots[0].property("state") == "completed"
+    assert indicator._dots[1].property("state") == "active"
+    assert indicator._dots[2].property("state") == "pending"
+
+    indicator.update_progress(4, 4, TournamentPhase.FINISHED)
+    assert indicator.progress_label.text() == "Tournament Complete (4 rounds)"
+
+    indicator.close()

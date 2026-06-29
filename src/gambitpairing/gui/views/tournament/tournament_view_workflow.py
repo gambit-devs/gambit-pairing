@@ -15,6 +15,7 @@ from gambitpairing.models.tournament import TournamentPhase, TournamentState
 
 RoundControlState = Literal["start", "prepare", "record", "finished"]
 MinimumPlayerCheckKind = Literal["ok", "blocking", "confirm"]
+RoundPreparationMode = Literal["manual", "generated"]
 
 
 @dataclass(frozen=True)
@@ -84,6 +85,25 @@ class UndoAvailability:
     can_undo: bool
     title: str = ""
     message: str = ""
+
+
+@dataclass(frozen=True)
+class WorkflowPrompt:
+    """Title/message pair for Qt prompts shown by the view."""
+
+    title: str
+    message: str
+
+
+@dataclass(frozen=True)
+class RoundPreparationMessages:
+    """Text fragments used by round preparation UI/history updates."""
+
+    started_status: str
+    ready_status: str
+    error_status: str
+    header_title: str
+    reprepare_history_line: str
 
 
 def build_tournament_view_state(
@@ -231,6 +251,70 @@ def evaluate_minimum_player_check(
         )
 
     return MinimumPlayerCheck(kind="ok")
+
+
+def build_round_end_prompt() -> WorkflowPrompt:
+    return WorkflowPrompt(
+        title="Tournament End",
+        message="All tournament rounds have been generated and processed.",
+    )
+
+
+def build_reprepare_round_prompt(round_index: int) -> WorkflowPrompt:
+    display_round_number = round_index + 1
+    return WorkflowPrompt(
+        title="Re-Prepare Round?",
+        message=(
+            f"Pairings for Round {display_round_number} already exist. "
+            "Re-generate them?\nThis is usually not needed unless player "
+            "active status changed significantly."
+        ),
+    )
+
+
+def build_round_preparation_messages(
+    display_round_number: int,
+) -> RoundPreparationMessages:
+    return RoundPreparationMessages(
+        started_status=f"Generating pairings for Round {display_round_number}...",
+        ready_status=(
+            f"Round {display_round_number} pairings ready. Enter results."
+        ),
+        error_status=f"Error generating pairings for Round {display_round_number}.",
+        header_title=f"Round {display_round_number} Pairings & Results",
+        reprepare_history_line=(
+            f"--- Re-preparing pairings for Round {display_round_number} ---"
+        ),
+    )
+
+
+def round_preparation_mode(tournament: Any) -> RoundPreparationMode:
+    return "manual" if tournament.pairing_system == "manual" else "generated"
+
+
+def should_report_empty_pairings_failure(
+    pairings: Sequence[Any], active_player_count: int, bye_player: Optional[Player]
+) -> bool:
+    return not pairings and active_player_count > 1 and not bye_player
+
+
+def build_pairing_generation_failure_prompt(display_round_number: int) -> WorkflowPrompt:
+    return WorkflowPrompt(
+        title="Pairing Error",
+        message=(
+            f"Pairing generation failed for Round {display_round_number}. "
+            "No pairings returned. Check logs and player statuses."
+        ),
+    )
+
+
+def build_pairing_exception_prompt(
+    display_round_number: int, error: Exception
+) -> WorkflowPrompt:
+    return WorkflowPrompt(
+        title="Pairing Error",
+        message=f"Pairing generation failed for Round {display_round_number}:\n{error}",
+    )
 
 
 def format_generated_pairing_history_lines(

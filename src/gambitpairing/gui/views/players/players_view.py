@@ -19,11 +19,8 @@
 
 from __future__ import annotations
 
-import csv
-from datetime import datetime
 import logging
-from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt, pyqtSignal
@@ -35,13 +32,21 @@ from gambitpairing.controllers.player import (
 from gambitpairing.gui.dialogs import PlayerManagementDialog
 from gambitpairing.gui.notification import show_notification
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
+from gambitpairing.gui.views.players.players_view_workflow import (
+    build_duplicate_player_prompt,
+    build_export_success_status,
+    build_export_unavailable_prompt,
+    build_import_empty_prompt,
+    build_import_success_history,
+    build_import_success_notification,
+    build_remove_player_prompt,
+    project_player_table_row,
+)
 from gambitpairing.gui.widgets import NumericTableWidgetItem, TabHeader
 from gambitpairing.gui.widgets.player_placeholder import PlayerPlaceholder
 from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 from gambitpairing.models.player import (
-    FidePlayer,
     Player,
-    create_player,
     create_player_from_dict,
 )
 from gambitpairing.utils import setup_logger
@@ -305,10 +310,14 @@ class PlayersView(QtWidgets.QWidget):
                 if data["name"] != player.name and any(
                     p.name == data["name"] for p in self.tournament.players.values()
                 ):
+                    prompt = build_duplicate_player_prompt(data["name"])
                     QtWidgets.QMessageBox.warning(
                         self,
                         "Edit Error",
-                        f"Another player named '{data['name']}' already exists.",
+                        prompt.message.replace(
+                            f"Player '{data['name']}'",
+                            f"Another player named '{data['name']}'",
+                        ),
                     )
                     return
 
@@ -327,10 +336,11 @@ class PlayersView(QtWidgets.QWidget):
             self.standings_update_requested.emit()
             self.update_ui_state()
         elif action == remove_action:
+            prompt = build_remove_player_prompt(player.name)
             reply = QtWidgets.QMessageBox.question(
                 self,
-                "Remove Player",
-                f"Remove player '{player.name}' permanently?",
+                prompt.title,
+                prompt.message,
                 QtWidgets.QMessageBox.StandardButton.Yes
                 | QtWidgets.QMessageBox.StandardButton.No,
                 QtWidgets.QMessageBox.StandardButton.No,
@@ -399,10 +409,11 @@ class PlayersView(QtWidgets.QWidget):
                 if data["name"] != player.name and any(
                     p.name == data["name"] for p in self.tournament.players.values()
                 ):
+                    prompt = build_duplicate_player_prompt(data["name"])
                     QtWidgets.QMessageBox.warning(
                         self,
-                        "Duplicate Player",
-                        f"Player '{data['name']}' already exists.",
+                        prompt.title,
+                        prompt.message,
                     )
                     return
 
@@ -416,10 +427,11 @@ class PlayersView(QtWidgets.QWidget):
                 if any(
                     p.name == data["name"] for p in self.tournament.players.values()
                 ):
+                    prompt = build_duplicate_player_prompt(data["name"])
                     QtWidgets.QMessageBox.warning(
                         self,
-                        "Duplicate Player",
-                        f"Player '{data['name']}' already exists.",
+                        prompt.title,
+                        prompt.message,
                     )
                     return
 
@@ -451,22 +463,21 @@ class PlayersView(QtWidgets.QWidget):
         for i in range(self.table_players.rowCount()):
             item = self.table_players.item(i, 0)
             if item and item.data(Qt.ItemDataRole.UserRole) == player.id:
+                projection = project_player_table_row(player)
                 # Update Name
-                item.setText(player.name)
+                item.setText(projection.name)
 
                 # Update Rating
                 rating_item = self.table_players.item(i, 1)
-                rating_item.setText(str(player.rating or ""))
+                rating_item.setText(projection.rating)
 
                 # Update Age - use player's age property directly
                 age_item = self.table_players.item(i, 2)
-                age = player.age
-                age_item.setText(str(age) if age is not None else "")
+                age_item.setText(projection.age)
 
                 # Update Status
                 status_item = self.table_players.item(i, 3)
-                status_text = "Active" if player.is_active else "Inactive"
-                status_item.setText(status_text)
+                status_item.setText(projection.status)
 
                 # Update row color
                 color = (
@@ -499,57 +510,30 @@ class PlayersView(QtWidgets.QWidget):
         self.table_players.setSortingEnabled(False)  # Disable sorting during insert
         row_position = self.table_players.rowCount()
         self.table_players.insertRow(row_position)
+        projection = project_player_table_row(player)
 
         # Name Item
-        name_item = QtWidgets.QTableWidgetItem(player.name)
+        name_item = QtWidgets.QTableWidgetItem(projection.name)
         name_item.setData(Qt.ItemDataRole.UserRole, player.id)
 
         # Rating Item
-        rating_item = NumericTableWidgetItem(str(player.rating or ""))
+        rating_item = NumericTableWidgetItem(projection.rating)
 
         # Age Item - use the player's age property directly
-        age = player.age
-        age_item = NumericTableWidgetItem(str(age) if age is not None else "")
+        age_item = NumericTableWidgetItem(projection.age)
 
         # Status Item
-        status_text = "Active" if player.is_active else "Inactive"
-        status_item = QtWidgets.QTableWidgetItem(status_text)
+        status_item = QtWidgets.QTableWidgetItem(projection.status)
 
         # Set Tooltip
-        tooltip_parts = [f"ID: {player.id}"]
-        if player.gender:
-            tooltip_parts.append(f"Gender: {player.gender}")
-        if player.dob:
-            tooltip_parts.append(f"Date of Birth: {player.dob}")
-        if player.phone:
-            tooltip_parts.append(f"Phone: {player.phone}")
-        if player.email:
-            tooltip_parts.append(f"Email: {player.email}")
-        if player.federation:
-            tooltip_parts.append(f"Federation: {player.federation}")
-        # FIDE metadata if present
-        if getattr(player, "fide_id", None):
-            tooltip_parts.append(f"FIDE ID: {player.fide_id}")
-        if getattr(player, "fide_title", None):
-            tooltip_parts.append(f"Title: {player.fide_title}")
-        if getattr(player, "fide_standard", None) is not None:
-            tooltip_parts.append(f"Std: {player.fide_standard}")
-        if getattr(player, "fide_rapid", None) is not None:
-            tooltip_parts.append(f"Rapid: {player.fide_rapid}")
-        if getattr(player, "fide_blitz", None) is not None:
-            tooltip_parts.append(f"Blitz: {player.fide_blitz}")
-        if getattr(player, "birth_year", None) is not None:
-            tooltip_parts.append(f"Birth Year: {player.birth_year}")
-        if getattr(player, "gender", None):
-            tooltip_parts.append(f"Gender: {player.gender}")
-        tooltip = "\n".join(tooltip_parts)
+        tooltip = projection.tooltip
         name_item.setToolTip(tooltip)
         rating_item.setToolTip(tooltip)
         age_item.setToolTip(tooltip)
         status_item.setToolTip(tooltip)
 
         # Set color for inactive players
-        if not player.is_active:
+        if projection.inactive:
             color = QtGui.QColor("gray")
             name_item.setForeground(color)
             rating_item.setForeground(color)
@@ -613,7 +597,7 @@ class PlayersView(QtWidgets.QWidget):
 
         if added_count > 0:
             self.history_message.emit(
-                f"Imported {added_count} players from {file_name}."
+                build_import_success_history(added_count, file_name)
             )
             self.dirty.emit()
             self.refresh_player_list()
@@ -622,7 +606,7 @@ class PlayersView(QtWidgets.QWidget):
             try:
                 show_notification(
                     self,
-                    f"Imported {added_count} players from {Path(file_name).name}",
+                    build_import_success_notification(added_count, file_name),
                     duration=3500,
                     notification_type="success",
                 )
@@ -631,10 +615,11 @@ class PlayersView(QtWidgets.QWidget):
                     self, "Import Successful", f"Imported {added_count} players."
                 )
         else:
+            prompt = build_import_empty_prompt()
             QtWidgets.QMessageBox.warning(
                 self,
-                "Import Notice",
-                "No new players were imported. Check for empty names or duplicates.",
+                prompt.title,
+                prompt.message,
             )
 
     def export_players_to_file(self):
@@ -652,8 +637,9 @@ class PlayersView(QtWidgets.QWidget):
             ``QMessageBox``.
         """
         if not self.tournament or not self.tournament.players:
+            prompt = build_export_unavailable_prompt()
             QtWidgets.QMessageBox.information(
-                self, "Export Error", "No players available to export."
+                self, prompt.title, prompt.message
             )
 
             return
@@ -663,7 +649,7 @@ class PlayersView(QtWidgets.QWidget):
         if not filename:
             return
         export_players_to_csv(self.tournament.players, filename)
-        self.status_message.emit(f"Players exported to {filename}")
+        self.status_message.emit(build_export_success_status(filename))
 
     def refresh_player_list(self):
         """Clear and repopulate the player table from the current tournament.

@@ -6,6 +6,13 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import QObject, Qt, QThread, pyqtSignal
 
 from gambitpairing.gui.gui_utils import get_colored_icon, set_svg_icon
+from gambitpairing.gui.dialogs.player_management_data import (
+    PlayerFormFields,
+    build_player_data_from_fields,
+    has_fide_fields,
+    project_tournament_player_row,
+    search_result_count_text,
+)
 from gambitpairing.gui.notification import show_notification
 from gambitpairing.models.player import Player, create_player_from_dict
 from gambitpairing.utils.api import (
@@ -1117,27 +1124,25 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         """Add a player row to the tournament table."""
         row = self.tournament_table.rowCount()
         self.tournament_table.insertRow(row)
+        projection = project_tournament_player_row(player)
 
         # Name
-        name_item = QtWidgets.QTableWidgetItem(player.name)
-        name_item.setData(Qt.ItemDataRole.UserRole, player.id)
+        name_item = QtWidgets.QTableWidgetItem(projection.name)
+        name_item.setData(Qt.ItemDataRole.UserRole, projection.player_id)
         self.tournament_table.setItem(row, 0, name_item)
 
         # Rating
         self.tournament_table.setItem(
-            row, 1, QtWidgets.QTableWidgetItem(str(player.rating))
+            row, 1, QtWidgets.QTableWidgetItem(projection.rating)
         )
 
         # Age (handle None case safely)
-        age = player.age
-        age_str = str(age) if age is not None else ""
-        self.tournament_table.setItem(row, 2, QtWidgets.QTableWidgetItem(age_str))
+        self.tournament_table.setItem(
+            row, 2, QtWidgets.QTableWidgetItem(projection.age)
+        )
 
         # Gender
-        gender_str = (
-            "Male" if player.gender == "M" else "Female" if player.gender == "F" else ""
-        )
-        gender_item = QtWidgets.QTableWidgetItem(gender_str)
+        gender_item = QtWidgets.QTableWidgetItem(projection.gender)
         self.tournament_table.setItem(row, 3, gender_item)
 
     def eventFilter(self, obj, event):
@@ -1316,14 +1321,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
 
         # Update info label and enable clear button
         player_count = len(players)
-        if player_count == 1:
-            self.results_info_label.setText(
-                "Found 1 player. Double-click or select and click 'Import Selected Player' to use."
-            )
-        else:
-            self.results_info_label.setText(
-                f"Found {player_count} players. Double-click or select and click 'Import Selected Player' to use."
-            )
+        self.results_info_label.setText(search_result_count_text(player_count))
         self.results_info_label.setStyleSheet("color: green; font-weight: bold;")
         self.btn_clear.setEnabled(player_count > 0)
 
@@ -1669,112 +1667,36 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         """Get the player data from the form."""
         dob_qdate = self.dob_edit.date()
 
-        # Get gender from combo box
-        gender_text = self.gender_combo.currentText()
-        gender = None
-        if gender_text == "Male":
-            gender = "M"
-        elif gender_text == "Female":
-            gender = "F"
-
-        if self._selected_player_data:  # From FIDE
-            return {
-                "name": self.name_edit.text().strip(),
-                "rating": self.rating_spin.value(),
-                "gender": gender,
-                "date_of_birth": (
-                    dob_qdate.toString("yyyy-MM-dd")
-                    if dob_qdate != QtCore.QDate(2000, 1, 1)
-                    else ""
-                ),
-                "phone": self.phone_edit.text().strip(),
-                "email": self.email_edit.text().strip(),
-                "club": self.club_edit.text().strip(),
-                "federation": self.federation_edit.text().strip(),
-                "fide_id": (
-                    int(self.fide_id_edit.text())
-                    if self.fide_id_edit.text().isdigit()
-                    else None
-                ),
-                "fide_title": self.fide_title_edit.text().strip() or None,
-                "fide_standard": (
-                    int(self.fide_std_edit.text())
-                    if self.fide_std_edit.text().isdigit()
-                    else None
-                ),
-                "fide_rapid": (
-                    int(self.fide_rapid_edit.text())
-                    if self.fide_rapid_edit.text().isdigit()
-                    else None
-                ),
-                "fide_blitz": (
-                    int(self.fide_blitz_edit.text())
-                    if self.fide_blitz_edit.text().isdigit()
-                    else None
-                ),
-                "birth_year": self._selected_player_data.get(
-                    "birth_year"
-                ),  # Keep from original FIDE data
-            }
-        elif any(
-            [
-                self.fide_id_edit.text(),
-                self.fide_title_edit.text(),
-                self.fide_std_edit.text(),
-                self.fide_rapid_edit.text(),
-                self.fide_blitz_edit.text(),
-            ]
-        ):  # Existing FIDE data
-            return {
-                "name": self.name_edit.text().strip(),
-                "rating": self.rating_spin.value(),
-                "gender": gender,
-                "date_of_birth": (
-                    dob_qdate.toString("yyyy-MM-dd")
-                    if dob_qdate != QtCore.QDate(2000, 1, 1)
-                    else ""
-                ),
-                "phone": self.phone_edit.text().strip(),
-                "email": self.email_edit.text().strip(),
-                "club": self.club_edit.text().strip(),
-                "federation": self.federation_edit.text().strip(),
-                "fide_id": (
-                    int(self.fide_id_edit.text())
-                    if self.fide_id_edit.text().isdigit()
-                    else None
-                ),
-                "fide_title": self.fide_title_edit.text().strip() or None,
-                "fide_standard": (
-                    int(self.fide_std_edit.text())
-                    if self.fide_std_edit.text().isdigit()
-                    else None
-                ),
-                "fide_rapid": (
-                    int(self.fide_rapid_edit.text())
-                    if self.fide_rapid_edit.text().isdigit()
-                    else None
-                ),
-                "fide_blitz": (
-                    int(self.fide_blitz_edit.text())
-                    if self.fide_blitz_edit.text().isdigit()
-                    else None
-                ),
-            }
-        else:  # Manual entry
-            return {
-                "name": self.name_edit.text().strip(),
-                "rating": self.rating_spin.value(),
-                "gender": gender,
-                "date_of_birth": (
-                    dob_qdate.toString("yyyy-MM-dd")
-                    if dob_qdate != QtCore.QDate(2000, 1, 1)
-                    else ""
-                ),
-                "phone": self.phone_edit.text().strip(),
-                "email": self.email_edit.text().strip(),
-                "club": self.club_edit.text().strip(),
-                "federation": self.federation_edit.text().strip(),
-            }
+        fields = PlayerFormFields(
+            name=self.name_edit.text(),
+            rating=self.rating_spin.value(),
+            gender_text=self.gender_combo.currentText(),
+            date_of_birth=(
+                dob_qdate.toString("yyyy-MM-dd")
+                if dob_qdate != QtCore.QDate(2000, 1, 1)
+                else ""
+            ),
+            phone=self.phone_edit.text(),
+            email=self.email_edit.text(),
+            club=self.club_edit.text(),
+            federation=self.federation_edit.text(),
+            fide_id=self.fide_id_edit.text(),
+            fide_title=self.fide_title_edit.text(),
+            fide_standard=self.fide_std_edit.text(),
+            fide_rapid=self.fide_rapid_edit.text(),
+            fide_blitz=self.fide_blitz_edit.text(),
+        )
+        selected_birth_year = (
+            self._selected_player_data.get("birth_year")
+            if self._selected_player_data
+            else None
+        )
+        return build_player_data_from_fields(
+            fields,
+            include_fide_fields=bool(self._selected_player_data)
+            or has_fide_fields(fields),
+            selected_birth_year=selected_birth_year,
+        )
 
     def get_editing_player_id(self) -> Optional[str]:
         """Get the ID of the player being edited, if any.

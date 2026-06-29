@@ -3,7 +3,12 @@ from typing import cast
 
 from gambitpairing.gui.views.tournament.tournament_view_workflow import (
     active_players_for_manual_pairing,
+    build_pairing_exception_prompt,
+    build_pairing_generation_failure_prompt,
     build_recorded_round_view_update,
+    build_reprepare_round_prompt,
+    build_round_end_prompt,
+    build_round_preparation_messages,
     build_tournament_view_state,
     evaluate_minimum_player_check,
     evaluate_undo_availability,
@@ -13,6 +18,8 @@ from gambitpairing.gui.views.tournament.tournament_view_workflow import (
     players_to_revert_for_undo,
     revert_player_round_data,
     resolve_existing_round_pairings,
+    round_preparation_mode,
+    should_report_empty_pairings_failure,
     undo_confirmation_message,
 )
 from gambitpairing.models.enums import Colour
@@ -228,6 +235,40 @@ def test_minimum_player_check_allows_valid_fields():
 
     assert evaluate_minimum_player_check(swiss).can_continue is True
     assert evaluate_minimum_player_check(manual).can_continue is True
+
+
+def test_round_preparation_prompt_and_message_helpers_preserve_text():
+    end_prompt = build_round_end_prompt()
+    reprepare_prompt = build_reprepare_round_prompt(1)
+    messages = build_round_preparation_messages(2)
+    failure_prompt = build_pairing_generation_failure_prompt(2)
+    exception_prompt = build_pairing_exception_prompt(2, RuntimeError("boom"))
+
+    assert end_prompt.title == "Tournament End"
+    assert "All tournament rounds" in end_prompt.message
+    assert reprepare_prompt.title == "Re-Prepare Round?"
+    assert "Pairings for Round 2 already exist" in reprepare_prompt.message
+    assert messages.started_status == "Generating pairings for Round 2..."
+    assert messages.ready_status == "Round 2 pairings ready. Enter results."
+    assert messages.error_status == "Error generating pairings for Round 2."
+    assert messages.header_title == "Round 2 Pairings & Results"
+    assert messages.reprepare_history_line == "--- Re-preparing pairings for Round 2 ---"
+    assert failure_prompt.title == "Pairing Error"
+    assert "No pairings returned" in failure_prompt.message
+    assert exception_prompt.message == "Pairing generation failed for Round 2:\nboom"
+
+
+def test_round_preparation_mode_and_empty_pairings_failure_decision():
+    players = [Player("Ada"), Player("Bert")]
+    manual = _with_pairing_system(_tournament(players, num_rounds=1), "manual")
+    swiss = _tournament(players, num_rounds=1)
+
+    assert round_preparation_mode(manual) == "manual"
+    assert round_preparation_mode(swiss) == "generated"
+    assert should_report_empty_pairings_failure([], 2, None) is True
+    assert should_report_empty_pairings_failure([], 1, None) is False
+    assert should_report_empty_pairings_failure([("pairing",)], 2, None) is False
+    assert should_report_empty_pairings_failure([], 2, players[0]) is False
 
 
 def test_recorded_result_history_lines_include_games_and_active_bye():
