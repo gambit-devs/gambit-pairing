@@ -76,6 +76,28 @@ QDockWidget[class="ManualPairingDialog"]::float-button:pressed {
 }
 
 /* --- Print-options dialog -------------------------------------------------- */
-/* No widget-class overrides are needed here because all constituents use
-   global typography and the base button style.  Section labels below use
-   the DialogHeader / DialogSubtitle classes defined in _02_base.qss. */
+QDialog[class="PrintOptionsDialog"] {
+  background: {{bg_page}};
+}
+
+/* --- Update download dialog ----------------------------------------------- */
+QDialog[class="UpdateDownloadDialog"] {
+  background: {{bg_page}};
+}
+
+QLabel[class="UpdateStatusLabel"] {
+  font-size: 11pt;
+  padding:   0 12px;
+}
+
+QProgressBar[class="UpdateProgressBar"] {
+  min-height:    28px;
+  font-size:     12pt;
+  text-align:    center;
+  border-radius: 14px;
+}
+
+QProgressBar[class="UpdateProgressBar"]::chunk {
+  background-color: {{color_primary}};
+  border-radius:    14px;
+}

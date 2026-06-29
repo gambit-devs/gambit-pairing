@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>PrintOptionsDialog</class>
+ <widget class="QDialog" name="PrintOptionsDialog">
+  <property name="windowTitle">
+   <string>Print Options</string>
+  </property>
+  <property name="minimumWidth">
+   <number>450</number>
+  </property>
+  <layout class="QVBoxLayout" name="main_layout">
+   <property name="spacing">
+    <number>20</number>
+   </property>
+   <property name="leftMargin">
+    <number>32</number>
+   </property>
+   <property name="topMargin">
+    <number>32</number>
+   </property>
+   <property name="rightMargin">
+    <number>32</number>
+   </property>
+   <property name="bottomMargin">
+    <number>32</number>
+   </property>
+   <item>
+    <widget class="QLabel" name="header_label">
+     <property name="class" stdset="0">
+      <string>DialogHeader</string>
+     </property>
+     <property name="text">
+      <string>Select Documents to Print</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="round_info_label">
+     <property name="class" stdset="0">
+      <string>DialogSubtitle</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="options_group">
+     <property name="title">
+      <string>Print Selection</string>
+     </property>
+     <layout class="QVBoxLayout" name="options_layout">
+      <property name="spacing">
+       <number>12</number>
+      </property>
+      <item>
+       <widget class="QCheckBox" name="chk_pairings">
+        <property name="text">
+         <string>Current Round Pairings</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="pairings_desc">
+        <property name="class" stdset="0">
+         <string>OptionDescription</string>
+        </property>
+        <property name="text">
+         <string>Board assignments with white and black players</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="chk_standings">
+        <property name="text">
+         <string>Tournament Standings</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="standings_desc">
+        <property name="class" stdset="0">
+         <string>OptionDescription</string>
+        </property>
+        <property name="text">
+         <string>Player rankings with scores and tiebreakers</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QCheckBox" name="chk_page_break">
+     <property name="toolTip">
+      <string>When checked, pairings and standings will print on separate pages</string>
+     </property>
+     <property name="text">
+      <string>Print on separate pages</string>
+     </property>
+     <property name="checked">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <spacer name="vertical_spacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="button_layout">
+     <property name="spacing">
+      <number>12</number>
+     </property>
+     <item>
+      <widget class="QPushButton" name="btn_cancel">
+       <property name="text">
+        <string>Cancel</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="button_spacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btn_print">
+       <property name="text">
+        <string>Print Preview</string>
+       </property>
+       <property name="default">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

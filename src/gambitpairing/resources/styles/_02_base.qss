@@ -47,6 +47,21 @@ QLabel[class="DialogSubtitle"] {
   background:   transparent;
 }
 
+QLabel[class="OptionDescription"] {
+  color:        {{text_muted}};
+  font-size:    {{font_size_sm}};
+  background:   transparent;
+  margin-left:  24px;
+}
+
+QLabel[class="RoundInfoLabel"] {
+  color:        {{text_secondary}};
+  font-size:    {{font_size_base}};
+  font-weight:  600;
+  background:   transparent;
+  margin:       5px;
+}
+
 /* Toolbar / info label variants */
 QLabel[class="ToolbarTournamentLabel"] {
   color:        {{text_heading}};

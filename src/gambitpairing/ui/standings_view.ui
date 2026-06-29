@@ -41,8 +41,8 @@
    </item>
    <item>
     <widget class="QGroupBox" name="standings_group">
-     <property name="styleSheet">
-      <string notr="true">QGroupBox { border: none; margin-top: 0px; }</string>
+     <property name="class" stdset="0">
+      <string>FlatContentGroup</string>
      </property>
      <property name="title">
       <string/>
@@ -65,8 +65,8 @@
       </property>
       <item>
        <widget class="QLabel" name="lbl_round_info">
-        <property name="styleSheet">
-         <string notr="true">color: #666; margin: 5px;</string>
+        <property name="class" stdset="0">
+         <string>RoundInfoLabel</string>
         </property>
         <property name="text">
          <string/>

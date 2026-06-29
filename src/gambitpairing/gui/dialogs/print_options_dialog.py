@@ -26,6 +26,8 @@ This dialog allows users to select whether to print:
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
 
+from gambitpairing.gui.ui_loader import load_ui_into, required_child
+
 
 class PrintOptionsDialog(QtWidgets.QDialog):
     """
@@ -63,8 +65,7 @@ class PrintOptionsDialog(QtWidgets.QDialog):
             Whether standings checkbox is checked by default
         """
         super().__init__(parent)
-        self.setWindowTitle("Print Options")
-        self.setMinimumWidth(450)  # Increased width for better visibility
+        self.setProperty("class", "PrintOptionsDialog")
         self.setWindowFlags(
             self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint
         )
@@ -74,54 +75,33 @@ class PrintOptionsDialog(QtWidgets.QDialog):
         self._default_pairings = default_pairings
         self._default_standings = default_standings
 
+        load_ui_into(self, "print_options_dialog.ui")
         self._setup_ui(round_info)
 
     def _setup_ui(self, round_info: str):
-        """Create the dialog UI."""
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setSpacing(20)  # Increased spacing
-        layout.setContentsMargins(32, 32, 32, 32)  # Increased padding
-
-        # Header
-        header_label = QtWidgets.QLabel("Select Documents to Print")
-        header_label.setProperty("class", "DialogHeader")
-        font = header_label.font()
-        font.setPointSize(12)
-        font.setBold(True)
-        header_label.setFont(font)
-        layout.addWidget(header_label)
-
-        # Round info display
+        """Wire behavior to the Designer-defined dialog UI."""
+        self.round_info_label = required_child(
+            self, QtWidgets.QLabel, "round_info_label"
+        )
         if round_info:
-            info_label = QtWidgets.QLabel(round_info)
-            info_label.setProperty("class", "DialogSubtitle")
-            info_label.setStyleSheet("color: #666; margin-bottom: 8px;")
-            layout.addWidget(info_label)
+            self.round_info_label.setText(round_info)
+            self.round_info_label.show()
+        else:
+            self.round_info_label.hide()
 
-        # Options container
-        options_group = QtWidgets.QGroupBox("Print Selection")
-        options_layout = QtWidgets.QVBoxLayout(options_group)
-        options_layout.setSpacing(12)
-
-        # Pairings checkbox
-        self.chk_pairings = QtWidgets.QCheckBox("Current Round Pairings")
+        self.chk_pairings = required_child(
+            self, QtWidgets.QCheckBox, "chk_pairings"
+        )
         self.chk_pairings.setChecked(self._has_pairings and self._default_pairings)
         self.chk_pairings.setEnabled(self._has_pairings)
         if not self._has_pairings:
             self.chk_pairings.setToolTip("No pairings available for this round")
         else:
             self.chk_pairings.setToolTip("Include the pairings for the current round")
-        options_layout.addWidget(self.chk_pairings)
 
-        # Description for pairings
-        pairings_desc = QtWidgets.QLabel(
-            "Board assignments with white and black players"
+        self.chk_standings = required_child(
+            self, QtWidgets.QCheckBox, "chk_standings"
         )
-        pairings_desc.setStyleSheet("color: #888; font-size: 9pt; margin-left: 24px;")
-        options_layout.addWidget(pairings_desc)
-
-        # Standings checkbox
-        self.chk_standings = QtWidgets.QCheckBox("Tournament Standings")
         self.chk_standings.setChecked(self._has_standings and self._default_standings)
         self.chk_standings.setEnabled(self._has_standings)
         if not self._has_standings:
@@ -130,47 +110,20 @@ class PrintOptionsDialog(QtWidgets.QDialog):
             )
         else:
             self.chk_standings.setToolTip("Include the current tournament standings")
-        options_layout.addWidget(self.chk_standings)
 
-        # Description for standings
-        standings_desc = QtWidgets.QLabel("Player rankings with scores and tiebreakers")
-        standings_desc.setStyleSheet("color: #888; font-size: 9pt; margin-left: 24px;")
-        options_layout.addWidget(standings_desc)
-
-        layout.addWidget(options_group)
-
-        # Page break option (only shown when both are selected)
-        self.chk_page_break = QtWidgets.QCheckBox("Print on separate pages")
-        self.chk_page_break.setChecked(True)
-        self.chk_page_break.setToolTip(
-            "When checked, pairings and standings will print on separate pages"
+        self.chk_page_break = required_child(
+            self, QtWidgets.QCheckBox, "chk_page_break"
         )
-        self.chk_page_break.setVisible(False)  # Hidden initially
-        layout.addWidget(self.chk_page_break)
 
         # Connect checkboxes to update page break visibility
         self.chk_pairings.toggled.connect(self._update_page_break_visibility)
         self.chk_standings.toggled.connect(self._update_page_break_visibility)
 
-        # Add stretch
-        layout.addStretch()
-
-        # Buttons
-        button_layout = QtWidgets.QHBoxLayout()
-        button_layout.setSpacing(12)
-
-        self.btn_cancel = QtWidgets.QPushButton("Cancel")
+        self.btn_cancel = required_child(self, QtWidgets.QPushButton, "btn_cancel")
         self.btn_cancel.clicked.connect(self.reject)
-        button_layout.addWidget(self.btn_cancel)
 
-        button_layout.addStretch()
-
-        self.btn_print = QtWidgets.QPushButton("Print Preview")
+        self.btn_print = required_child(self, QtWidgets.QPushButton, "btn_print")
         self.btn_print.clicked.connect(self._validate_and_accept)
-        self.btn_print.setDefault(True)
-        button_layout.addWidget(self.btn_print)
-
-        layout.addLayout(button_layout)
 
         # Update initial state
         self._update_page_break_visibility()

@@ -41,8 +41,8 @@
    </item>
    <item>
     <widget class="QGroupBox" name="history_group">
-     <property name="styleSheet">
-      <string notr="true">QGroupBox { border: none; margin-top: 0px; }</string>
+     <property name="class" stdset="0">
+      <string>FlatContentGroup</string>
      </property>
      <property name="title">
       <string/>

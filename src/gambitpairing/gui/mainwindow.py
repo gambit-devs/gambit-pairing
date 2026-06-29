@@ -29,11 +29,11 @@ from PyQt6.QtGui import QAction, QCloseEvent
 from PyQt6.QtWidgets import QMessageBox
 
 from gambitpairing import APP_NAME, APP_VERSION, utils
-from gambitpairing.models.tournament import Tournament
-from gambitpairing.representation import (
-    load_tournament_document,
-    save_tournament_document,
+from gambitpairing.controllers.tournament import (
+    TournamentGuiState,
+    TournamentPersistenceService,
 )
+from gambitpairing.models.tournament import Tournament
 from gambitpairing.update import Updater, UpdateWorker
 from gambitpairing.utils import setup_logger
 
@@ -71,6 +71,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self._dirty: bool = False
         self.is_updating = False
         self.updater: Optional[Updater] = Updater(APP_VERSION)
+        self.persistence_service = TournamentPersistenceService()
         # import player is a class containing import player logic
         self.import_mgr = ImportPlayer(self)
 
@@ -223,6 +224,16 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         """Append a timestamped message to the history log tab."""
         self.history_tab.update_history_log(message)
 
+    def _collect_gui_state(self) -> TournamentGuiState:
+        return TournamentGuiState(
+            current_round_index=self.current_round_index,
+            last_recorded_results_data=list(self.last_recorded_results_data),
+        )
+
+    def _apply_gui_state(self, gui_state: TournamentGuiState) -> None:
+        self.current_round_index = gui_state.current_round_index
+        self.last_recorded_results_data = list(gui_state.last_recorded_results_data)
+
     def save_tournament(self, save_as=False):
         if not self.tournament:
             return False
@@ -235,10 +246,6 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             self._current_filepath = filename
 
         try:
-            gui_state = {
-                "current_round_index": self.current_round_index,
-                "last_recorded_results_data": self.last_recorded_results_data,
-            }
             # check to see if file exists, and confirm prior to overwrite
             if Path(self._current_filepath).exists():
 
@@ -250,7 +257,9 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
                     return False
                 # else continue
 
-            save_tournament_document(self._current_filepath, self.tournament, gui_state)
+            self.persistence_service.save(
+                self._current_filepath, self.tournament, self._collect_gui_state()
+            )
             self.mark_clean()
             self.statusBar().showMessage(
                 f"Tournament saved to {self._current_filepath}"
@@ -286,15 +295,11 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             return
 
         try:
-            tournament, gui_state = load_tournament_document(filename)
+            document = self.persistence_service.load(filename)
 
             self.reset_tournament_state()
-            self.tournament = tournament
-
-            self.current_round_index = gui_state.get("current_round_index", 0)
-            self.last_recorded_results_data = gui_state.get(
-                "last_recorded_results_data", []
-            )
+            self.tournament = document.tournament
+            self._apply_gui_state(document.gui_state)
             self._current_filepath = filename
 
             self._set_tournament_on_tabs()

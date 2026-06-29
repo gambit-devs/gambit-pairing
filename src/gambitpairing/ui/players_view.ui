@@ -41,11 +41,11 @@
    </item>
    <item>
     <widget class="QGroupBox" name="player_group">
+     <property name="class" stdset="0">
+      <string>FlatContentGroup</string>
+     </property>
      <property name="toolTip">
       <string>Manage players. Right-click a row for actions.</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QGroupBox { border: none; margin-top: 0px; }</string>
      </property>
      <property name="title">
       <string/>
