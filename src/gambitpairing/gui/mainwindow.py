@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-import sys
 from typing import List, Optional
 
 from PyQt6 import QtCore, QtGui, QtWidgets
@@ -34,20 +33,19 @@ from gambitpairing.controllers.tournament import (
     TournamentPersistenceService,
 )
 from gambitpairing.models.tournament import Tournament
-from gambitpairing.update import Updater, UpdateWorker
+from gambitpairing.update import Updater
 from gambitpairing.utils import setup_logger
 
 from .dialogs import (
     AboutDialog,
     NewTournamentDialog,
     SettingsDialog,
-    UpdateDownloadDialog,
-    UpdatePromptDialog,
 )
 from .import_player import ImportPlayer
 from .main_window_state import build_main_window_ui_state
 from .notification import show_notification
 from .ui_loader import load_ui_into
+from .update_workflow import UpdateWorkflowController
 from .views.crosstable.crosstable_view import CrosstableView
 from .views.history.history_view import HistoryView
 from .views.players.players_view import PlayersView
@@ -70,13 +68,20 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self.last_recorded_results_data: List[tuple] = []
         self._current_filepath: Optional[str] = None
         self._dirty: bool = False
-        self.is_updating = False
         self.updater: Optional[Updater] = Updater(APP_VERSION)
         self.persistence_service = TournamentPersistenceService()
         # import player is a class containing import player logic
         self.import_mgr = ImportPlayer(self)
 
         self._setup_ui()
+        self.update_workflow = UpdateWorkflowController(
+            parent=self,
+            updater=self.updater,
+            app_name=APP_NAME,
+            app_version=APP_VERSION,
+            status_callback=self.statusBar().showMessage,
+            close_callback=self.close,
+        )
         self._update_ui_state()
 
         # Check for pending update first, then check for new online updates.
@@ -381,150 +386,35 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         return reply == QMessageBox.StandardButton.Yes
 
     def check_for_pending_update(self) -> bool:
-        """Check for a previously downloaded update and asks to install it."""
-        if not self.updater:
-            return False
-
-        pending_path = self.updater.get_pending_update_path()
-        if pending_path:
-            reply = QtWidgets.QMessageBox.question(
-                self,
-                "Update Ready to Install",
-                "A downloaded update is ready. This will restart the application.\n\nInstall now?",
-                QtWidgets.QMessageBox.StandardButton.Yes
-                | QtWidgets.QMessageBox.StandardButton.No,
-            )
-
-            if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-                self.is_updating = True
-                self.statusBar().showMessage("Restarting to apply update...")
-                self.updater.apply_update(pending_path)
-                QtCore.QTimer.singleShot(100, self.close)
-                return True  # Update is being applied
-            else:
-                # User chose not to install. Let's ask if they want to discard it.
-                discard_reply = QtWidgets.QMessageBox.question(
-                    self,
-                    "Discard Update?",
-                    "Do you want to discard the downloaded update? If not, you will be asked again on the next launch.",
-                    QtWidgets.QMessageBox.StandardButton.Yes
-                    | QtWidgets.QMessageBox.StandardButton.No,
-                )
-                if discard_reply == QtWidgets.QMessageBox.StandardButton.Yes:
-                    self.updater.cleanup_pending_update()
-        return False
+        """Check for a previously downloaded update and ask to install it."""
+        return self.update_workflow.check_for_pending_update()
 
     def check_for_updates_manual(self) -> None:
-        """Manually checks for updates and notifies the user of the result."""
-        if not getattr(sys, "frozen", False):
-            QtWidgets.QMessageBox.information(
-                self,
-                "Update Check",
-                "Automatic updates are only available in packaged releases.\n\n"
-                "If you installed from source, please update using git or your package manager. ie: `pip install --upgrade [git-root]`",
-            )
-            return
-        if not self.updater:
-            QtWidgets.QMessageBox.information(
-                self, "Update Check", "The update checker is not configured."
-            )
-            return
+        """Manually check for updates and notify the user of the result."""
+        self.update_workflow.check_for_updates_manual()
 
-        self.statusBar().showMessage("Checking for updates...")
-        has_update = self.updater.check_for_updates()
-        if has_update:
-            self.prompt_update()
-        else:
-            self.statusBar().showMessage("No new updates available.")
-            QtWidgets.QMessageBox.information(
-                self,
-                "Update Check",
-                f"You are using the latest version of {APP_NAME} ({APP_VERSION}).",
-            )
+    def check_for_updates_auto(self) -> None:
+        """Automatically check for updates in the background."""
+        self.update_workflow.check_for_updates_auto()
 
-    def check_for_updates_auto(self):
-        """Automatically checks for updates in the background."""
-        if not getattr(sys, "frozen", False):
-            return
-        if not self.updater:
-            return
-        if self.updater.check_for_updates():
-            self.prompt_update()
-
-    def prompt_update(self):
+    def prompt_update(self) -> bool:
         """Show a dialog prompting the user to download the new version."""
-        if not self.updater or not self.updater.latest_version_info:
-            return
+        return self.update_workflow.prompt_update()
 
-        latest_version = self.updater.get_latest_version()
-        release_notes = self.updater.get_release_notes()
-
-        if latest_version is None or release_notes is None:
-            QtWidgets.QMessageBox.warning(
-                self, "Update Error", "Could not retrieve complete update information."
-            )
-            return
-
-        dialog = UpdatePromptDialog(
-            new_version=latest_version,
-            current_version=APP_VERSION,
-            release_notes=release_notes,
-            parent=self,
-        )
-
-        if dialog.exec():
-            self.start_update_download()
-
-    def start_update_download(self):
+    def start_update_download(self) -> None:
         """Initiate the update download and shows the progress dialog."""
-        if not self.updater:
-            return
+        self.update_workflow.start_update_download()
 
-        self.statusBar().showMessage("Starting update download...")
-        self.download_dialog = UpdateDownloadDialog(self)
-
-        self.update_thread = QtCore.QThread()
-        self.worker = UpdateWorker(self.updater)
-        self.worker.moveToThread(self.update_thread)
-
-        self.update_thread.started.connect(self.worker.run)
-        self.worker.progress.connect(self.download_dialog.update_progress)
-        self.worker.status.connect(self.download_dialog.update_status)
-        self.worker.done.connect(self.on_update_done)
-
-        self.worker.finished.connect(self.update_thread.quit)
-        self.worker.finished.connect(self.worker.deleteLater)
-        self.update_thread.finished.connect(self.update_thread.deleteLater)
-
-        self.worker.error.connect(self.update_thread.quit)
-        self.worker.error.connect(self.worker.deleteLater)
-
-        self.update_thread.start()
-        self.download_dialog.exec()
-
-    def on_update_done(self, success: bool, message: str):
+    def on_update_done(self, success: bool, message: str) -> None:
         """Handle both success and error for update."""
-        if success:
-            self.download_dialog.show_complete()
-            # Connect restart button to restart logic
-            self.download_dialog.restart_btn.clicked.disconnect()
-            self.download_dialog.restart_btn.clicked.connect(
-                lambda: self._restart_with_update(message)
-            )
-        else:
-            self.download_dialog.show_error(message)
-            self.download_dialog.close_btn.clicked.disconnect()
-            self.download_dialog.close_btn.clicked.connect(self.download_dialog.close)
+        self.update_workflow.on_update_done(success, message)
 
-    def _restart_with_update(self, extracted_path: str):
-        self.is_updating = True
-        self.statusBar().showMessage("Restarting to apply update...")
-        self.updater.apply_update(extracted_path)
-        QtCore.QTimer.singleShot(100, self.close)
+    def _restart_with_update(self, extracted_path: str) -> None:
+        self.update_workflow.restart_with_update(extracted_path)
 
     def closeEvent(self, event: QCloseEvent):
         """Handle a close Event, checking if needed."""
-        if self.is_updating:
+        if self.update_workflow.is_updating:
             event.accept()
             return
 
