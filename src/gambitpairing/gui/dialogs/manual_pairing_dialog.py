@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import QApplication, QDockWidget, QHBoxLayout, QVBoxLayout,
 
 from gambitpairing.gui.gui_utils import reset_and_set_cursor, update_widget_style
 from gambitpairing.gui.widgets.drag_list import DragListWidget
+from gambitpairing.gui.ui_loader import load_ui_into, required_child
 from gambitpairing.gui.dialogs.manual_pairing_io import (
     build_pairings_export_data,
     parse_pairings_import_data,
@@ -50,32 +51,7 @@ class DroppableByeListWidget(DragListWidget):
         super().__init__(parent)
         self.setMinimumHeight(60)
         self.setMaximumHeight(120)
-        self.setStyleSheet("""
-            QListWidget {
-                background-color: #fff3cd;
-                border: 2px dashed #e2c290;
-                border-radius: 8px;
-                padding: 4px;
-            }
-            QListWidget::item {
-                padding: 6px 8px;
-                margin: 1px;
-                border-radius: 3px;
-                background-color: #fff8e1;
-                border: 1px solid #e2c290;
-                color: #8b5c2b;
-                font-weight: bold;
-            }
-            QListWidget::item:hover {
-                background-color: #ffecb3;
-                border-color: #d4ac0d;
-            }
-            QListWidget::item:selected {
-                background-color: #d4ac0d;
-                color: white;
-                border-color: #b7950b;
-            }
-        """)
+        self.setProperty("class", "ManualPairingByeList")
 
     def startDrag(self, supported_actions):
         """Start drag operation from bye pool."""
@@ -499,14 +475,20 @@ class ManualPairingDialog(QtWidgets.QDialog):
 
     def _setup_ui(self):
         """Init the user interface."""
-        # Apply dialog-wide styling using the chess color scheme
-
-        main_layout = QVBoxLayout(self)
-
-        # Create a main window widget for proper dock widget support
-        self.main_window_widget = QtWidgets.QMainWindow()
-
+        load_ui_into(self, "manual_pairing_dialog.ui")
+        self.setWindowTitle(f"Edit Pairings - Round {self.round_number}")
+        self.setProperty("class", "ManualPairingDialog")
+        self.main_layout = required_child(self, QVBoxLayout, "main_layout")
+        self.main_window_widget = required_child(
+            self, QtWidgets.QMainWindow, "main_window_widget"
+        )
+        self.validation_label = required_child(
+            self, QtWidgets.QLabel, "validation_label"
+        )
+        self.buttons = required_child(self, QtWidgets.QDialogButtonBox, "buttons")
         self.main_window_widget.setProperty("class", "ManualPairingDialog")
+        self.buttons.accepted.connect(self._confirm_finalize_pairings)
+        self.buttons.rejected.connect(self.reject)
 
         # Create detachable player pool
         self._create_detachable_player_pool()
@@ -519,12 +501,7 @@ class ManualPairingDialog(QtWidgets.QDialog):
             Qt.DockWidgetArea.LeftDockWidgetArea, self.player_pool_dock
         )
 
-        # Add the main window widget to the dialog's layout
-        main_layout.addWidget(self.main_window_widget)
-
-        # Add validation panel and dialog buttons below the main content
-        main_layout.addWidget(self._create_validation_panel())
-        main_layout.addWidget(self._create_dialog_buttons())
+        self.validation_label.setWordWrap(True)
 
         # Track selected player for click-to-place functionality
         self._selected_for_placement = None
@@ -560,9 +537,7 @@ class ManualPairingDialog(QtWidgets.QDialog):
         pool_info = QtWidgets.QLabel(
             "Drag players to create pairings\nDouble-click to auto-pair • Right-click for options"
         )
-        pool_info.setStyleSheet(
-            "color: #6b7280; font-style: italic; padding: 5px; font-size: 10pt;"
-        )
+        pool_info.setProperty("class", "ManualPairingInfoLabel")
         pool_layout.addWidget(pool_info)
 
         # Search functionality
@@ -583,33 +558,14 @@ class ManualPairingDialog(QtWidgets.QDialog):
         search_layout = QHBoxLayout()
 
         search_label = QtWidgets.QLabel("Search:")
-        search_label.setStyleSheet("color: #2d5a27; font-weight: 600; font-size: 10pt;")
+        search_label.setProperty("class", "ManualPairingSearchLabel")
         search_layout.addWidget(search_label)
 
         self.search_box = QtWidgets.QLineEdit()
         self.search_box.setPlaceholderText("Search players by name or rating...")
         self.search_box.textChanged.connect(self._filter_player_pool)
 
-        # Style the search box with chess theme
-        self.search_box.setStyleSheet("""
-            QLineEdit {
-                background: #fff;
-                border: 1.5px solid #e3e7ee;
-                border-radius: 6px;
-                padding: 6px 10px;
-                color: #23272f;
-                font-size: 10pt;
-            }
-            QLineEdit:focus {
-                border-color: #e2c290;
-                background: #f7fafd;
-            }
-            QLineEdit:disabled {
-                background: #f3f7fc;
-                color: #a1a7b3;
-                border-color: #e5e7eb;
-            }
-        """)
+        self.search_box.setProperty("class", "ManualPairingDialog")
 
         search_layout.addWidget(self.search_box)
 
@@ -640,9 +596,7 @@ class ManualPairingDialog(QtWidgets.QDialog):
         bye_info = QtWidgets.QLabel(
             "Drop players here to assign byes • Drag back to remove"
         )
-        bye_info.setStyleSheet(
-            "color: #6b7280; font-style: italic; padding: 5px; font-size: 10pt;"
-        )
+        bye_info.setProperty("class", "ManualPairingInfoLabel")
         bye_layout.addWidget(bye_info)
 
         self.bye_list = DroppableByeListWidget(self)
@@ -668,7 +622,7 @@ class ManualPairingDialog(QtWidgets.QDialog):
         pairings_info = QtWidgets.QLabel(
             "Drag players between White/Black columns or back to pool"
         )
-        pairings_info.setStyleSheet("color: #666; font-style: italic; padding: 5px;")
+        pairings_info.setProperty("class", "ManualPairingInfoLabel")
         pairings_group_layout.addWidget(pairings_info)
 
         self.pairings_table = self._create_pairings_table()
@@ -676,10 +630,7 @@ class ManualPairingDialog(QtWidgets.QDialog):
 
         # Statistics display
         self.stats_label = QtWidgets.QLabel()
-        self.stats_label.setStyleSheet(
-            "color: #666; font-size: 10pt; padding: 5px; "
-            "background-color: #f8f9fa; border-radius: 3px;"
-        )
+        self.stats_label.setProperty("class", "ManualPairingStatsLabel")
         self.stats_label.setWordWrap(True)
         pairings_group_layout.addWidget(self.stats_label)
 

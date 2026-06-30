@@ -24,8 +24,15 @@ def test_architecture_inventory_matches_packaged_ui_files():
 
 
 def test_architecture_inventory_tracks_remaining_layout_and_workflow_boundaries():
-    assert "ManualPairingDialog" in REMAINING_PYTHON_BUILT_LAYOUTS
-    assert "PlayerManagementDialog" in REMAINING_PYTHON_BUILT_LAYOUTS
+    assert any(
+        "ManualPairingDialog dynamic dock" in item
+        for item in REMAINING_PYTHON_BUILT_LAYOUTS
+    )
+    assert any(
+        "PlayerManagementDialog tab interiors" in item
+        for item in REMAINING_PYTHON_BUILT_LAYOUTS
+    )
+    assert "Notification popup body" in REMAINING_PYTHON_BUILT_LAYOUTS
     assert "DroppableTableWidget" in DYNAMIC_WIDGET_EXCEPTIONS
     assert "main_window_file_flow" in EXTRACTED_WORKFLOW_HELPERS
     assert "main_window_save_flow" in EXTRACTED_WORKFLOW_HELPERS

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ManualPairingDialog</class>
+ <widget class="QDialog" name="ManualPairingDialog">
+  <property name="windowTitle">
+   <string>Edit Pairings</string>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>900</width>
+    <height>650</height>
+   </size>
+  </property>
+  <layout class="QVBoxLayout" name="main_layout">
+   <property name="leftMargin">
+    <number>12</number>
+   </property>
+   <property name="topMargin">
+    <number>12</number>
+   </property>
+   <property name="rightMargin">
+    <number>12</number>
+   </property>
+   <property name="bottomMargin">
+    <number>12</number>
+   </property>
+   <property name="spacing">
+    <number>10</number>
+   </property>
+   <item>
+    <widget class="QMainWindow" name="main_window_widget">
+     <property name="class" stdset="0">
+      <string>ManualPairingDialog</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="validation_label">
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+     <property name="class" stdset="0">
+      <string>ManualPairingValidationLabel</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttons">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

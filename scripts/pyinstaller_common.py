@@ -16,8 +16,16 @@ DATAS = [
     # styles.qss no longer shipped; individual partials are compiled at runtime
     (str(SRC / "gambitpairing" / "resources" / "LICENSE"), "gambitpairing/resources/"),
     (
+        str(SRC / "gambitpairing" / "resources" / "styles" / "*.qss"),
+        "gambitpairing/resources/styles/",
+    ),
+    (
         str(SRC / "gambitpairing" / "resources" / "icons" / "*"),
         "gambitpairing/resources/icons/",
+    ),
+    (
+        str(SRC / "gambitpairing" / "ui" / "*.ui"),
+        "gambitpairing/ui/",
     ),
 ]
 

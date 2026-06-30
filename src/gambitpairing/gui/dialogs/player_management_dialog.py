@@ -14,6 +14,7 @@ from gambitpairing.gui.dialogs.player_management_data import (
     search_result_count_text,
 )
 from gambitpairing.gui.notification import show_notification
+from gambitpairing.gui.ui_loader import load_ui_into, required_child
 from gambitpairing.models.player import Player, create_player_from_dict
 from gambitpairing.utils.api import (
     get_cfc_player_info,
@@ -112,11 +113,10 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         self.setModal(True)
         self.resize(900, 600)
 
-        # Main layout with tabs
-        layout = QtWidgets.QVBoxLayout(self)
-
-        self.tab_widget = QtWidgets.QTabWidget()
-        layout.addWidget(self.tab_widget)
+        load_ui_into(self, "player_management_dialog.ui")
+        self.setProperty("class", "PlayerManagementDialog")
+        self.tab_widget = required_child(self, QtWidgets.QTabWidget, "tab_widget")
+        self.buttons = required_child(self, QtWidgets.QDialogButtonBox, "buttons")
 
         # Create tabs
         self.details_tab = self._create_details_tab()
@@ -142,14 +142,8 @@ class PlayerManagementDialog(QtWidgets.QDialog):
                 f"Tournament Players ({len(self.tournament.players)})",
             )
 
-        # Dialog buttons
-        button_box = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.StandardButton.Ok
-            | QtWidgets.QDialogButtonBox.StandardButton.Cancel
-        )
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
-        layout.addWidget(button_box)
+        self.buttons.accepted.connect(self.accept)
+        self.buttons.rejected.connect(self.reject)
 
         # Install event filter for Enter key handling
         self.installEventFilter(self)
@@ -404,6 +398,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         btn.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
         btn.setToolTip(tooltip_text)
         btn.setFixedSize(32, 32)
+        btn.setProperty("class", "PlayerManagementCopyButton")
 
         # Try to use a system clipboard icon, fallback to Unicode if not available
         icon = None
@@ -415,40 +410,9 @@ class PlayerManagementDialog(QtWidgets.QDialog):
             # Fallback: use SVG
             icon = get_colored_icon("copy.svg", "#444", 16)
             btn.setIcon(icon)
-            btn.setStyleSheet("""
-                QPushButton {
-                    font-size: 16px;
-                    color: #444;
-                    background: transparent;
-                    border: none;
-                    border-radius: 6px;
-                    padding: 0 4px;
-                }
-                QPushButton:hover {
-                    background: #e0e4ea;
-                    color: #222;
-                }
-                QPushButton:pressed {
-                    background: #d0d4da;
-                }
-            """)
         else:
             btn.setIcon(icon)
             btn.setIconSize(QtCore.QSize(18, 18))
-            btn.setStyleSheet("""
-                QPushButton {
-                    background: transparent;
-                    border: none;
-                    border-radius: 6px;
-                    padding: 0 4px;
-                }
-                QPushButton:hover {
-                    background: #e0e4ea;
-                }
-                QPushButton:pressed {
-                    background: #d0d4da;
-                }
-            """)
         btn.clicked.connect(
             lambda: self._copy_to_clipboard(connected_widget.text(), field_name)
         )
@@ -501,10 +465,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
             "• <b>Right-click</b> on results for copy options<br>"
             "• <b>Double-click</b> any result to import that player"
         )
-        instructions.setStyleSheet(
-            "color: #444; font-size: 10px; background-color: #f0f0f0; "
-            "padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 5px;"
-        )
+        instructions.setProperty("class", "PlayerManagementInstructions")
         search_layout.addWidget(instructions)
 
         layout.addWidget(search_group)
@@ -550,7 +511,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         self.results_info_label = QtWidgets.QLabel(
             "Search for players above to see results here"
         )
-        self.results_info_label.setStyleSheet("color: gray; font-style: italic;")
+        self.results_info_label.setProperty("class", "PlayerManagementSearchStatus")
         results_layout.addWidget(self.results_info_label)
 
         layout.addWidget(results_group, 2)  # Give more space to results section
@@ -623,10 +584,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
             "• <b>Right-click</b> on results for copy options<br>"
             "• <b>Double-click</b> any result to import that player"
         )
-        instructions.setStyleSheet(
-            "color: #444; font-size: 10px; background-color: #f0f0f0; "
-            "padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 5px;"
-        )
+        instructions.setProperty("class", "PlayerManagementInstructions")
         search_layout.addWidget(instructions)
 
         layout.addWidget(search_group)
@@ -670,7 +628,9 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         self.cfc_results_info_label = QtWidgets.QLabel(
             "Search for players above to see results here"
         )
-        self.cfc_results_info_label.setStyleSheet("color: gray; font-style: italic;")
+        self.cfc_results_info_label.setProperty(
+            "class", "PlayerManagementSearchStatus"
+        )
         results_layout.addWidget(self.cfc_results_info_label)
 
         layout.addWidget(results_group, 2)  # Give more space to results section

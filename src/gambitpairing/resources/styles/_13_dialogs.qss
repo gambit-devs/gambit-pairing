@@ -14,6 +14,27 @@ QLabel[class="ManualPairingDialog"] {
   color: {{text_body}};
 }
 
+QLabel[class="ManualPairingInfoLabel"] {
+  color:      {{text_muted}};
+  font-style: italic;
+  padding:    5px;
+  font-size:  {{font_size_sm}};
+}
+
+QLabel[class="ManualPairingSearchLabel"] {
+  color:       {{state_success_text}};
+  font-weight: 600;
+  font-size:   {{font_size_sm}};
+}
+
+QLabel[class="ManualPairingStatsLabel"] {
+  color:         {{text_muted}};
+  font-size:     {{font_size_sm}};
+  padding:       5px;
+  background:    {{bg_subtle}};
+  border-radius: {{radius_sm}};
+}
+
 QLineEdit[class="ManualPairingDialog"] {
   background:    {{bg_surface}};
   border:        1.5px solid {{border_input}};
@@ -73,6 +94,69 @@ QDockWidget[class="ManualPairingDialog"]::float-button:hover {
 QDockWidget[class="ManualPairingDialog"]::close-button:pressed,
 QDockWidget[class="ManualPairingDialog"]::float-button:pressed {
   background: {{border_header}};
+}
+
+QListWidget[class="ManualPairingByeList"] {
+  background-color: #fff3cd;
+  border:           2px dashed #e2c290;
+  border-radius:    {{radius_md}};
+  padding:          4px;
+}
+
+QListWidget[class="ManualPairingByeList"]::item {
+  padding:          6px 8px;
+  margin:           1px;
+  border-radius:    3px;
+  background-color: #fff8e1;
+  border:           1px solid #e2c290;
+  color:            #8b5c2b;
+  font-weight:      700;
+}
+
+QListWidget[class="ManualPairingByeList"]::item:hover {
+  background-color: #ffecb3;
+  border-color:     #d4ac0d;
+}
+
+QListWidget[class="ManualPairingByeList"]::item:selected {
+  background-color: #d4ac0d;
+  color:            white;
+  border-color:     #b7950b;
+}
+
+/* --- Player-management dialog -------------------------------------------- */
+QDialog[class="PlayerManagementDialog"] {
+  background: {{bg_page}};
+}
+
+QPushButton[class="PlayerManagementCopyButton"] {
+  background:    transparent;
+  border:        none;
+  border-radius: {{radius_sm}};
+  padding:       0 4px;
+}
+
+QPushButton[class="PlayerManagementCopyButton"]:hover {
+  background: {{table_hover_bg}};
+}
+
+QPushButton[class="PlayerManagementCopyButton"]:pressed {
+  background: {{border_medium}};
+}
+
+QLabel[class="PlayerManagementInstructions"] {
+  color:         {{text_body}};
+  font-size:     {{font_size_xs}};
+  background:    {{bg_subtle}};
+  padding:       8px;
+  border:        1px solid {{border_medium}};
+  border-radius: {{radius_sm}};
+  margin-bottom: 5px;
+}
+
+QLabel[class="PlayerManagementSearchStatus"] {
+  color:      {{text_muted}};
+  font-style: italic;
 }
 
 /* --- Print-options dialog -------------------------------------------------- */

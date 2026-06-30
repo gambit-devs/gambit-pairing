@@ -1,5 +1,7 @@
 import os
 import importlib
+import importlib.util
+from pathlib import Path
 from typing import Any, cast
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -11,7 +13,9 @@ from PyQt6.QtCore import Qt
 from gambitpairing.constants import DEFAULT_TIEBREAK_SORT_ORDER
 from gambitpairing.constants import RESULT_BLACK_WIN, RESULT_DRAW, RESULT_WHITE_WIN
 from gambitpairing.gui.dialogs.about_dialog import AboutDialog
+from gambitpairing.gui.dialogs.manual_pairing_dialog import ManualPairingDialog
 from gambitpairing.gui.dialogs.new_tournament_dialog import NewTournamentDialog
+from gambitpairing.gui.dialogs.player_management_dialog import PlayerManagementDialog
 from gambitpairing.gui.dialogs.print_options_dialog import PrintOptionsDialog
 from gambitpairing.gui.dialogs.tournament_settings_dialoug import SettingsDialog
 from gambitpairing.gui.dialogs.update_dialog import UpdateDownloadDialog
@@ -26,6 +30,7 @@ from gambitpairing.gui.widgets.round_controls import RoundControlsWidget
 from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 from gambitpairing.models import Player
 from gambitpairing.models.enums import TournamentPhase
+from gambitpairing.models.tournament import Tournament
 
 _APP: QtWidgets.QApplication | None = None
 
@@ -53,6 +58,23 @@ def test_packaged_ui_files_are_parseable():
             form_class, base_class = load_ui_type(str(path))
             assert form_class is not None, resource.name
             assert base_class is not None, resource.name
+
+
+def test_pyinstaller_datas_include_runtime_ui_and_styles():
+    config_path = Path(__file__).resolve().parents[1] / "scripts" / "pyinstaller_common.py"
+    spec = importlib.util.spec_from_file_location("pyinstaller_common", config_path)
+    assert spec is not None
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+
+    data_sources = {source.replace("\\", "/") for source, _ in module.DATAS}
+
+    assert any(source.endswith("gambitpairing/ui/*.ui") for source in data_sources)
+    assert any(
+        source.endswith("gambitpairing/resources/styles/*.qss")
+        for source in data_sources
+    )
 
 
 def test_designer_backed_dialogs_wire_expected_controls():
@@ -128,6 +150,73 @@ def test_designer_backed_dialogs_wire_expected_controls():
     update_prompt.close()
     new_tournament.close()
     about_dialog.close()
+
+
+def test_designer_backed_player_management_dialog_preserves_public_api():
+    _app()
+
+    create_dialog = PlayerManagementDialog()
+    assert create_dialog.windowTitle() == "Player Management"
+    assert create_dialog.tab_widget.count() == 3
+    assert create_dialog.buttons.button(
+        QtWidgets.QDialogButtonBox.StandardButton.Ok
+    ) is not None
+    assert create_dialog.get_editing_player_id() is None
+
+    create_dialog.name_edit.setText("Ada")
+    create_dialog.rating_spin.setValue(1800)
+    data = create_dialog.get_player_data()
+    assert data["name"] == "Ada"
+    assert data["rating"] == 1800
+
+    edit_dialog = PlayerManagementDialog(
+        player_data={
+            "name": "Grace",
+            "rating": 1900,
+            "gender": "F",
+            "fide_id": 123,
+            "fide_title": "WFM",
+        }
+    )
+    assert edit_dialog.name_edit.text() == "Grace"
+    assert edit_dialog.rating_spin.value() == 1900
+    assert not edit_dialog.fide_group.isHidden()
+
+    tournament = Tournament("City Open", [Player("Ada", 1800)], 5)
+    tournament_dialog = PlayerManagementDialog(tournament=tournament)
+    assert tournament_dialog.tab_widget.count() == 4
+    assert tournament_dialog.tournament_table.rowCount() == 1
+    assert tournament_dialog.btn_edit_tournament_player.text() == "Edit Selected Player"
+
+    create_dialog.close()
+    edit_dialog.close()
+    tournament_dialog.close()
+
+
+def test_designer_backed_manual_pairing_dialog_preserves_public_api():
+    _app()
+
+    white = Player("Ada", 1800)
+    black = Player("Bert", 1700)
+    bye = Player("Cora", 1600)
+    dialog = ManualPairingDialog(
+        [white, black, bye],
+        existing_pairings=[(white, black)],
+        existing_bye=bye,
+        round_number=2,
+    )
+
+    assert dialog.windowTitle() == "Edit Pairings - Round 2"
+    assert dialog.buttons.button(
+        QtWidgets.QDialogButtonBox.StandardButton.Ok
+    ) is not None
+    assert dialog.main_window_widget.centralWidget() is not None
+    assert dialog.player_pool_dock.widget() is not None
+    pairings, byes = dialog.get_pairings_and_bye()
+    assert pairings == [(white, black)]
+    assert byes == [bye]
+
+    dialog.close()
 
 
 def test_designer_backed_placeholder_widgets_preserve_api_and_signals():
