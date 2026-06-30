@@ -35,6 +35,24 @@ QLabel[class="ManualPairingStatsLabel"] {
   border-radius: {{radius_sm}};
 }
 
+QLabel[class="ManualPairingValidationLabel"] {
+  padding:       10px;
+  border-radius: 5px;
+  font-weight:   700;
+}
+
+QLabel[class="ManualPairingValidationLabel"][state="warning"] {
+  background-color: {{state_warn_bg}};
+  color:            {{state_warn_text}};
+  border:           1px solid {{state_warn_border}};
+}
+
+QLabel[class="ManualPairingValidationLabel"][state="success"] {
+  background-color: {{state_success_bg}};
+  color:            {{state_success_text}};
+  border:           1px solid {{state_success_border}};
+}
+
 QLineEdit[class="ManualPairingDialog"] {
   background:    {{bg_surface}};
   border:        1.5px solid {{border_input}};
@@ -157,6 +175,50 @@ QLabel[class="PlayerManagementInstructions"] {
 QLabel[class="PlayerManagementSearchStatus"] {
   color:      {{text_muted}};
   font-style: italic;
+}
+
+QLabel[class="PlayerManagementSearchStatus"][state="busy"] {
+  color: {{color_primary}};
+}
+
+QLabel[class="PlayerManagementSearchStatus"][state="success"] {
+  color:       {{state_success_text}};
+  font-weight: 700;
+}
+
+QLabel[class="PlayerManagementSearchStatus"][state="warning"] {
+  color:       {{state_warn_text}};
+  font-weight: 700;
+}
+
+QLabel[class="PlayerManagementSearchStatus"][state="error"] {
+  color:       {{state_error_accent}};
+  font-weight: 700;
+}
+
+QLabel[class="PlayerManagementEmptyIcon"] {
+  color:     {{text_muted}};
+  font-size: 32pt;
+  margin:    20px;
+}
+
+QLabel[class="PlayerManagementEmptyTitle"] {
+  color:       {{text_muted}};
+  font-size:   18pt;
+  font-weight: 700;
+  margin:      10px;
+}
+
+QLabel[class="PlayerManagementEmptySubtitle"] {
+  color:         {{text_muted}};
+  font-size:     12pt;
+  margin-bottom: 20px;
+}
+
+QPushButton[class="PlayerManagementEmptyAction"] {
+  padding:     12px 24px;
+  font-size:   12pt;
+  font-weight: 700;
 }
 
 /* --- Print-options dialog -------------------------------------------------- */

@@ -134,74 +134,8 @@ class TournamentPrintUtils:
                     # However, we can try to find the specific widget and modify its properties.
                     widget.setEditable(True)
                     widget.setInsertPolicy(QtWidgets.QComboBox.InsertPolicy.NoInsert)
-                    # Make it look more like a line edit
-                    widget.setStyleSheet(
-                        "QComboBox { border: 1px solid #ccc; padding: 2px; }"
-                    )
                     break
 
         return printer, preview
 
 
-def create_print_button(label: str, tooltip: str = "") -> QtWidgets.QPushButton:
-    """Create a standardized print button for use in tabs.
-
-    This helper centralizes the visual affordance used for Print buttons
-    across the app so they look and behave consistently.
-
-    Args:
-        label: The text label for the button (e.g. "Print Standings").
-        tooltip: Optional tooltip to set on the button.
-
-    Returns:
-        Configured QPushButton instance.
-    """
-    btn = QtWidgets.QPushButton(label)
-    if tooltip:
-        btn.setToolTip(tooltip)
-    return btn
-
-
-class PrintOptionsDialog(QtWidgets.QDialog):
-    """Custom dialog for print options including tournament name inclusion."""
-
-    def __init__(
-        self, parent=None, tournament_name: str = "", print_type: str = "Document"
-    ):
-        super().__init__(parent)
-        self.setWindowTitle(f"Print Options - {print_type}")
-        self.setModal(True)
-        self.setMinimumWidth(300)
-        layout = QtWidgets.QVBoxLayout(self)
-        # No checkbox, just info label
-        if tournament_name:
-            info_label = QtWidgets.QLabel(
-                f"Tournament name '{tournament_name}' will be included in the printout."
-            )
-            info_label.setWordWrap(True)
-            layout.addWidget(info_label)
-        layout.addSpacing(10)
-        button_box = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.StandardButton.Ok
-            | QtWidgets.QDialogButtonBox.StandardButton.Cancel
-        )
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
-        layout.addWidget(button_box)
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #f8f9fa;
-            }
-            QLabel {
-                font-size: 11pt;
-                padding: 5px;
-            }
-            QPushButton {
-                font-size: 11pt;
-                padding: 6px 12px;
-                min-width: 70px;
-            }
-        """)
-
-    def get_options(self) -> dict:
-        return {"include_tournament_name": True}

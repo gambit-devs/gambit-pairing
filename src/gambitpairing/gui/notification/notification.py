@@ -19,9 +19,10 @@
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import QEasingCurve, QPropertyAnimation
 from PyQt6.QtGui import QPainter, QPainterPath
-from PyQt6.QtWidgets import QLabel, QProgressBar, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QWidget
 
 from .event_filter import NotificationEventFilter
+from gambitpairing.gui.ui_loader import load_ui_into, required_child
 
 # Layout/animation constants
 _MARGIN = 20
@@ -60,27 +61,14 @@ class Notification(QWidget):
         max_width = max(200, min(_MAX_WIDTH_DEFAULT, parent_width - (_MARGIN * 2)))
         self.setFixedWidth(max_width)
 
-        # Layout
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 12, 16, 8)
-        layout.setSpacing(8)
-
-        # Message
-        self.message_label = QLabel(message, self)
-        self.message_label.setWordWrap(True)
-        self.message_label.setAlignment(
-            QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
+        load_ui_into(self, "notification.ui")
+        self.message_label = required_child(self, QtWidgets.QLabel, "message_label")
+        self.progress_bar = required_child(
+            self, QtWidgets.QProgressBar, "progress_bar"
         )
-
-        # Progress bar
-        self.progress_bar = QProgressBar(self)
-        self.progress_bar.setRange(0, 100)
+        self.message_label.setText(message)
         self.progress_bar.setValue(0)
-        self.progress_bar.setTextVisible(False)
         self.progress_bar.setFixedHeight(_PROGRESS_HEIGHT)
-
-        layout.addWidget(self.message_label)
-        layout.addWidget(self.progress_bar)
 
         # Finalize size
         self.adjustSize()

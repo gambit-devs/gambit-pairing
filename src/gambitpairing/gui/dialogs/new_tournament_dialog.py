@@ -128,40 +128,18 @@ class NewTournamentDialog(QtWidgets.QDialog):
                 "details": "<ul><li><b>Pairing Logic:</b> No automatic pairing. TD manually creates all matches each round.</li><li><b>Best For:</b> Special events, demonstration games, custom formats.</li><li><b>Features:</b> Full pairing editor with drag-and-drop, player pool, edit mode for swapping players.</li><li><b>Notes:</b> Maximum flexibility but requires manual work for every round.</li></ul>",
             },
         }
-        # Dialog with sidebar
         dialog = QtWidgets.QDialog(self)
-        dialog.setProperty("class", "PairingInfoDialog")
-        dialog.setWindowTitle("About Pairing Systems")
-        dialog.setMinimumWidth(600)
-        dialog.setMinimumHeight(350)
-        layout = QtWidgets.QHBoxLayout(dialog)
-        # Sidebar (Table of Contents)
-        toc = QtWidgets.QListWidget()
-        toc.setMaximumWidth(200)
-        toc.setProperty("class", "PairingInfoToc")
-        toc.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
+        load_ui_into(dialog, "pairing_info_dialog.ui")
+        toc = required_child(dialog, QtWidgets.QListWidget, "toc")
+        title_label = required_child(dialog, QtWidgets.QLabel, "title_label")
+        desc_label = required_child(dialog, QtWidgets.QLabel, "desc_label")
+        html_details = required_child(dialog, QtWidgets.QTextBrowser, "html_details")
+
         keys = list(info.keys())
         for k in keys:
             item = QtWidgets.QListWidgetItem(info[k]["title"])
             item.setData(Qt.ItemDataRole.UserRole, k)
             toc.addItem(item)
-        layout.addWidget(toc)
-        # Details pane
-        details_widget = QtWidgets.QWidget()
-        details_layout = QtWidgets.QVBoxLayout(details_widget)
-        title_label = QtWidgets.QLabel()
-        title_label.setProperty("class", "PairingInfoTitle")
-        desc_label = QtWidgets.QLabel()
-        desc_label.setWordWrap(True)
-        desc_label.setProperty("class", "PairingInfoDescription")
-        html_details = QtWidgets.QTextBrowser()
-        html_details.setOpenExternalLinks(True)
-        html_details.setProperty("class", "PairingInfoDetails")
-        details_layout.addWidget(title_label)
-        details_layout.addWidget(desc_label)
-        details_layout.addWidget(html_details)
-        details_layout.addStretch()
-        layout.addWidget(details_widget)
 
         def update_details(idx):
             key = toc.item(idx).data(Qt.ItemDataRole.UserRole)

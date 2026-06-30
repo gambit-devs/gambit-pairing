@@ -15,16 +15,6 @@ class ValidationProjection:
     has_warnings: bool
 
 
-WARNING_VALIDATION_STYLE = (
-    "padding: 10px; border-radius: 5px; font-weight: bold; "
-    "background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7;"
-)
-SUCCESS_VALIDATION_STYLE = (
-    "padding: 10px; border-radius: 5px; font-weight: bold; "
-    "background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;"
-)
-
-
 def paired_player_count(pairings: Sequence[PairingLike]) -> int:
     return sum(1 for white, black in pairings if white and black) * 2
 

@@ -32,8 +32,6 @@ from gambitpairing.gui.dialogs.manual_pairing_io import (
     parse_pairings_import_data,
 )
 from gambitpairing.gui.dialogs.manual_pairing_state import (
-    SUCCESS_VALIDATION_STYLE,
-    WARNING_VALIDATION_STYLE,
     build_stats_text,
     build_unresolved_players_message,
     build_validation_projection,
@@ -713,25 +711,6 @@ class ManualPairingDialog(QtWidgets.QDialog):
 
         return table
 
-    def _create_validation_panel(self):
-        """Create the validation information panel."""
-        self.validation_label = QtWidgets.QLabel()
-        self.validation_label.setWordWrap(True)
-        self.validation_label.setStyleSheet(
-            "padding: 10px; border-radius: 5px; font-weight: bold;"
-        )
-        return self.validation_label
-
-    def _create_dialog_buttons(self):
-        """Create the dialog button box."""
-        buttons = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.StandardButton.Ok
-            | QtWidgets.QDialogButtonBox.StandardButton.Cancel
-        )
-        buttons.accepted.connect(self._confirm_finalize_pairings)
-        buttons.rejected.connect(self.reject)
-        return buttons
-
     def _confirm_finalize_pairings(self):
         reply = QtWidgets.QMessageBox.question(
             self,
@@ -872,11 +851,10 @@ class ManualPairingDialog(QtWidgets.QDialog):
             self.players, self.pairings, self.bye_players, previous_matches
         )
         self.validation_label.setText(projection.text)
-        self.validation_label.setStyleSheet(
-            WARNING_VALIDATION_STYLE
-            if projection.has_warnings
-            else SUCCESS_VALIDATION_STYLE
+        self.validation_label.setProperty(
+            "state", "warning" if projection.has_warnings else "success"
         )
+        update_widget_style(self.validation_label)
 
     def _check_repeat_pairings(self) -> List[str]:
         """Check for repeat pairings and return list of board numbers."""

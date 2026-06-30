@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import QObject, Qt, QThread, pyqtSignal
 
-from gambitpairing.gui.gui_utils import get_colored_icon, set_svg_icon
+from gambitpairing.gui.gui_utils import get_colored_icon, update_widget_style
 from gambitpairing.gui.dialogs.player_management_data import (
     PlayerFormFields,
     build_player_data_from_fields,
@@ -15,15 +15,11 @@ from gambitpairing.gui.dialogs.player_management_data import (
 )
 from gambitpairing.gui.notification import show_notification
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
-from gambitpairing.models.player import Player, create_player_from_dict
+from gambitpairing.models.player import Player
 from gambitpairing.utils.api import (
     get_cfc_player_info,
     get_fide_player_info,
     search_fide_players,
-)
-from gambitpairing.utils.api_adapters import (
-    cfc_api_to_player_dict,
-    fide_api_to_player_dict,
 )
 
 # FIDE columns with better minimum widths
@@ -115,32 +111,11 @@ class PlayerManagementDialog(QtWidgets.QDialog):
 
         load_ui_into(self, "player_management_dialog.ui")
         self.setProperty("class", "PlayerManagementDialog")
-        self.tab_widget = required_child(self, QtWidgets.QTabWidget, "tab_widget")
-        self.buttons = required_child(self, QtWidgets.QDialogButtonBox, "buttons")
-
-        # Create tabs
-        self.details_tab = self._create_details_tab()
-        self.tab_widget.addTab(self.details_tab, "Player Details")
-
-        # FIDE tab
-        self.fide_tab = self._create_fide_tab()
-        self.tab_widget.addTab(self.fide_tab, "Import from FIDE")
-
-        # CFC tab
-        self.cfc_tab = self._create_cfc_tab()
-        self.tab_widget.addTab(self.cfc_tab, "Import from CFC")
-
-        # US-CF tab TODO
-        # self.uscf_tab = self._create_USCF_tab()
-        # self.tab_widget.addTab(self.uscf_tab, "Import from US-CF")
-
-        # Tournament players tab (only if tournament provided)
-        if self.tournament:
-            self.tournament_tab = self._create_tournament_tab()
-            self.tab_widget.addTab(
-                self.tournament_tab,
-                f"Tournament Players ({len(self.tournament.players)})",
-            )
+        self._bind_ui_controls()
+        self._configure_details_tab()
+        self._configure_fide_tab()
+        self._configure_cfc_tab()
+        self._configure_tournament_tab()
 
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
@@ -148,211 +123,216 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         # Install event filter for Enter key handling
         self.installEventFilter(self)
 
-    def _create_details_tab(self):
-        """Create the player details editing tab."""
-        widget = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout(widget)
-
-        # Basic information group
-        basic_group = QtWidgets.QGroupBox("Basic Information")
-        form = QtWidgets.QFormLayout(basic_group)
-
-        # Name with copy button
-        name_layout = QtWidgets.QHBoxLayout()
-        self.name_edit = QtWidgets.QLineEdit()
-        self.name_edit.setToolTip("Full name of the player")
-        self.name_edit.setMaximumHeight(40)
-        self.name_edit.textChanged.connect(
-            lambda: setattr(self, "_player_data_changed", True)
-        )
-        name_layout.addWidget(self.name_edit)
-        name_layout.addWidget(
-            self._create_copy_button("Copy name to clipboard", self.name_edit, "Name")
-        )
-        form.addRow("Name:", name_layout)
-
-        # Rating with copy button
-        rating_layout = QtWidgets.QHBoxLayout()
-        self.rating_spin = QtWidgets.QSpinBox()
-        self.rating_spin.setRange(0, 3500)
-        self.rating_spin.setValue(1000)
-        self.rating_spin.setMaximumHeight(40)
-        self.rating_spin.setToolTip("Player's rating (0-3500)")
-        rating_layout.addWidget(self.rating_spin)
-        # Create a dummy QLineEdit for rating copy functionality
-        self._rating_copy_helper = QtWidgets.QLineEdit()
-        self._rating_copy_helper.setVisible(False)
-        rating_copy_btn = self._create_copy_button(
-            "Copy rating to clipboard", self._rating_copy_helper, "Rating"
-        )
-        rating_copy_btn.clicked.disconnect()
-        rating_copy_btn.clicked.connect(
-            lambda: self._copy_to_clipboard(str(self.rating_spin.value()), "Rating")
-        )
-        rating_layout.addWidget(rating_copy_btn)
-        form.addRow("Rating:", rating_layout)
-
-        # Gender and Date of Birth on same line
-        gender_dob_layout = QtWidgets.QHBoxLayout()
-        self.gender_combo = QtWidgets.QComboBox()
-        self.gender_combo.addItems(["", "Male", "Female"])
-        self.gender_combo.setMaximumHeight(40)
-        self.gender_combo.setToolTip("Select gender (optional)")
-        gender_dob_layout.addWidget(QtWidgets.QLabel("Gender:"))
-        gender_dob_layout.addWidget(self.gender_combo)
-
-        self.dob_edit = QtWidgets.QDateEdit()
-        self.dob_edit.setCalendarPopup(True)
-        self.dob_edit.setDate(QtCore.QDate(2000, 1, 1))
-        self.dob_edit.setSpecialValueText("Not set")
-        self.dob_edit.setMaximumHeight(40)
-        self.dob_edit.setToolTip("Date of birth (optional)")
-
-        gender_dob_layout.addSpacing(10)
-        gender_dob_layout.addWidget(QtWidgets.QLabel("Date of Birth:"))
-        gender_dob_layout.addWidget(self.dob_edit)
-        gender_dob_layout.addStretch()
-
-        form.addRow(gender_dob_layout)
-
-        layout.addWidget(basic_group)
-
-        # Contact information group
-        contact_group = QtWidgets.QGroupBox("Contact Information (Optional)")
-        contact_form = QtWidgets.QFormLayout(contact_group)
-
-        # Phone with copy button
-        phone_layout = QtWidgets.QHBoxLayout()
-        self.phone_edit = QtWidgets.QLineEdit()
-        self.phone_edit.setMaximumHeight(40)
-        self.phone_edit.setToolTip("Phone number (optional)")
-        phone_layout.addWidget(self.phone_edit)
-        phone_layout.addWidget(
-            self._create_copy_button(
-                "Copy phone to clipboard", self.phone_edit, "Phone"
-            )
-        )
-        contact_form.addRow("Phone:", phone_layout)
-
-        # Email with copy button
-        email_layout = QtWidgets.QHBoxLayout()
-        self.email_edit = QtWidgets.QLineEdit()
-        self.email_edit.setMaximumHeight(40)
-        self.email_edit.setToolTip("Email address (optional)")
-        email_layout.addWidget(self.email_edit)
-        email_layout.addWidget(
-            self._create_copy_button(
-                "Copy email to clipboard", self.email_edit, "Email"
-            )
-        )
-        contact_form.addRow("Email:", email_layout)
-
-        # Club with copy button
-        club_layout = QtWidgets.QHBoxLayout()
-        self.club_edit = QtWidgets.QLineEdit()
-        self.club_edit.setMaximumHeight(40)
-        self.club_edit.setToolTip("Chess club (optional)")
-        club_layout.addWidget(self.club_edit)
-        club_layout.addWidget(
-            self._create_copy_button("Copy club to clipboard", self.club_edit, "Club")
-        )
-        contact_form.addRow("Club:", club_layout)
-
-        # Federation with copy button
-        federation_layout = QtWidgets.QHBoxLayout()
-        self.federation_edit = QtWidgets.QLineEdit()
-        self.federation_edit.setMaximumHeight(40)
-        self.federation_edit.setToolTip("Federation/Country (optional)")
-        federation_layout.addWidget(self.federation_edit)
-        federation_layout.addWidget(
-            self._create_copy_button(
-                "Copy federation to clipboard", self.federation_edit, "Federation"
-            )
-        )
-        contact_form.addRow("Federation:", federation_layout)
-
-        layout.addWidget(contact_group)
-
-        # FIDE metadata (editable with copy buttons)
-        self.fide_group = QtWidgets.QGroupBox("FIDE Information")
-        self.fide_group.setVisible(False)
-        fide_form = QtWidgets.QFormLayout(self.fide_group)
-
-        # FIDE ID with copy button
-        fide_id_layout = QtWidgets.QHBoxLayout()
-        self.fide_id_edit = QtWidgets.QLineEdit()
-        self.fide_id_edit.setMaximumHeight(40)
-        self.fide_id_edit.setToolTip("FIDE ID (editable)")
-        fide_id_layout.addWidget(self.fide_id_edit)
-        fide_id_layout.addWidget(
-            self._create_copy_button(
-                "Copy FIDE ID to clipboard", self.fide_id_edit, "FIDE ID"
-            )
-        )
-        fide_form.addRow("FIDE ID:", fide_id_layout)
-
-        # Title with copy button
-        title_layout = QtWidgets.QHBoxLayout()
-        self.fide_title_edit = QtWidgets.QLineEdit()
-        self.fide_title_edit.setMaximumHeight(40)
-        self.fide_title_edit.setToolTip("FIDE Title (editable)")
-        title_layout.addWidget(self.fide_title_edit)
-        title_layout.addWidget(
-            self._create_copy_button(
-                "Copy title to clipboard", self.fide_title_edit, "Title"
-            )
-        )
-        fide_form.addRow("Title:", title_layout)
-
-        # Standard rating with copy button
-        std_layout = QtWidgets.QHBoxLayout()
-        self.fide_std_edit = QtWidgets.QLineEdit()
-        self.fide_std_edit.setMaximumHeight(40)
-        self.fide_std_edit.setToolTip("Standard rating (editable)")
-        std_layout.addWidget(self.fide_std_edit)
-        std_layout.addWidget(
-            self._create_copy_button(
-                "Copy standard rating to clipboard",
-                self.fide_std_edit,
-                "Standard Rating",
-            )
-        )
-        fide_form.addRow("Standard:", std_layout)
-
-        # Rapid rating with copy button
-        rapid_layout = QtWidgets.QHBoxLayout()
-        self.fide_rapid_edit = QtWidgets.QLineEdit()
-        self.fide_rapid_edit.setMaximumHeight(40)
-        self.fide_rapid_edit.setToolTip("Rapid rating (editable)")
-        rapid_layout.addWidget(self.fide_rapid_edit)
-        rapid_layout.addWidget(
-            self._create_copy_button(
-                "Copy rapid rating to clipboard", self.fide_rapid_edit, "Rapid Rating"
-            )
-        )
-        fide_form.addRow("Rapid:", rapid_layout)
-
-        # Blitz rating with copy button
-        blitz_layout = QtWidgets.QHBoxLayout()
-        self.fide_blitz_edit = QtWidgets.QLineEdit()
-        self.fide_blitz_edit.setMaximumHeight(40)
-        self.fide_blitz_edit.setToolTip("Blitz rating (editable)")
-        blitz_layout.addWidget(self.fide_blitz_edit)
-        blitz_layout.addWidget(
-            self._create_copy_button(
-                "Copy blitz rating to clipboard", self.fide_blitz_edit, "Blitz Rating"
-            )
-        )
-        fide_form.addRow("Blitz:", blitz_layout)
-
-        layout.addWidget(self.fide_group)
-        layout.addStretch()
-
-        # Populate if provided
         if self.player_data:
             self._populate_details_form()
 
-        return widget
+    def _bind_ui_controls(self) -> None:
+        """Bind required Designer controls to the dialog's public API fields."""
+        self.tab_widget = required_child(self, QtWidgets.QTabWidget, "tab_widget")
+        self.buttons = required_child(self, QtWidgets.QDialogButtonBox, "buttons")
+
+        self.details_tab = required_child(self, QtWidgets.QWidget, "details_tab")
+        self.fide_tab = required_child(self, QtWidgets.QWidget, "fide_tab")
+        self.cfc_tab = required_child(self, QtWidgets.QWidget, "cfc_tab")
+        self.tournament_tab = required_child(self, QtWidgets.QWidget, "tournament_tab")
+
+        self.name_edit = required_child(self, QtWidgets.QLineEdit, "name_edit")
+        self.rating_spin = required_child(self, QtWidgets.QSpinBox, "rating_spin")
+        self.gender_combo = required_child(self, QtWidgets.QComboBox, "gender_combo")
+        self.dob_edit = required_child(self, QtWidgets.QDateEdit, "dob_edit")
+        self.phone_edit = required_child(self, QtWidgets.QLineEdit, "phone_edit")
+        self.email_edit = required_child(self, QtWidgets.QLineEdit, "email_edit")
+        self.club_edit = required_child(self, QtWidgets.QLineEdit, "club_edit")
+        self.federation_edit = required_child(
+            self, QtWidgets.QLineEdit, "federation_edit"
+        )
+        self.fide_group = required_child(self, QtWidgets.QGroupBox, "fide_group")
+        self.fide_id_edit = required_child(self, QtWidgets.QLineEdit, "fide_id_edit")
+        self.fide_title_edit = required_child(
+            self, QtWidgets.QLineEdit, "fide_title_edit"
+        )
+        self.fide_std_edit = required_child(self, QtWidgets.QLineEdit, "fide_std_edit")
+        self.fide_rapid_edit = required_child(
+            self, QtWidgets.QLineEdit, "fide_rapid_edit"
+        )
+        self.fide_blitz_edit = required_child(
+            self, QtWidgets.QLineEdit, "fide_blitz_edit"
+        )
+
+        self.search_edit = required_child(self, QtWidgets.QLineEdit, "search_edit")
+        self.btn_search = required_child(self, QtWidgets.QPushButton, "btn_search")
+        self.btn_clear = required_child(self, QtWidgets.QPushButton, "btn_clear")
+        self.fide_table = required_child(self, QtWidgets.QTableWidget, "fide_table")
+        self.results_info_label = required_child(
+            self, QtWidgets.QLabel, "results_info_label"
+        )
+        self.fide_progress = required_child(
+            self, QtWidgets.QProgressBar, "fide_progress"
+        )
+        self.btn_use_selected = required_child(
+            self, QtWidgets.QPushButton, "btn_use_selected"
+        )
+
+        self.cfc_search_edit = required_child(
+            self, QtWidgets.QLineEdit, "cfc_search_edit"
+        )
+        self.btn_cfc_search = required_child(
+            self, QtWidgets.QPushButton, "btn_cfc_search"
+        )
+        self.btn_cfc_clear = required_child(
+            self, QtWidgets.QPushButton, "btn_cfc_clear"
+        )
+        self.cfc_table = required_child(self, QtWidgets.QTableWidget, "cfc_table")
+        self.cfc_results_info_label = required_child(
+            self, QtWidgets.QLabel, "cfc_results_info_label"
+        )
+        self.cfc_progress = required_child(
+            self, QtWidgets.QProgressBar, "cfc_progress"
+        )
+        self.btn_use_selected_cfc = required_child(
+            self, QtWidgets.QPushButton, "btn_use_selected_cfc"
+        )
+
+        self.tournament_stack = required_child(
+            self, QtWidgets.QStackedWidget, "tournament_stack"
+        )
+        self.tournament_empty_page = required_child(
+            self, QtWidgets.QWidget, "tournament_empty_page"
+        )
+        self.tournament_table_page = required_child(
+            self, QtWidgets.QWidget, "tournament_table_page"
+        )
+        self.btn_empty_go_fide = required_child(
+            self, QtWidgets.QPushButton, "btn_empty_go_fide"
+        )
+        self.btn_empty_go_details = required_child(
+            self, QtWidgets.QPushButton, "btn_empty_go_details"
+        )
+        self.tournament_table = required_child(
+            self, QtWidgets.QTableWidget, "tournament_table"
+        )
+        self.btn_edit_tournament_player = required_child(
+            self, QtWidgets.QPushButton, "btn_edit_tournament_player"
+        )
+
+    def _configure_details_tab(self) -> None:
+        self.name_edit.textChanged.connect(
+            lambda: setattr(self, "_player_data_changed", True)
+        )
+        self._configure_copy_button("btn_copy_name", self.name_edit.text, "Name")
+        self._configure_copy_button(
+            "btn_copy_rating", lambda: str(self.rating_spin.value()), "Rating"
+        )
+        self._configure_copy_button("btn_copy_phone", self.phone_edit.text, "Phone")
+        self._configure_copy_button("btn_copy_email", self.email_edit.text, "Email")
+        self._configure_copy_button("btn_copy_club", self.club_edit.text, "Club")
+        self._configure_copy_button(
+            "btn_copy_federation", self.federation_edit.text, "Federation"
+        )
+        self._configure_copy_button("btn_copy_fide_id", self.fide_id_edit.text, "FIDE ID")
+        self._configure_copy_button("btn_copy_fide_title", self.fide_title_edit.text, "Title")
+        self._configure_copy_button(
+            "btn_copy_fide_std", self.fide_std_edit.text, "Standard Rating"
+        )
+        self._configure_copy_button(
+            "btn_copy_fide_rapid", self.fide_rapid_edit.text, "Rapid Rating"
+        )
+        self._configure_copy_button(
+            "btn_copy_fide_blitz", self.fide_blitz_edit.text, "Blitz Rating"
+        )
+
+    def _configure_copy_button(
+        self, name: str, text_getter: Callable[[], str], field_name: str
+    ) -> None:
+        button = required_child(self, QtWidgets.QPushButton, name)
+        button.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        button.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        button.setFixedSize(32, 32)
+        icon = QtGui.QIcon.fromTheme("edit-copy")
+        if not icon or icon.isNull():
+            icon = get_colored_icon("copy.svg", "#444", 16)
+        button.setIcon(icon)
+        button.setIconSize(QtCore.QSize(18, 18))
+        button.clicked.connect(
+            lambda: self._copy_to_clipboard(text_getter(), field_name)
+        )
+
+    def _configure_fide_tab(self) -> None:
+        self.search_edit.installEventFilter(self)
+        self.btn_search.clicked.connect(self._on_search)
+        self.btn_clear.clicked.connect(self._clear_fide_results)
+        self._configure_results_table(self.fide_table, FIDE_COLUMNS)
+        self.fide_table.itemSelectionChanged.connect(self._on_fide_selection_changed)
+        self.fide_table.itemDoubleClicked.connect(self._use_selected_fide_player)
+        self.fide_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.fide_table.customContextMenuRequested.connect(self._show_fide_context_menu)
+        self.btn_use_selected.clicked.connect(self._use_selected_fide_player)
+
+    def _configure_cfc_tab(self) -> None:
+        self.cfc_search_edit.installEventFilter(self)
+        self.btn_cfc_search.clicked.connect(self._on_cfc_search)
+        self.btn_cfc_clear.clicked.connect(self._clear_cfc_results)
+        self._configure_results_table(self.cfc_table, CFC_COLUMNS)
+        self.cfc_table.itemSelectionChanged.connect(self._on_cfc_selection_changed)
+        self.cfc_table.itemDoubleClicked.connect(self._use_selected_cfc_player)
+        self.cfc_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.cfc_table.customContextMenuRequested.connect(self._show_cfc_context_menu)
+        self.btn_use_selected_cfc.clicked.connect(self._use_selected_cfc_player)
+
+    def _configure_results_table(
+        self, table: QtWidgets.QTableWidget, columns: List[Tuple[str, int]]
+    ) -> None:
+        table.setColumnCount(len(columns))
+        table.verticalHeader().setVisible(False)
+        header = table.horizontalHeader()
+        for index, (title, width) in enumerate(columns):
+            table.setHorizontalHeaderItem(index, QtWidgets.QTableWidgetItem(title))
+            table.setColumnWidth(index, width)
+            header.setMinimumSectionSize(width)
+        header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+
+    def _set_search_status(
+        self, label: QtWidgets.QLabel, text: str, state: str = "idle"
+    ) -> None:
+        label.setText(text)
+        label.setProperty("state", state)
+        update_widget_style(label)
+
+    def _configure_tournament_tab(self) -> None:
+        if not self.tournament:
+            self.tab_widget.removeTab(self.tab_widget.indexOf(self.tournament_tab))
+            return
+
+        self.tab_widget.setTabText(
+            self.tab_widget.indexOf(self.tournament_tab),
+            f"Tournament Players ({len(self.tournament.players)})",
+        )
+        self.btn_empty_go_fide.clicked.connect(lambda: self.tab_widget.setCurrentIndex(1))
+        self.btn_empty_go_details.clicked.connect(
+            lambda: self.tab_widget.setCurrentIndex(0)
+        )
+
+        if len(self.tournament.players) == 0:
+            self.tournament_stack.setCurrentWidget(self.tournament_empty_page)
+            return
+
+        self.tournament_stack.setCurrentWidget(self.tournament_table_page)
+        self._configure_results_table(self.tournament_table, TOURNAMENT_COLUMNS)
+        header = self.tournament_table.horizontalHeader()
+        header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Stretch)
+        for index in range(1, len(TOURNAMENT_COLUMNS)):
+            header.setSectionResizeMode(index, QtWidgets.QHeaderView.ResizeMode.Fixed)
+        self.tournament_table.itemSelectionChanged.connect(
+            self._on_tournament_selection_changed
+        )
+        self.tournament_table.itemDoubleClicked.connect(
+            self._edit_selected_tournament_player
+        )
+        self.btn_edit_tournament_player.clicked.connect(
+            self._edit_selected_tournament_player
+        )
+        self._populate_tournament_table()
+
 
     def _copy_to_clipboard(self, text: str, field_name: str = "") -> None:
         """Copy text to clipboard with feedback using notification."""
@@ -388,274 +368,6 @@ class PlayerManagementDialog(QtWidgets.QDialog):
             "success",  # Use success type for successful copies
         )
 
-    def _create_copy_button(
-        self, tooltip_text: str, connected_widget: QtWidgets.QLineEdit, field_name: str
-    ) -> QtWidgets.QPushButton:
-        """Create a copy button with clipboard icon and styling."""
-        btn = QtWidgets.QPushButton()
-        btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
-        btn.setFlat(True)
-        btn.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
-        btn.setToolTip(tooltip_text)
-        btn.setFixedSize(32, 32)
-        btn.setProperty("class", "PlayerManagementCopyButton")
-
-        # Try to use a system clipboard icon, fallback to Unicode if not available
-        icon = None
-        try:
-            icon = QtGui.QIcon.fromTheme("edit-copy")
-        except Exception:
-            icon = None
-        if not icon or icon.isNull():
-            # Fallback: use SVG
-            icon = get_colored_icon("copy.svg", "#444", 16)
-            btn.setIcon(icon)
-        else:
-            btn.setIcon(icon)
-            btn.setIconSize(QtCore.QSize(18, 18))
-        btn.clicked.connect(
-            lambda: self._copy_to_clipboard(connected_widget.text(), field_name)
-        )
-        return btn
-
-    def _create_fide_tab(self):
-        """Create the FIDE import tab."""
-        widget = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout(widget)
-
-        # Search section with group box
-        search_group = QtWidgets.QGroupBox("Search FIDE Database")
-        search_layout = QtWidgets.QVBoxLayout(search_group)
-
-        # Unified search controls
-        search_bar = QtWidgets.QHBoxLayout()
-
-        # Single unified search field
-        search_bar.addWidget(QtWidgets.QLabel("Search:"))
-        self.search_edit = QtWidgets.QLineEdit()
-        self.search_edit.setToolTip(
-            "Enter player name (e.g., 'Magnus Carlsen') or FIDE ID (e.g., '1503014')"
-        )
-        self.search_edit.setPlaceholderText("Enter player name or FIDE ID...")
-        self.search_edit.installEventFilter(self)
-        search_bar.addWidget(self.search_edit)
-
-        self.btn_search = QtWidgets.QPushButton("Search")
-        self.btn_search.setToolTip("Search by name or FIDE ID (Ctrl+Enter)")
-        self.btn_search.setShortcut("Ctrl+Return")
-        self.btn_search.clicked.connect(self._on_search)
-        search_bar.addWidget(self.btn_search)
-
-        # Clear button
-        self.btn_clear = QtWidgets.QPushButton("Clear Results")
-        self.btn_clear.setToolTip("Clear search results and start over (Ctrl+R)")
-        self.btn_clear.setShortcut("Ctrl+R")
-        self.btn_clear.clicked.connect(self._clear_fide_results)
-        self.btn_clear.setEnabled(False)  # Initially disabled
-        search_bar.addWidget(self.btn_clear)
-
-        search_layout.addLayout(search_bar)
-
-        # Instructions with examples
-        instructions = QtWidgets.QLabel(
-            "<b>Search Tips:</b><br>"
-            "• <b>Name search:</b> Try 'Magnus Carlsen', 'Carlsen', or 'Magnus'<br>"
-            "• <b>FIDE ID search:</b> Enter exact ID like 1503014<br>"
-            "• <b>Auto-detection:</b> Numbers are treated as FIDE IDs, text as names<br>"
-            "• <b>Right-click</b> on results for copy options<br>"
-            "• <b>Double-click</b> any result to import that player"
-        )
-        instructions.setProperty("class", "PlayerManagementInstructions")
-        search_layout.addWidget(instructions)
-
-        layout.addWidget(search_group)
-
-        # Results table with better column widths - make this section much larger
-        results_group = QtWidgets.QGroupBox("Search Results")
-        results_layout = QtWidgets.QVBoxLayout(results_group)
-
-        self.fide_table = QtWidgets.QTableWidget(0, len(FIDE_COLUMNS))
-        self.fide_table.setSelectionBehavior(
-            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
-        )
-        self.fide_table.setEditTriggers(
-            QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
-        )
-        self.fide_table.verticalHeader().setVisible(False)
-        self.fide_table.setAlternatingRowColors(True)
-        self.fide_table.setMinimumHeight(350)  # Make table much taller
-
-        # Set headers and minimum column widths
-        header = self.fide_table.horizontalHeader()
-        for i, (title, width) in enumerate(FIDE_COLUMNS):
-            self.fide_table.setHorizontalHeaderItem(
-                i, QtWidgets.QTableWidgetItem(title)
-            )
-            self.fide_table.setColumnWidth(i, width)
-            # Set minimum width to prevent columns from being too narrow
-            header.setMinimumSectionSize(width)
-
-        # Make checkbox column resize to contents (minimum space)
-        header.setSectionResizeMode(
-            0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
-        )
-
-        self.fide_table.itemSelectionChanged.connect(self._on_fide_selection_changed)
-        self.fide_table.itemDoubleClicked.connect(self._use_selected_fide_player)
-        self.fide_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.fide_table.customContextMenuRequested.connect(self._show_fide_context_menu)
-
-        results_layout.addWidget(self.fide_table)
-
-        # Results info label
-        self.results_info_label = QtWidgets.QLabel(
-            "Search for players above to see results here"
-        )
-        self.results_info_label.setProperty("class", "PlayerManagementSearchStatus")
-        results_layout.addWidget(self.results_info_label)
-
-        layout.addWidget(results_group, 2)  # Give more space to results section
-
-        # Progress bar and buttons
-        controls_layout = QtWidgets.QHBoxLayout()
-
-        self.fide_progress = QtWidgets.QProgressBar()
-        self.fide_progress.setVisible(False)
-        controls_layout.addWidget(self.fide_progress)
-
-        controls_layout.addStretch()
-
-        self.btn_use_selected = QtWidgets.QPushButton("Import Selected Player")
-        self.btn_use_selected.setEnabled(False)
-        self.btn_use_selected.setToolTip(
-            "Import the selected FIDE player data to the Player Details tab"
-        )
-        self.btn_use_selected.clicked.connect(self._use_selected_fide_player)
-        controls_layout.addWidget(self.btn_use_selected)
-
-        layout.addLayout(controls_layout)
-
-        return widget
-
-    def _create_cfc_tab(self):
-        """Create the CFC import tab."""
-        widget = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout(widget)
-
-        # Search section with group box
-        search_group = QtWidgets.QGroupBox("Search CFC Database")
-        search_layout = QtWidgets.QVBoxLayout(search_group)
-
-        # Unified search controls
-        search_bar = QtWidgets.QHBoxLayout()
-
-        # Single unified search field
-        search_bar.addWidget(QtWidgets.QLabel("Search:"))
-        self.cfc_search_edit = QtWidgets.QLineEdit()
-        self.cfc_search_edit.setToolTip(
-            "Enter player name (e.g., 'Kevin Spraggett') or CFC ID (e.g., '100123')"
-        )
-        self.cfc_search_edit.setPlaceholderText("Enter player name or CFC ID...")
-        self.cfc_search_edit.installEventFilter(self)
-        search_bar.addWidget(self.cfc_search_edit)
-
-        self.btn_cfc_search = QtWidgets.QPushButton("Search")
-        self.btn_cfc_search.setToolTip("Search by name or CFC ID")
-        self.btn_cfc_search.clicked.connect(self._on_cfc_search)
-        search_bar.addWidget(self.btn_cfc_search)
-
-        # Clear button
-        self.btn_cfc_clear = QtWidgets.QPushButton("Clear Results")
-        self.btn_cfc_clear.setToolTip("Clear search results and start over (Ctrl+R)")
-        self.btn_cfc_clear.setShortcut("Ctrl+R")
-        self.btn_cfc_clear.clicked.connect(self._clear_cfc_results)
-        self.btn_cfc_clear.setEnabled(False)  # Initially disabled
-        search_bar.addWidget(self.btn_cfc_clear)
-
-        search_layout.addLayout(search_bar)
-
-        # Instructions with examples
-        instructions = QtWidgets.QLabel(
-            "<b>Search Tips:</b><br>"
-            "• <b>Name search:</b> Try 'Kevin Spraggett', 'Spraggett', or 'Kevin'<br>"
-            "• <b>CFC ID search:</b> Enter exact ID like 100123<br>"
-            "• <b>Auto-detection:</b> Numbers are treated as CFC IDs, text as names<br>"
-            "• <b>Province filter:</b> Narrow results by selecting a specific province<br>"
-            "• <b>Right-click</b> on results for copy options<br>"
-            "• <b>Double-click</b> any result to import that player"
-        )
-        instructions.setProperty("class", "PlayerManagementInstructions")
-        search_layout.addWidget(instructions)
-
-        layout.addWidget(search_group)
-
-        # Results table with better column widths - make this section much larger
-        results_group = QtWidgets.QGroupBox("Search Results")
-        results_layout = QtWidgets.QVBoxLayout(results_group)
-
-        self.cfc_table = QtWidgets.QTableWidget(0, len(CFC_COLUMNS))
-        self.cfc_table.setSelectionBehavior(
-            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
-        )
-        self.cfc_table.setEditTriggers(
-            QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
-        )
-        self.cfc_table.verticalHeader().setVisible(False)
-        self.cfc_table.setAlternatingRowColors(True)
-        self.cfc_table.setMinimumHeight(350)  # Make table much taller
-
-        # Set headers and minimum column widths
-        header = self.cfc_table.horizontalHeader()
-        for i, (title, width) in enumerate(CFC_COLUMNS):
-            self.cfc_table.setHorizontalHeaderItem(i, QtWidgets.QTableWidgetItem(title))
-            self.cfc_table.setColumnWidth(i, width)
-            # Set minimum width to prevent columns from being too narrow
-            header.setMinimumSectionSize(width)
-
-        # Make checkbox column resize to contents (minimum space)
-        header.setSectionResizeMode(
-            0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
-        )
-
-        self.cfc_table.itemSelectionChanged.connect(self._on_cfc_selection_changed)
-        self.cfc_table.itemDoubleClicked.connect(self._use_selected_cfc_player)
-        self.cfc_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.cfc_table.customContextMenuRequested.connect(self._show_cfc_context_menu)
-
-        results_layout.addWidget(self.cfc_table)
-
-        # Results info label
-        self.cfc_results_info_label = QtWidgets.QLabel(
-            "Search for players above to see results here"
-        )
-        self.cfc_results_info_label.setProperty(
-            "class", "PlayerManagementSearchStatus"
-        )
-        results_layout.addWidget(self.cfc_results_info_label)
-
-        layout.addWidget(results_group, 2)  # Give more space to results section
-
-        # Progress bar and buttons
-        controls_layout = QtWidgets.QHBoxLayout()
-
-        self.cfc_progress = QtWidgets.QProgressBar()
-        self.cfc_progress.setVisible(False)
-        controls_layout.addWidget(self.cfc_progress)
-
-        controls_layout.addStretch()
-
-        self.btn_use_selected_cfc = QtWidgets.QPushButton("Import Selected Player")
-        self.btn_use_selected_cfc.setEnabled(False)
-        self.btn_use_selected_cfc.setToolTip(
-            "Import the selected CFC player data to the Player Details tab"
-        )
-        self.btn_use_selected_cfc.clicked.connect(self._use_selected_cfc_player)
-        controls_layout.addWidget(self.btn_use_selected_cfc)
-
-        layout.addLayout(controls_layout)
-
-        return widget
-
     # Supporting methods for CFC functionality
     def _on_cfc_search(self):
         """Handle CFC search button click."""
@@ -675,7 +387,9 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         self.cfc_progress.setVisible(True)
         self.cfc_progress.setRange(0, 0)  # Indeterminate progress
         self.btn_cfc_search.setEnabled(False)
-        self.cfc_results_info_label.setText("Searching CFC database...")
+        self._set_search_status(
+            self.cfc_results_info_label, "Searching CFC database...", "busy"
+        )
 
         try:
             results = get_cfc_player_info(search_term)
@@ -686,7 +400,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
             QtWidgets.QMessageBox.warning(
                 self, "Search Error", f"Failed to search CFC database:\n{str(e)}"
             )
-            self.cfc_results_info_label.setText("Search failed")
+            self._set_search_status(self.cfc_results_info_label, "Search failed", "error")
 
         finally:
             self.cfc_progress.setVisible(False)
@@ -720,20 +434,26 @@ class PlayerManagementDialog(QtWidgets.QDialog):
 
         # Update results info
         if results:
-            self.cfc_results_info_label.setText(
-                f"Found {len(results)} player(s) for '{search_term}'"
+            self._set_search_status(
+                self.cfc_results_info_label,
+                f"Found {len(results)} player(s) for '{search_term}'",
+                "success",
             )
         else:
-            self.cfc_results_info_label.setText(
-                f"No players found for '{search_term}'. Try a different search term."
+            self._set_search_status(
+                self.cfc_results_info_label,
+                f"No players found for '{search_term}'. Try a different search term.",
+                "warning",
             )
 
     def _clear_cfc_results(self):
         """Clear CFC search results."""
         self.cfc_table.setRowCount(0)
         self.cfc_search_edit.clear()
-        self.cfc_results_info_label.setText(
-            "Search for players above to see results here"
+        self._set_search_status(
+            self.cfc_results_info_label,
+            "Search for players above to see results here",
+            "idle",
         )
         self.btn_cfc_clear.setEnabled(False)
         self.btn_use_selected_cfc.setEnabled(False)
@@ -883,132 +603,6 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         # for now, this is not implemented
         raise NotImplementedError
 
-    def _create_tournament_tab(self):
-        """Create the tournament players tab."""
-        widget = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout(widget)
-
-        # Check if tournament has players
-        if not self.tournament or len(self.tournament.players) == 0:
-            # Show empty state with helpful message and navigation
-            empty_layout = QtWidgets.QVBoxLayout()
-            empty_layout.addStretch()
-
-            # Icon or large text
-            no_players_label = QtWidgets.QLabel("🏆")
-            no_players_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            no_players_label.setStyleSheet("font-size: 48pt; margin: 20px;")
-            empty_layout.addWidget(no_players_label)
-
-            # Main message
-            main_message = QtWidgets.QLabel("No Players in Tournament Yet")
-            main_message.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            main_message.setStyleSheet(
-                "font-size: 18pt; font-weight: bold; color: #666; margin: 10px;"
-            )
-            empty_layout.addWidget(main_message)
-
-            # Sub message
-            sub_message = QtWidgets.QLabel("Start by adding players to your tournament")
-            sub_message.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            sub_message.setStyleSheet(
-                "font-size: 12pt; color: #999; margin-bottom: 20px;"
-            )
-            empty_layout.addWidget(sub_message)
-
-            # Navigation buttons
-            buttons_layout = QtWidgets.QHBoxLayout()
-            buttons_layout.addStretch()
-
-            goto_fide_btn = QtWidgets.QPushButton("Import from FIDE")
-            goto_fide_btn.setStyleSheet(
-                "padding: 12px 24px; font-size: 12pt; font-weight: bold;"
-            )
-            goto_fide_btn.clicked.connect(
-                lambda: self.tab_widget.setCurrentIndex(1)
-            )  # FIDE tab
-            buttons_layout.addWidget(goto_fide_btn)
-
-            goto_details_btn = QtWidgets.QPushButton("Add Player Manually")
-            goto_details_btn.setStyleSheet(
-                "padding: 12px 24px; font-size: 12pt; font-weight: bold;"
-            )
-            goto_details_btn.clicked.connect(
-                lambda: self.tab_widget.setCurrentIndex(0)
-            )  # Details tab
-            buttons_layout.addWidget(goto_details_btn)
-
-            buttons_layout.addStretch()
-            empty_layout.addLayout(buttons_layout)
-            empty_layout.addStretch()
-
-            layout.addLayout(empty_layout)
-            return widget
-
-        # Instructions
-        instructions = QtWidgets.QLabel(
-            "Double-click a player to edit, or select and click the button below"
-        )
-        instructions.setStyleSheet(
-            "color: gray; font-style: italic; margin-bottom: 10px;"
-        )
-        layout.addWidget(instructions)
-
-        # Tournament players table with proper column widths
-        self.tournament_table = QtWidgets.QTableWidget(0, len(TOURNAMENT_COLUMNS))
-        self.tournament_table.setSelectionBehavior(
-            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
-        )
-        self.tournament_table.setEditTriggers(
-            QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
-        )
-        self.tournament_table.verticalHeader().setVisible(False)
-        self.tournament_table.setAlternatingRowColors(True)
-
-        # Set headers and column widths with proper stretching
-        header = self.tournament_table.horizontalHeader()
-        for i, (title, width) in enumerate(TOURNAMENT_COLUMNS):
-            self.tournament_table.setHorizontalHeaderItem(
-                i, QtWidgets.QTableWidgetItem(title)
-            )
-            self.tournament_table.setColumnWidth(i, width)
-            header.setMinimumSectionSize(width)
-
-        # Make the Name column stretch to fill available space
-        header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Stretch)
-        # Keep other columns at fixed widths
-        for i in range(1, len(TOURNAMENT_COLUMNS)):
-            header.setSectionResizeMode(i, QtWidgets.QHeaderView.ResizeMode.Fixed)
-
-        self.tournament_table.itemSelectionChanged.connect(
-            self._on_tournament_selection_changed
-        )
-        self.tournament_table.itemDoubleClicked.connect(
-            self._edit_selected_tournament_player
-        )
-        layout.addWidget(self.tournament_table, 1)
-
-        # Controls
-        controls_layout = QtWidgets.QHBoxLayout()
-        controls_layout.addStretch()
-
-        self.btn_edit_tournament_player = QtWidgets.QPushButton("Edit Selected Player")
-        self.btn_edit_tournament_player.setEnabled(False)
-        self.btn_edit_tournament_player.setToolTip(
-            "Edit the selected tournament player"
-        )
-        self.btn_edit_tournament_player.clicked.connect(
-            self._edit_selected_tournament_player
-        )
-        controls_layout.addWidget(self.btn_edit_tournament_player)
-
-        layout.addLayout(controls_layout)
-
-        # Populate tournament players
-        self._populate_tournament_table()
-
-        return widget
-
     def _populate_details_form(self):
         """Populate the details form with player data."""
 
@@ -1129,10 +723,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         if busy:
             self.fide_progress.setRange(0, 0)  # Indeterminate
             if status_text:
-                self.results_info_label.setText(status_text)
-                self.results_info_label.setStyleSheet(
-                    "color: blue; font-style: italic;"
-                )
+                self._set_search_status(self.results_info_label, status_text, "busy")
         else:
             self.fide_progress.setVisible(False)
 
@@ -1203,8 +794,11 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         self.fide_group.setVisible(False)
 
         # Reset info label
-        self.results_info_label.setText("Search for players above to see results here")
-        self.results_info_label.setStyleSheet("color: gray; font-style: italic;")
+        self._set_search_status(
+            self.results_info_label,
+            "Search for players above to see results here",
+            "idle",
+        )
 
         # Clear search field
         self.search_edit.clear()
@@ -1237,16 +831,18 @@ class PlayerManagementDialog(QtWidgets.QDialog):
             return
 
         if error:
-            self.results_info_label.setText(f"Search failed: {error}")
-            self.results_info_label.setStyleSheet("color: red; font-weight: bold;")
+            self._set_search_status(
+                self.results_info_label, f"Search failed: {error}", "error"
+            )
             QtWidgets.QMessageBox.warning(self, "FIDE Search Error", f"Error: {error}")
         elif result:
             self._display_fide_results(result)
         else:
-            self.results_info_label.setText(
-                "No players found. Try a different search term."
+            self._set_search_status(
+                self.results_info_label,
+                "No players found. Try a different search term.",
+                "warning",
             )
-            self.results_info_label.setStyleSheet("color: orange; font-weight: bold;")
             QtWidgets.QMessageBox.information(self, "No Results", "No players found.")
 
         self._set_fide_busy(False)
@@ -1281,8 +877,9 @@ class PlayerManagementDialog(QtWidgets.QDialog):
 
         # Update info label and enable clear button
         player_count = len(players)
-        self.results_info_label.setText(search_result_count_text(player_count))
-        self.results_info_label.setStyleSheet("color: green; font-weight: bold;")
+        self._set_search_status(
+            self.results_info_label, search_result_count_text(player_count), "success"
+        )
         self.btn_clear.setEnabled(player_count > 0)
 
     def _append_fide_row(self, p: Dict[str, Any]) -> None:

@@ -9,7 +9,9 @@ DESIGNER_BACKED_UI_FILES: tuple[str, ...] = (
     "main_window.ui",
     "manual_pairing_dialog.ui",
     "new_tournament_dialog.ui",
+    "notification.ui",
     "pairings_table.ui",
+    "pairing_info_dialog.ui",
     "player_management_dialog.ui",
     "player_placeholder.ui",
     "players_view.ui",
@@ -28,10 +30,7 @@ DESIGNER_BACKED_UI_FILES: tuple[str, ...] = (
 )
 
 REMAINING_PYTHON_BUILT_LAYOUTS: tuple[str, ...] = (
-    "GambitPairingMainWindow toolbar tournament-info widget",
     "ManualPairingDialog dynamic dock, toolbar, bye list, and pairings panel",
-    "PlayerManagementDialog tab interiors for details/import/tournament players",
-    "Notification popup body",
 )
 
 DYNAMIC_WIDGET_EXCEPTIONS: tuple[str, ...] = (

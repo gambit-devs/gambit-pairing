@@ -707,19 +707,10 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         # Separator before tournament info when tournament is started
         self.tournament_separator = toolbar.addSeparator()
 
-        # Add tournament info container
-        tournament_info_container = QtWidgets.QWidget()
-        tournament_info_container.setProperty("class", "ToolbarInfoContainer")
-        tournament_info_layout = QtWidgets.QHBoxLayout(tournament_info_container)
-        tournament_info_layout.setContentsMargins(8, 0, 8, 0)
-        tournament_info_layout.setSpacing(12)
-
-        # Tournament name label
         self.toolbar_tournament_label = QtWidgets.QLabel("No Tournament Loaded")
         self.toolbar_tournament_label.setProperty("class", "ToolbarTournamentLabel")
-        tournament_info_layout.addWidget(self.toolbar_tournament_label)
-
-        toolbar.addWidget(tournament_info_container)
+        self.toolbar_tournament_label.setContentsMargins(8, 0, 8, 0)
+        toolbar.addWidget(self.toolbar_tournament_label)
 
     def _update_ui_state(self):
         """Update the state of UI elements based on the tournament's current state.
