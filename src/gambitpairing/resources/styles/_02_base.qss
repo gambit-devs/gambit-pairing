@@ -25,7 +25,7 @@ QLabel {
 /* Section title / heading labels */
 QLabel[class="SectionTitle"] {
   color:        {{text_heading}};
-  font-size:    {{font_size_2xl}};
+  font-size:    {{font_size_xl}};
   font-weight:  700;
   background:   transparent;
   padding:      0;

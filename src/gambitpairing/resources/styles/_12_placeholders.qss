@@ -18,7 +18,7 @@ QLabel[class="NoTournamentIcon"] {
 }
 
 QLabel[class="NoTournamentMainMessage"] {
-  font-size:     {{font_size_3xl}};
+  font-size:     {{font_size_2xl}};
   font-weight:   700;
   color:         {{color_primary}};
   margin-bottom: 10px;
@@ -46,7 +46,7 @@ QLabel[class="PlayerPlaceHolderIcon"] {
 }
 
 QLabel[class="PlayerPlaceholderTitle"] {
-  font-size:     {{font_size_3xl}};
+  font-size:     {{font_size_2xl}};
   font-weight:   700;
   color:         {{color_primary}};
   margin-bottom: 10px;
@@ -62,7 +62,7 @@ QLabel[class="PlayerPlaceholderDesc"] {
 
 /* --- Pre-tournament welcome screen ---------------------------------------- */
 QLabel[class="PreTournamentTitle"] {
-  font-size:     {{font_size_3xl}};
+  font-size:     {{font_size_2xl}};
   font-weight:   700;
   color:         {{color_primary}};
   margin-bottom: 10px;

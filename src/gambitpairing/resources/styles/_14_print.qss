@@ -1,25 +1,72 @@
 /* =============================================================================
    14 — PRINT PREVIEW
-   Overrides for system print preview and print dialogs.  These are sized
-   down to prevent text overflow in the relatively narrow system dialog panels.
+   Overrides for system print preview and print dialogs.  Keep controls compact
+   without clipping translated or platform-rendered text.
    ============================================================================= */
 
 /* Compact text for labels and combos inside print dialogs */
+QPrintPreviewDialog QToolBar,
+QPrintDialog QToolBar {
+  padding: 1px 3px;
+  spacing: 1px;
+}
+
+QPrintPreviewDialog QToolBar::separator,
+QPrintDialog QToolBar::separator {
+  width: 1px;
+  margin: 0 3px;
+}
+
 QPrintPreviewDialog QLabel,
 QPrintDialog QLabel,
 QPrintPreviewDialog QComboBox,
-QPrintDialog QComboBox {
-  font-size: {{font_size_xs}};
+QPrintDialog QComboBox,
+QPrintPreviewDialog QLineEdit,
+QPrintDialog QLineEdit,
+QPrintPreviewDialog QSpinBox,
+QPrintDialog QSpinBox {
+  font-size: {{font_size_sm}};
   outline:   none;
 }
 
+QPrintPreviewDialog QToolBar QComboBox,
+QPrintDialog QToolBar QComboBox {
+  min-width: 70px;
+  max-width: 78px;
+  min-height: 22px;
+  padding: 1px 17px 1px 6px;
+}
+
+QPrintPreviewDialog QToolBar QComboBox::drop-down,
+QPrintDialog QToolBar QComboBox::drop-down {
+  width: 16px;
+}
+
+QPrintPreviewDialog QToolBar QComboBox::down-arrow,
+QPrintDialog QToolBar QComboBox::down-arrow {
+  width: 10px;
+  height: 10px;
+}
+
+QPrintPreviewDialog QToolBar QLineEdit,
+QPrintDialog QToolBar QLineEdit,
+QPrintPreviewDialog QToolBar QSpinBox,
+QPrintDialog QToolBar QSpinBox {
+  min-width: 46px;
+  max-width: 56px;
+  min-height: 22px;
+  padding: 1px 6px;
+}
+
 /* Smaller toolbar buttons inside print preview */
-QPrintPreviewDialog QToolButton,
-QPrintDialog QToolButton {
+QPrintPreviewDialog QToolBar QToolButton,
+QPrintDialog QToolBar QToolButton {
   min-width:  24px;
+  max-width:  24px;
   min-height: 24px;
-  padding:    2px 4px;
-  icon-size:  16px 16px;
+  max-height: 24px;
+  padding:    1px;
+  icon-size:  13px 13px;
   font-size:  {{font_size_xs}};
   outline:    none;
 }

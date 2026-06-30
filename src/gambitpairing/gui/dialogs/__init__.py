@@ -24,6 +24,7 @@ from .print_options_dialog import PrintOptionsDialog
 from .tournament_settings_dialoug import SettingsDialog
 from .update_dialog import UpdateDownloadDialog
 from .update_prompt_dialog import UpdatePromptDialog
+from .unsaved_changes_dialog import UnsavedChangesDialog
 
 __all__ = [
     "NewTournamentDialog",
@@ -32,6 +33,7 @@ __all__ = [
     "ManualPairingDialog",
     "UpdateDownloadDialog",
     "UpdatePromptDialog",
+    "UnsavedChangesDialog",
     "AboutDialog",
     "PrintOptionsDialog",
 ]

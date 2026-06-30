@@ -24,6 +24,7 @@ import re
 from typing import Tuple
 
 from PyQt6 import QtWidgets
+from PyQt6.QtCore import Qt
 from PyQt6.QtPrintSupport import QPrinter, QPrintPreviewDialog
 
 
@@ -105,37 +106,20 @@ class TournamentPrintUtils:
         printer = QPrinter(QPrinter.PrinterMode.HighResolution)
         preview = QPrintPreviewDialog(printer, parent)
         preview.setWindowTitle(title)
-
-        # Customize the toolbar to remove the zoom dropdown
-        # Find the toolbar in the dialog
-        toolbar = preview.findChild(QtWidgets.QToolBar)
-        if toolbar:
-            # Iterate through actions to find the zoom combo box
-            for action in toolbar.actions():
-                widget = toolbar.widgetForAction(action)
-                if isinstance(widget, QtWidgets.QComboBox):
-                    # Found the zoom combo box, replace it with a label
-                    # We can't easily replace the widget in the action, but we can hide the action
-                    # and insert a label. However, QPrintPreviewDialog is a bit rigid.
-                    # A simpler approach is to just hide the combo box if possible,
-                    # or accept that we can't easily modify the internal QPrintPreviewDialog toolbar
-                    # without more complex hacking.
-
-                    # Let's try to find the zoom input and replace/modify it
-                    # The zoom combo is usually populated with percentages.
-
-                    # Alternative: Create a custom preview dialog that inherits QPrintPreviewDialog
-                    # and overrides the toolbar creation, but that's complex.
-
-                    # Let's try to just set it to editable or replace it if we can access it.
-                    # Since the user asked to "replace it with either a read-only display... or a simple input field",
-                    # and this is a standard Qt dialog, modifying it is tricky.
-
-                    # However, we can try to find the specific widget and modify its properties.
-                    widget.setEditable(True)
-                    widget.setInsertPolicy(QtWidgets.QComboBox.InsertPolicy.NoInsert)
-                    break
+        TournamentPrintUtils._lock_preview_toolbar(preview)
 
         return printer, preview
+
+    @staticmethod
+    def _lock_preview_toolbar(preview: QPrintPreviewDialog) -> None:
+        """Keep Qt's built-in print-preview toolbar fixed in place."""
+        toolbar = preview.findChild(QtWidgets.QToolBar)
+        if toolbar is None:
+            return
+
+        toolbar.setMovable(False)
+        toolbar.setFloatable(False)
+        toolbar.setAllowedAreas(Qt.ToolBarArea.TopToolBarArea)
+        toolbar.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
 
 

@@ -24,7 +24,7 @@ QWidget[class="TabHeader"] {
 
 QLabel[class="TabTitle"] {
   color:       {{color_primary}};
-  font-size:   {{font_size_3xl}};
+  font-size:   {{font_size_2xl}};
   font-weight: 700;
   background:  transparent;
   padding-top: 4px;

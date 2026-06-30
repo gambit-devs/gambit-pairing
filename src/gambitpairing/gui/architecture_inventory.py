@@ -2,6 +2,16 @@
 
 from __future__ import annotations
 
+UI_REFACTOR_BOUNDARY_RULES: tuple[str, ...] = (
+    "Static layout belongs in Designer .ui files.",
+    "Behavior, signal wiring, and runtime state belong in Python.",
+    "Styling belongs in QSS resources.",
+    "Models hold data only.",
+    "Representation and persistence own serialization and save/load.",
+    "Qt-free domain logic must not live in GUI modules.",
+    "GUI dependencies must not leak into domain modules.",
+)
+
 DESIGNER_BACKED_UI_FILES: tuple[str, ...] = (
     "about_dialog.ui",
     "crosstable_view.ui",
@@ -27,6 +37,7 @@ DESIGNER_BACKED_UI_FILES: tuple[str, ...] = (
     "tournament_view.ui",
     "update_download_dialog.ui",
     "update_prompt_dialog.ui",
+    "unsaved_changes_dialog.ui",
 )
 
 REMAINING_PYTHON_BUILT_LAYOUTS: tuple[str, ...] = (

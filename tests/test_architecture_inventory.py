@@ -8,6 +8,7 @@ from gambitpairing.gui.architecture_inventory import (
     EXTRACTED_WORKFLOW_HELPERS,
     PAIRING_ENGINE_GUARDED_FILES,
     REMAINING_PYTHON_BUILT_LAYOUTS,
+    UI_REFACTOR_BOUNDARY_RULES,
 )
 from gambitpairing.gui.notification import Notification as CanonicalNotification
 from gambitpairing.gui.widgets.notification import Notification as WidgetNotification
@@ -21,6 +22,18 @@ def test_architecture_inventory_matches_packaged_ui_files():
     }
 
     assert set(DESIGNER_BACKED_UI_FILES) == packaged_ui_files
+
+
+def test_architecture_inventory_records_refactor_boundary_rules():
+    rules = " ".join(UI_REFACTOR_BOUNDARY_RULES)
+
+    assert "Designer .ui" in rules
+    assert "Behavior" in rules
+    assert "QSS" in rules
+    assert "Models hold data only" in rules
+    assert "serialization and save/load" in rules
+    assert "Qt-free domain logic" in rules
+    assert "GUI dependencies" in rules
 
 
 def test_architecture_inventory_tracks_remaining_layout_and_workflow_boundaries():

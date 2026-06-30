@@ -39,6 +39,7 @@ from .dialogs import (
     AboutDialog,
     NewTournamentDialog,
     SettingsDialog,
+    UnsavedChangesDialog,
 )
 from .import_player import ImportPlayer
 from .main_window_file_flow import (
@@ -363,27 +364,12 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             return True
         logger.info("check_save_before_proceeding: fount state to be dirty.")
         prompt = build_unsaved_changes_prompt()
-        msgbox = QtWidgets.QMessageBox(self)
-        msgbox.setWindowTitle(prompt.title)
-        msgbox.setText(prompt.message)
-        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
+        dialog = UnsavedChangesDialog(prompt, self)
+        dialog.exec()
 
-        # Create custom buttons
-        btn_save = QtWidgets.QPushButton(prompt.save_label)
-        btn_discard = QtWidgets.QPushButton(prompt.discard_label)
-        btn_cancel = QtWidgets.QPushButton(prompt.cancel_label)
-
-        # Add buttons to msgbox
-        msgbox.addButton(btn_save, QtWidgets.QMessageBox.ButtonRole.AcceptRole)
-        msgbox.addButton(btn_discard, QtWidgets.QMessageBox.ButtonRole.DestructiveRole)
-        msgbox.addButton(btn_cancel, QtWidgets.QMessageBox.ButtonRole.RejectRole)
-
-        msgbox.exec()
-        clicked = msgbox.clickedButton()
-
-        if clicked == btn_save:
+        if dialog.selected_action == "save":
             return should_continue_after_save_prompt("save", self.save_tournament())
-        if clicked == btn_discard:
+        if dialog.selected_action == "discard":
             return should_continue_after_save_prompt("discard", save_succeeded=False)
         return should_continue_after_save_prompt("cancel", save_succeeded=False)
 

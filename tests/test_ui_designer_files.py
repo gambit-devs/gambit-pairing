@@ -20,6 +20,8 @@ from gambitpairing.gui.dialogs.print_options_dialog import PrintOptionsDialog
 from gambitpairing.gui.dialogs.tournament_settings_dialoug import SettingsDialog
 from gambitpairing.gui.dialogs.update_dialog import UpdateDownloadDialog
 from gambitpairing.gui.dialogs.update_prompt_dialog import UpdatePromptDialog
+from gambitpairing.gui.dialogs.unsaved_changes_dialog import UnsavedChangesDialog
+from gambitpairing.gui.main_window_save_flow import build_unsaved_changes_prompt
 from gambitpairing.gui.widgets.header import TabHeader
 from gambitpairing.gui.widgets.pairings_table import PairingsTable
 from gambitpairing.gui.widgets.player_placeholder import PlayerPlaceholder
@@ -111,6 +113,15 @@ def test_designer_backed_dialogs_wire_expected_controls():
     assert "Gambit Pairing" in update_prompt.title_label.text()
     assert "2.0.0" in update_prompt.version_info_label.text()
 
+    unsaved_prompt = build_unsaved_changes_prompt()
+    unsaved_dialog = UnsavedChangesDialog(unsaved_prompt)
+    assert unsaved_dialog.windowTitle() == "Unsaved Changes"
+    assert unsaved_dialog.message_label.text() == unsaved_prompt.message
+    assert unsaved_dialog.save_button.text() == "Save"
+    assert unsaved_dialog.discard_button.text() == "Close without Saving"
+    assert unsaved_dialog.discard_button.minimumWidth() >= 300
+    assert unsaved_dialog.cancel_button.text() == "Cancel"
+
     new_tournament = NewTournamentDialog()
     assert new_tournament.get_data() == (
         "My Swiss Tournament",
@@ -148,6 +159,7 @@ def test_designer_backed_dialogs_wire_expected_controls():
     update_dialog.close()
     settings_dialog.close()
     update_prompt.close()
+    unsaved_dialog.close()
     new_tournament.close()
     about_dialog.close()
 

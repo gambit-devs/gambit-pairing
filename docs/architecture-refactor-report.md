@@ -19,6 +19,15 @@ number of widgets still build detailed layout in Python.
 - Keep serialization in `src/gambitpairing/representation`.
 - Keep style in QSS resources.
 
+## Boundary Rule
+
+Never put behavior in `.ui` and never put layout in Python. Designer `.ui`
+files own static layout, Python owns behavior/signal wiring/runtime state, and
+QSS owns styling. Models hold data only; representation/persistence handle
+serialization/save-load; Qt-free logic should not live in GUI code; GUI code
+should not leak into domain logic. Main window code should stay thin and talk to
+views/widgets through intent-level APIs such as `reset_display()`.
+
 ## Improvements Made
 
 - Added a runtime UI loader for packaged Qt Designer `.ui` files.

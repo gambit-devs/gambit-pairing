@@ -50,8 +50,13 @@ QPushButton:disabled {
 
 /* --- Dialog button box (slightly narrower) -------------------------------- */
 QDialogButtonBox QPushButton {
-  min-width: 90px;
-  padding:   10px 24px;
+  min-width: 120px;
+  padding:   9px 20px;
+}
+
+QMessageBox QPushButton {
+  min-width: 130px;
+  padding:   9px 20px;
 }
 
 /* --- Primary filled button ------------------------------------------------ */

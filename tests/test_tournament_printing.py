@@ -1,3 +1,10 @@
+import os
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+from PyQt6 import QtWidgets
+from PyQt6.QtCore import Qt
+
 from gambitpairing.gui.views.tournament.tournament_printing import (
     PairingsPrintRow,
     build_combined_tournament_print_html,
@@ -5,6 +12,19 @@ from gambitpairing.gui.views.tournament.tournament_printing import (
     build_pairings_print_section,
     build_standings_print_section,
 )
+from gambitpairing.utils.print import TournamentPrintUtils
+
+
+_APP: QtWidgets.QApplication | None = None
+
+
+def _app() -> QtWidgets.QApplication:
+    global _APP
+    app = QtWidgets.QApplication.instance()
+    if app is None:
+        app = QtWidgets.QApplication([])
+    _APP = app
+    return _APP
 
 
 def test_pairings_print_section_includes_rows_and_bye():
@@ -55,3 +75,20 @@ def test_combined_tournament_print_html_wraps_sections_and_timestamp():
     assert "standings" in html
     assert "Printed by Gambit Pairing" in html
     assert "2026-06-29 21:30" in html
+
+
+def test_print_preview_toolbar_is_locked_in_place():
+    _app()
+
+    _printer, preview = TournamentPrintUtils.create_print_preview_dialog(
+        None, "Print Preview - Test"
+    )
+    toolbar = preview.findChild(QtWidgets.QToolBar)
+
+    assert toolbar is not None
+    assert not toolbar.isMovable()
+    assert not toolbar.isFloatable()
+    assert toolbar.allowedAreas() == Qt.ToolBarArea.TopToolBarArea
+    assert toolbar.contextMenuPolicy() == Qt.ContextMenuPolicy.NoContextMenu
+
+    preview.close()
