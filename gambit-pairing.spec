@@ -1,16 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-import os
 import sys
+from pathlib import Path
 from PyInstaller.building.build_main import Analysis, PYZ, EXE
 
-# Compute the spec directory. When PyInstaller executes a spec it may exec()
-# it in a namespace without __file__; fall back to sys.argv[0] in that case.
-if '__file__' in globals():
-    _spec_dir = os.path.abspath(os.path.dirname(__file__))
-else:
-    _spec_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
-sys.path.insert(0, _spec_dir)
+sys.path.insert(0, SPECPATH)
+sys.path.insert(0, str(Path(SPECPATH) / "scripts"))
 
 from pyinstaller_common import (
     PATHEX,
@@ -26,7 +21,7 @@ from pyinstaller_common import (
 )
 
 a = Analysis(
-    ['src/gambitpairing/__main__.py'],
+    ["src/gambitpairing/__main__.py"],
     pathex=PATHEX,
     binaries=BINARIES,
     datas=DATAS,

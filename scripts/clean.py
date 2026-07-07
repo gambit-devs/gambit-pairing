@@ -18,14 +18,14 @@ def clean_compiled_files(root: Path) -> None:
 
 def main():
     # Get the directory where this script is located
-    script_dir = Path(__file__).parent
+    git_root = Path(__file__).parent.parent
 
-    print(f"cleaning: {script_dir}")
+    print(f"cleaning: {git_root}")
 
     # Define directories to clean
-    built_dir = script_dir / "build"
-    dist_dir = script_dir / "dist"
-    src_dir = script_dir / "src"
+    built_dir = git_root / "build"
+    dist_dir = git_root / "dist"
+    src_dir = git_root / "src"
 
     clean_compiled_files(src_dir)
 

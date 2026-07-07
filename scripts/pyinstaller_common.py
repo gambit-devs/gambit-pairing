@@ -5,7 +5,7 @@ Keep plain data structures here so both spec files can import them and stay smal
 
 from pathlib import Path
 
-ROOT = Path(__file__).parent
+ROOT = Path(__file__).parent.parent
 SRC = ROOT / "src"
 
 # Where PyInstaller should look for imports (adjust if your layout changes)
@@ -14,7 +14,7 @@ PATHEX = [str(SRC)]
 # Data files to include (source path or glob, destination relative path inside bundle)
 DATAS = [
     # styles.qss no longer shipped; individual partials are compiled at runtime
-    (str(SRC / "gambitpairing" / "resources" / "LICENSE"), "gambitpairing/resources/"),
+    (str(ROOT / "licenses" / "LICENSE"), "gambitpairing/resources/"),
     (
         str(SRC / "gambitpairing" / "resources" / "styles" / "*.qss"),
         "gambitpairing/resources/styles/",

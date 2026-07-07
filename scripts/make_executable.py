@@ -95,6 +95,8 @@ def main():
     # Set cwd for python process
     git_root = Path(__file__).parent.parent
     os.chdir(git_root)
+    # add the script dir to the Path
+    sys.path.insert(0, os.path.dirname(git_root / "scripts"))
 
     parser = argparse.ArgumentParser(
         description="Build Gambit Pairing executable using PyInstaller",
@@ -144,7 +146,7 @@ Examples:
         # Default to onefile (more portable)
         spec_file = git_root / "gambit-pairing.spec"
 
-    # Build the executable
+        # Build the executable
     build_executable(spec_file)
 
     print(f"\nBuild completed successfully!")
