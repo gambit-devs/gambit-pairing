@@ -4,7 +4,6 @@ from gambitpairing.gui.views.players.players_view_workflow import (
     build_export_unavailable_prompt,
     build_import_empty_prompt,
     build_import_success_history,
-    build_import_success_notification,
     build_player_tooltip,
     build_remove_player_prompt,
     project_player_table_row,
@@ -56,9 +55,6 @@ def test_player_workflow_prompt_and_status_text_helpers():
     )
     assert build_import_success_history(3, "C:/tmp/players.csv") == (
         "Imported 3 players from C:/tmp/players.csv."
-    )
-    assert build_import_success_notification(3, "C:/tmp/players.csv") == (
-        "Imported 3 players from players.csv"
     )
     assert build_import_empty_prompt().title == "Import Notice"
     assert build_export_unavailable_prompt().message == (

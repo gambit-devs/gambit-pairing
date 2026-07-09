@@ -13,7 +13,6 @@ from gambitpairing.gui.dialogs.player_management_data import (
     project_tournament_player_row,
     search_result_count_text,
 )
-from gambitpairing.gui.notification import show_notification
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
 from gambitpairing.models.player import Player
 from gambitpairing.utils.api import (
@@ -333,40 +332,13 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         )
         self._populate_tournament_table()
 
-
     def _copy_to_clipboard(self, text: str, field_name: str = "") -> None:
-        """Copy text to clipboard with feedback using notification."""
+        """Copy non-empty text to the clipboard."""
         if not text.strip():
-            show_notification(
-                self,
-                (
-                    f"Nothing to copy - {field_name} is empty"
-                    if field_name
-                    else "Nothing to copy"
-                ),
-                1500,
-                "warning",  # Use warning type for empty fields
-            )
             return
 
         clipboard = QtWidgets.QApplication.clipboard()
         clipboard.setText(text.strip())
-
-        # Show success notification
-        display_text = text.strip()
-        if len(display_text) > 20:
-            display_text = display_text[:20] + "..."
-
-        show_notification(
-            self,
-            (
-                f"Copied {field_name}: {display_text}"
-                if field_name
-                else f"Copied: {display_text}"
-            ),
-            2000,
-            "success",  # Use success type for successful copies
-        )
 
     # Supporting methods for CFC functionality
     def _on_cfc_search(self):
@@ -530,14 +502,6 @@ class PlayerManagementDialog(QtWidgets.QDialog):
             # Store the standardized player data for later use
             self._selected_player_data = standardized_data
             self._player_data_changed = True  # Mark that we have new data to save
-
-            # Show success message using notification
-            show_notification(
-                self,
-                f"Successfully imported: {standardized_data.get('name', 'Unknown')}",
-                2500,
-                "success",
-            )
 
         except Exception as e:
             QtWidgets.QMessageBox.warning(
@@ -1051,14 +1015,6 @@ class PlayerManagementDialog(QtWidgets.QDialog):
 
         # Switch to details tab
         self.tab_widget.setCurrentIndex(0)
-
-        # Show brief success feedback using notification
-        show_notification(
-            self,
-            f"Successfully imported: {standardized_data.get('name', 'Unknown')}",
-            2500,
-            "success",
-        )
 
     def _edit_selected_tournament_player(self):
         """Edit the selected tournament player."""

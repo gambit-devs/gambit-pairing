@@ -44,9 +44,7 @@ from .dialogs import (
 from .import_player import ImportPlayer
 from .main_window_file_flow import (
     build_load_error_prompt,
-    build_load_failure_notification,
     build_load_success_history,
-    build_load_success_notification,
     build_load_success_status,
     build_overwrite_confirmation_prompt,
     build_save_error_prompt,
@@ -62,10 +60,8 @@ from .main_window_save_flow import (
 from .main_window_state import build_main_window_ui_state
 from .main_window_tournament_flow import (
     build_new_tournament_history,
-    build_new_tournament_notification,
     project_new_tournament_data,
 )
-from .notification import show_notification
 from .ui_loader import load_ui_into
 from .update_workflow import UpdateWorkflowController
 from .views.crosstable.crosstable_view import CrosstableView
@@ -170,20 +166,6 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
                 self._set_tournament_on_tabs()
                 self.standings_tab.update_standings_table_headers()
                 self._update_ui_state()
-                try:
-                    show_notification(
-                        self,
-                        build_new_tournament_notification(projection),
-                        duration=3500,
-                        notification_type="success",
-                    )
-
-                except Exception as e:
-                    message = (
-                        "exception: '%s' excepted in an `except Exception`. This is bad practice."
-                        % str(e)
-                    )
-                    raise RuntimeError(message)
 
     def show_settings_dialog(self) -> bool:
         if not self.tournament:
@@ -311,30 +293,11 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             self.statusBar().showMessage(
                 build_load_success_status(self.tournament.name)
             )
-            try:
-                show_notification(
-                    self,
-                    build_load_success_notification(self.tournament.name),
-                    duration=3000,
-                    notification_type="info",
-                )
-            except Exception:
-                logger.debug("Could not show load notification.", exc_info=True)
         except Exception as e:
             logging.exception("Error loading tournament:")
             self.reset_tournament_state()
-            try:
-                show_notification(
-                    self,
-                    build_load_failure_notification(e),
-                    duration=6000,
-                    notification_type="error",
-                )
-            except Exception:
-                prompt = build_load_error_prompt(e)
-                QtWidgets.QMessageBox.critical(
-                    self, prompt.title, prompt.message
-                )
+            prompt = build_load_error_prompt(e)
+            QtWidgets.QMessageBox.critical(self, prompt.title, prompt.message)
         finally:
             self._update_ui_state()
 

@@ -52,14 +52,6 @@ def build_load_success_status(tournament_name: str) -> str:
     return f"Loaded tournament: {tournament_name}"
 
 
-def build_load_success_notification(tournament_name: str) -> str:
-    return f"Loaded tournament: {tournament_name}"
-
-
-def build_load_failure_notification(error: Exception) -> str:
-    return f"Could not load tournament: {error}"
-
-
 def build_load_error_prompt(error: Exception) -> FileFlowMessage:
     return FileFlowMessage(
         title="Load Error",

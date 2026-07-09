@@ -19,7 +19,6 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from PyQt6 import QtCore, QtGui, QtWidgets
@@ -30,7 +29,6 @@ from gambitpairing.controllers.player import (
     import_players_from_csv,
 )
 from gambitpairing.gui.dialogs import PlayerManagementDialog
-from gambitpairing.gui.notification import show_notification
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
 from gambitpairing.gui.views.players.players_view_workflow import (
     build_duplicate_player_prompt,
@@ -38,7 +36,6 @@ from gambitpairing.gui.views.players.players_view_workflow import (
     build_export_unavailable_prompt,
     build_import_empty_prompt,
     build_import_success_history,
-    build_import_success_notification,
     build_remove_player_prompt,
     project_player_table_row,
 )
@@ -557,16 +554,13 @@ class PlayersView(QtWidgets.QWidget):
         ``create_player`` to construct each player object.
 
         Emits ``dirty`` and calls ``refresh_player_list`` if at least one
-        player was added. Shows a success notification via
-        ``show_notification`` if available, otherwise falls back to a
-        ``QMessageBox``.
+        player was added.
 
         Raises
         ------
         Exception
-            Any file I/O or parsing error is caught, logged via
-            ``logging.exception``, and reported to the user through a
-            notification or ``QMessageBox``.
+            Any file I/O or parsing error is reported to the user through a
+            ``QMessageBox``.
         """
         if self.tournament and len(self.tournament.rounds_pairings_ids) > 0:
             QtWidgets.QMessageBox.warning(
@@ -602,18 +596,6 @@ class PlayersView(QtWidgets.QWidget):
             self.dirty.emit()
             self.refresh_player_list()
             self.update_ui_state()
-            # Show notification
-            try:
-                show_notification(
-                    self,
-                    build_import_success_notification(added_count, file_name),
-                    duration=3500,
-                    notification_type="success",
-                )
-            except Exception:
-                QtWidgets.QMessageBox.information(
-                    self, "Import Successful", f"Imported {added_count} players."
-                )
         else:
             prompt = build_import_empty_prompt()
             QtWidgets.QMessageBox.warning(

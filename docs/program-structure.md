@@ -55,7 +55,6 @@
 │   │   │   ├── history_tab.py
 │   │   │   ├── **init**.py
 │   │   │   ├── mainwindow.py
-│   │   │   ├── notification.py
 │   │   │   ├── notournament_placeholder.py
 │   │   │   ├── players_tab.py
 │   │   │   ├── standings_tab.py

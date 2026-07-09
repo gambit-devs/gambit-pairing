@@ -19,7 +19,6 @@ DESIGNER_BACKED_UI_FILES: tuple[str, ...] = (
     "main_window.ui",
     "manual_pairing_dialog.ui",
     "new_tournament_dialog.ui",
-    "notification.ui",
     "pairings_table.ui",
     "pairing_info_dialog.ui",
     "player_management_dialog.ui",

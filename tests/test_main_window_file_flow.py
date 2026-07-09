@@ -1,8 +1,6 @@
 from gambitpairing.gui.main_window_file_flow import (
     build_load_error_prompt,
-    build_load_failure_notification,
     build_load_success_history,
-    build_load_success_notification,
     build_load_success_status,
     build_overwrite_confirmation_prompt,
     build_save_error_prompt,
@@ -33,9 +31,6 @@ def test_save_and_load_messages_preserve_existing_text():
         "--- Tournament loaded from event.json ---"
     )
     assert build_load_success_status("City Open") == "Loaded tournament: City Open"
-    assert build_load_success_notification("City Open") == (
-        "Loaded tournament: City Open"
-    )
 
 
 def test_error_messages_preserve_existing_text():
@@ -43,9 +38,6 @@ def test_error_messages_preserve_existing_text():
 
     assert build_save_error_prompt(error).message == (
         "Could not save tournament:\nbad json"
-    )
-    assert build_load_failure_notification(error) == (
-        "Could not load tournament: bad json"
     )
     assert build_load_error_prompt(error).message == (
         "Could not load tournament file:\nbad json"

@@ -31,7 +31,3 @@ def build_new_tournament_history(projection: NewTournamentProjection) -> str:
         f"--- New Tournament '{projection.name}' Created "
         f"(Rounds: {projection.num_rounds}, Pairing: {projection.pairing_system}) ---"
     )
-
-
-def build_new_tournament_notification(projection: NewTournamentProjection) -> str:
-    return f"New tournament '{projection.name}' created."

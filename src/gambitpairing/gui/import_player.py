@@ -1,17 +1,7 @@
 # TODO this should be a controller, not a gui
-from typing import List, Optional, Tuple
+from PyQt6 import QtWidgets
 
-from PyQt6 import QtCore, QtGui, QtWidgets
-from PyQt6.QtCore import QFileInfo, Qt
-from PyQt6.QtGui import QAction, QCloseEvent
-from PyQt6.QtWidgets import QMessageBox
-
-from gambitpairing import APP_NAME, APP_VERSION, utils
-from gambitpairing.gui.dialogs import (
-    PlayerManagementDialog,
-)
-from gambitpairing.gui.notification import show_notification
-from gambitpairing.models.tournament import Tournament
+from gambitpairing.gui.dialogs import PlayerManagementDialog
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)
@@ -51,16 +41,6 @@ class ImportPlayer:
             self.main_window.players_tab.refresh_player_list()
             self.main_window.players_tab.update_ui_state()
             self.main_window.mark_dirty()
-            # Provide modern notification feedback
-            try:
-                show_notification(
-                    self.main_window,
-                    "Players imported via API.",
-                    duration=3000,
-                    notification_type="success",
-                )
-            except Exception:
-                pass
 
 
 #  LocalWords:  GambitPairingMainWindow

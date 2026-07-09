@@ -10,8 +10,6 @@ from gambitpairing.gui.architecture_inventory import (
     REMAINING_PYTHON_BUILT_LAYOUTS,
     UI_REFACTOR_BOUNDARY_RULES,
 )
-from gambitpairing.gui.notification import Notification as CanonicalNotification
-from gambitpairing.gui.widgets.notification import Notification as WidgetNotification
 
 
 def test_architecture_inventory_matches_packaged_ui_files():
@@ -56,7 +54,3 @@ def test_architecture_inventory_tracks_remaining_layout_and_workflow_boundaries(
 def test_pairing_engine_guarded_files_exist():
     for guarded_file in PAIRING_ENGINE_GUARDED_FILES:
         assert Path(guarded_file).exists()
-
-
-def test_legacy_widget_notification_import_uses_canonical_implementation():
-    assert WidgetNotification is CanonicalNotification

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 
@@ -80,10 +79,6 @@ def build_duplicate_player_prompt(player_name: str) -> PlayerPrompt:
 
 def build_import_success_history(added_count: int, file_name: str) -> str:
     return f"Imported {added_count} players from {file_name}."
-
-
-def build_import_success_notification(added_count: int, file_name: str) -> str:
-    return f"Imported {added_count} players from {Path(file_name).name}"
 
 
 def build_import_empty_prompt() -> PlayerPrompt:
