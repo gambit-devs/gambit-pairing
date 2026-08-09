@@ -19,9 +19,20 @@ This module handles recording match results with proper validation and error che
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
-from gambitpairing.constants import BYE_SCORE, WIN_SCORE
+from gambitpairing.constants import (
+    BYE_SCORE,
+    FULL_POINT_BYE_SCORE,
+    HALF_POINT_BYE_SCORE,
+    OUTCOME_BYE,
+    OUTCOME_DOUBLE_FORFEIT,
+    OUTCOME_FORFEIT_LOSS,
+    OUTCOME_FORFEIT_WIN,
+    OUTCOME_NORMAL_GAME,
+    WIN_SCORE,
+    ZERO_POINT_BYE_SCORE,
+)
 from gambitpairing.models.player import Player
 from gambitpairing.models.tournament import MatchResult, RoundData
 from gambitpairing.models.enums import Colour
@@ -67,10 +78,20 @@ class ResultRecorder:
         processed_pairs = set()
         success = True
 
-        # Record game results
+        # Record game results.  The fourth item is an outcome type in the
+        # current UI, while older callers used it as a black-score override.
         for result_entry in results_data:
             white_id, black_id, white_score = result_entry[:3]
-            black_score = result_entry[3] if len(result_entry) > 3 else None
+            black_score = None
+            outcome_type = OUTCOME_NORMAL_GAME
+            if len(result_entry) > 3:
+                fourth_value = result_entry[3]
+                if isinstance(fourth_value, str):
+                    outcome_type = fourth_value
+                else:
+                    black_score = fourth_value
+            if len(result_entry) > 4 and isinstance(result_entry[4], str):
+                outcome_type = result_entry[4]
             if not self._validate_result_entry(
                 white_id,
                 black_id,
@@ -88,6 +109,7 @@ class ResultRecorder:
                 black_id,
                 white_score,
                 black_score,
+                outcome_type,
                 round_number,
                 round_data,
                 players,
@@ -100,12 +122,17 @@ class ResultRecorder:
         # Record bye result
         if round_data.bye_player_id:
             if not self._record_bye_result(
-                round_data.bye_player_id, round_number, players
+                round_data.bye_player_id,
+                round_number,
+                players,
+                getattr(round_data, "bye_type", "full"),
             ):
                 success = False
 
         # Check for unprocessed pairings
-        expected_pairs = {frozenset({white_id, black_id}) for white_id, black_id in pairing_ids}
+        expected_pairs = {
+            frozenset({white_id, black_id}) for white_id, black_id in pairing_ids
+        }
         unprocessed = expected_pairs - processed_pairs
         if unprocessed:
             logger.warning(
@@ -170,6 +197,7 @@ class ResultRecorder:
         black_id: str,
         white_score: float,
         black_score: Optional[float],
+        outcome_type: str,
         round_number: int,
         round_data: RoundData,
         players: Dict[str, Player],
@@ -181,7 +209,25 @@ class ResultRecorder:
         """
         white = players[white_id]
         black = players[black_id]
-        actual_black_score = WIN_SCORE - white_score if black_score is None else black_score
+        if black_score is not None:
+            actual_black_score = black_score
+        elif outcome_type == OUTCOME_DOUBLE_FORFEIT:
+            actual_black_score = ZERO_POINT_BYE_SCORE
+        else:
+            actual_black_score = WIN_SCORE - white_score
+
+        white_outcome = outcome_type
+        black_outcome = outcome_type
+        if outcome_type == OUTCOME_FORFEIT_WIN:
+            if white_score > 0.5:
+                black_outcome = OUTCOME_FORFEIT_LOSS
+            elif white_score < 0.5:
+                white_outcome = OUTCOME_FORFEIT_LOSS
+        elif outcome_type == OUTCOME_FORFEIT_LOSS:
+            if white_score > 0.5:
+                black_outcome = OUTCOME_FORFEIT_WIN
+            elif white_score < 0.5:
+                white_outcome = OUTCOME_FORFEIT_WIN
 
         # Add result to round data
         match_result = MatchResult(
@@ -189,13 +235,22 @@ class ResultRecorder:
             black_id=black_id,
             white_score=white_score,
             black_score_override=black_score,
+            outcome_type=outcome_type,
         )
         round_data.results.append(match_result)
 
         # Update player records
-        white.add_round_result(opponent=black, result=white_score, color=Colour.WHITE)
+        white.add_round_result(
+            opponent=black,
+            result=white_score,
+            color=Colour.WHITE,
+            outcome_type=white_outcome,
+        )
         black.add_round_result(
-            opponent=white, result=actual_black_score, color=Colour.BLACK
+            opponent=white,
+            result=actual_black_score,
+            color=Colour.BLACK,
+            outcome_type=black_outcome,
         )
 
         logger.debug(
@@ -204,7 +259,11 @@ class ResultRecorder:
         return True
 
     def _record_bye_result(
-        self, bye_player_id: str, round_number: int, players: Dict[str, Player]
+        self,
+        bye_player_id: str,
+        round_number: int,
+        players: Dict[str, Player],
+        bye_type: str = "full",
     ) -> bool:
         """Record a bye result for a player.
 
@@ -224,9 +283,21 @@ class ResultRecorder:
             )
             return True  # Not necessarily an error
 
-        # Record bye - active players get the bye score, inactive get 0
-        bye_score = BYE_SCORE if bye_player.is_active else 0.0
-        bye_player.add_round_result(opponent=None, result=bye_score, color=None)
+        if not bye_player.is_active or bye_type == "zero":
+            bye_score = ZERO_POINT_BYE_SCORE
+        elif bye_type == "half":
+            bye_score = HALF_POINT_BYE_SCORE
+        elif bye_type == "full":
+            bye_score = FULL_POINT_BYE_SCORE
+        else:
+            logger.warning("Unknown bye type %r; using the configured full-point bye", bye_type)
+            bye_score = BYE_SCORE
+        bye_player.add_round_result(
+            opponent=None,
+            result=bye_score,
+            color=None,
+            outcome_type=OUTCOME_BYE,
+        )
 
         logger.debug(
             f"Recorded bye for {bye_player.name} "
@@ -299,6 +370,11 @@ class ResultRecorder:
             player.score -= removed_result or 0.0
             player.opponent_ids.pop()
             removed_color = player.color_history.pop()
+            if getattr(player, "outcome_types", None):
+                player.outcome_types.pop()
+
+            if player.match_history:
+                player.match_history.pop()
 
             if player.running_scores:
                 player.running_scores.pop()
@@ -308,9 +384,7 @@ class ResultRecorder:
                 player.num_black_games = max(0, player.num_black_games - 1)
 
             # Update bye status if this was a bye
-            if player.opponent_ids and player.opponent_ids[-1] is None:
-                # Check if player has any other byes
-                player.has_received_bye = None in player.opponent_ids
+            player.has_received_bye = None in player.opponent_ids
 
             logger.debug(f"Undid result for {player.name} in round {round_number}")
             return True

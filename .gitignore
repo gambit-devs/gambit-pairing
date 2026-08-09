@@ -219,3 +219,7 @@ marimo/_lsp/
 
 # Personal local launcher
 /run.sh
+
+# Project-specific ignores
+bbp_pairings/
+bbpPairings-dutch-2025/

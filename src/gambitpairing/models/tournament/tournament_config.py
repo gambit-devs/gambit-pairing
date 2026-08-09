@@ -16,10 +16,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
-from gambitpairing.constants import DEFAULT_TIEBREAK_SORT_ORDER
+from gambitpairing.constants import (
+    DEFAULT_FIDE_TIEBREAK_ORDER,
+    DEFAULT_MODE,
+    DEFAULT_USCF_TIEBREAK_ORDER,
+    MODE_FIDE,
+)
 
 
 @dataclass(frozen=False)
@@ -43,13 +48,32 @@ class TournamentConfig:
     name: str
     num_rounds: int
     pairing_system: str = "dutch_swiss"
-    tournament_mode: str = "standard"
-    fide_strict_mode: bool = False
-    tiebreak_order: List[str] = field(
-        default_factory=lambda: list(DEFAULT_TIEBREAK_SORT_ORDER)
-    )
+    tournament_mode: str = DEFAULT_MODE
+    fide_strict: bool = False
+    tiebreak_order: Optional[List[str]] = None
     # Is the tournament complete?
     tournament_over: bool = False
+
+    def __post_init__(self) -> None:
+        """Choose federation defaults without sharing mutable lists."""
+        if self.tiebreak_order is None:
+            defaults = (
+                DEFAULT_FIDE_TIEBREAK_ORDER
+                if self.tournament_mode == MODE_FIDE
+                else DEFAULT_USCF_TIEBREAK_ORDER
+            )
+            self.tiebreak_order = list(defaults)
+        else:
+            self.tiebreak_order = list(self.tiebreak_order)
+
+    @property
+    def fide_strict_mode(self) -> bool:
+        """Legacy alias retained for older saved documents and callers."""
+        return self.fide_strict
+
+    @fide_strict_mode.setter
+    def fide_strict_mode(self, value: bool) -> None:
+        self.fide_strict = bool(value)
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize configuration to dictionary."""
@@ -58,7 +82,8 @@ class TournamentConfig:
             "num_rounds": self.num_rounds,
             "pairing_system": self.pairing_system,
             "tournament_mode": self.tournament_mode,
-            "fide_strict_mode": self.fide_strict_mode,
+            "fide_strict": self.fide_strict,
+            "fide_strict_mode": self.fide_strict,
             "tiebreak_order": list(self.tiebreak_order),
             "tournament_over": self.tournament_over,
         }
@@ -66,14 +91,17 @@ class TournamentConfig:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TournamentConfig":
         """Deserialize configuration from dictionary."""
+        fide_strict = data.get("fide_strict", data.get("fide_strict_mode", False))
         return cls(
             name=data.get("name", "Untitled Tournament"),
             num_rounds=data["num_rounds"],
             pairing_system=data.get("pairing_system", "dutch_swiss"),
-            tournament_mode=data.get("tournament_mode", "standard"),
-            fide_strict_mode=data.get("fide_strict_mode", False),
-            tiebreak_order=list(
-                data.get("tiebreak_order", DEFAULT_TIEBREAK_SORT_ORDER)
+            tournament_mode=data.get("tournament_mode", DEFAULT_MODE),
+            fide_strict=fide_strict,
+            tiebreak_order=(
+                list(data["tiebreak_order"])
+                if "tiebreak_order" in data
+                else None
             ),
             tournament_over=data.get("tournament_over", False),
         )

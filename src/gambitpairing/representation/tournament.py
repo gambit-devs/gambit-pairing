@@ -44,10 +44,13 @@ def tournament_from_dict(data: Dict[str, Any]) -> Any:
         num_rounds=config.num_rounds,
         tiebreak_order=config.tiebreak_order,
         pairing_system=config.pairing_system,
+        tournament_mode=config.tournament_mode,
+        fide_strict=config.fide_strict,
     )
     tournament.config = config
     tournament.round_controller.pairing_system = config.pairing_system
     tournament.round_controller.num_rounds = config.num_rounds
+    tournament.round_controller.fide_strict = config.fide_strict
 
     if "rounds" in data:
         tournament.rounds = [round_data_from_dict(item) for item in data["rounds"]]

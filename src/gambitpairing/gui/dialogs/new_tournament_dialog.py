@@ -21,7 +21,14 @@ from typing import List, Optional, Tuple
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
 
-from gambitpairing.constants import DEFAULT_TIEBREAK_SORT_ORDER, TIEBREAK_NAMES
+from gambitpairing.constants import (
+    DEFAULT_FIDE_TIEBREAK_ORDER,
+    DEFAULT_MODE,
+    DEFAULT_USCF_TIEBREAK_ORDER,
+    MODE_FIDE,
+    MODE_USCF,
+    TIEBREAK_NAMES,
+)
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
 from gambitpairing.utils import resize_list_to_show_all_items
 
@@ -29,7 +36,8 @@ from gambitpairing.utils import resize_list_to_show_all_items
 class NewTournamentDialog(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.current_tiebreak_order = list(DEFAULT_TIEBREAK_SORT_ORDER)
+        self.tournament_mode = DEFAULT_MODE
+        self.current_tiebreak_order = list(DEFAULT_USCF_TIEBREAK_ORDER)
         self.player_count = 5
 
         load_ui_into(self, "new_tournament_dialog.ui")
@@ -37,6 +45,10 @@ class NewTournamentDialog(QtWidgets.QDialog):
         self.name_edit = required_child(self, QtWidgets.QLineEdit, "name_edit")
         self.rounds_label = required_child(self, QtWidgets.QLabel, "rounds_label")
         self.rounds_spin = required_child(self, QtWidgets.QSpinBox, "rounds_spin")
+        self.mode_combo = required_child(self, QtWidgets.QComboBox, "mode_combo")
+        self.mode_combo.addItem("USCF", MODE_USCF)
+        self.mode_combo.addItem("FIDE", MODE_FIDE)
+        self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
         self.tiebreak_list = required_child(
             self, QtWidgets.QListWidget, "tiebreak_list"
         )
@@ -153,6 +165,20 @@ class NewTournamentDialog(QtWidgets.QDialog):
         toc.setCurrentRow(default_idx)
         update_details(default_idx)
         dialog.exec()
+
+    def on_mode_changed(self) -> None:
+        """Use the selected federation's defaults for new tournaments."""
+        new_mode = self.mode_combo.currentData()
+        if new_mode == self.tournament_mode:
+            return
+        self.tournament_mode = new_mode
+        self.current_tiebreak_order = list(
+            DEFAULT_FIDE_TIEBREAK_ORDER
+            if new_mode == MODE_FIDE
+            else DEFAULT_USCF_TIEBREAK_ORDER
+        )
+        self.populate_tiebreak_list()
+        resize_list_to_show_all_items(self.tiebreak_list)
 
     def get_data(self) -> Optional[Tuple[str, int, List[str], str]]:
         name = self.name_edit.text().strip()

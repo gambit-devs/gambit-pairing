@@ -27,8 +27,14 @@ from gambitpairing.constants import (
     BYE_SCORE,
     DRAW_SCORE,
     LOSS_SCORE,
+    OUTCOME_DOUBLE_FORFEIT,
+    OUTCOME_FORFEIT_WIN,
+    OUTCOME_NORMAL_GAME,
+    RESULT_BLACK_FORFEIT_WIN,
     RESULT_BLACK_WIN,
+    RESULT_DOUBLE_FORFEIT,
     RESULT_DRAW,
+    RESULT_WHITE_FORFEIT_WIN,
     RESULT_WHITE_WIN,
     WIN_SCORE,
 )
@@ -210,13 +216,11 @@ class PairingsTable(QtWidgets.QWidget):
 
             # Auto-set result for inactive players
             if not white.is_active and not black.is_active:
-                result_selector.setResult(RESULT_DRAW)  # 0-0 or F-F
-                result_selector.setProperty("white_score_override", LOSS_SCORE)
-                result_selector.setProperty("black_score_override", LOSS_SCORE)
+                result_selector.setResult(RESULT_DOUBLE_FORFEIT)
             elif not white.is_active:
-                result_selector.setResult(RESULT_BLACK_WIN)  # Black wins by forfeit
+                result_selector.setResult(RESULT_BLACK_FORFEIT_WIN)
             elif not black.is_active:
-                result_selector.setResult(RESULT_WHITE_WIN)  # White wins by forfeit
+                result_selector.setResult(RESULT_WHITE_FORFEIT_WIN)
 
             self.table.setCellWidget(row, 3, result_selector)
 
@@ -254,7 +258,7 @@ class PairingsTable(QtWidgets.QWidget):
             self.lbl_bye.setText("No bye this round")
             self.bye_container.hide()
 
-    def get_results(self) -> Tuple[Optional[List[Tuple[str, str, float]]], bool]:
+    def get_results(self) -> Tuple[Optional[List[tuple]], bool]:
         """Collect results from every ``ResultSelector`` in the table.
 
         Iterates all rows and reads the selected result from each
@@ -265,7 +269,7 @@ class PairingsTable(QtWidgets.QWidget):
         Returns
         -------
         results : list of (str, str, float) or None
-            Each element is ``(white_id, black_id, white_score)``.
+            Each element is ``(white_id, black_id, white_score, outcome_type)``.
             Returns ``None`` if a ``ResultSelector`` is missing from a row
             or if a player ID cannot be read, indicating a configuration
             error.
@@ -296,12 +300,22 @@ class PairingsTable(QtWidgets.QWidget):
                     break
 
                 white_score = -1.0
+                outcome_type = OUTCOME_NORMAL_GAME
                 if result_const == RESULT_WHITE_WIN:
                     white_score = WIN_SCORE
                 elif result_const == RESULT_DRAW:
                     white_score = DRAW_SCORE
                 elif result_const == RESULT_BLACK_WIN:
                     white_score = LOSS_SCORE
+                elif result_const == RESULT_WHITE_FORFEIT_WIN:
+                    white_score = WIN_SCORE
+                    outcome_type = OUTCOME_FORFEIT_WIN
+                elif result_const == RESULT_BLACK_FORFEIT_WIN:
+                    white_score = LOSS_SCORE
+                    outcome_type = OUTCOME_FORFEIT_WIN
+                elif result_const == RESULT_DOUBLE_FORFEIT:
+                    white_score = LOSS_SCORE
+                    outcome_type = OUTCOME_DOUBLE_FORFEIT
 
                 black_score_override = result_selector.property(
                     "black_score_override"
@@ -311,11 +325,32 @@ class PairingsTable(QtWidgets.QWidget):
                         white_score = float(
                             result_selector.property("white_score_override")
                         )
-                        results_data.append(
-                            (white_id, black_id, white_score, float(black_score_override))
-                        )
+                        if outcome_type == OUTCOME_NORMAL_GAME:
+                            results_data.append(
+                                (
+                                    white_id,
+                                    black_id,
+                                    white_score,
+                                    float(black_score_override),
+                                )
+                            )
+                        else:
+                            results_data.append(
+                                (
+                                    white_id,
+                                    black_id,
+                                    white_score,
+                                    float(black_score_override),
+                                    outcome_type,
+                                )
+                            )
                     else:
-                        results_data.append((white_id, black_id, white_score))
+                        if outcome_type == OUTCOME_NORMAL_GAME:
+                            results_data.append((white_id, black_id, white_score))
+                        else:
+                            results_data.append(
+                                (white_id, black_id, white_score, outcome_type)
+                            )
                 else:
                     logger.error(
                         f"Invalid result data in table row {row}: Result='{result_const}', W_ID='{white_id}', B_ID='{black_id}'"

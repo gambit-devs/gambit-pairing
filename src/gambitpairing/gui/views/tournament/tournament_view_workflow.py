@@ -9,7 +9,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal, Optional, Sequence
 
-from gambitpairing.constants import BYE_SCORE, WIN_SCORE
+from gambitpairing.constants import (
+    BYE_SCORE,
+    OUTCOME_DOUBLE_FORFEIT,
+    WIN_SCORE,
+)
 from gambitpairing.models import Player
 from gambitpairing.models.tournament import TournamentPhase, TournamentState
 
@@ -366,14 +370,24 @@ def format_recorded_result_history_lines(
     lines = [f"--- Round {round_index_recorded + 1} Results Recorded ---"]
     for result_entry in results_data:
         white_id, black_id, score_white = result_entry[:3]
-        score_black = (
-            result_entry[3] if len(result_entry) > 3 else WIN_SCORE - score_white
-        )
+        outcome_type = "normal"
+        score_black = WIN_SCORE - score_white
+        if len(result_entry) > 3:
+            fourth_value = result_entry[3]
+            if isinstance(fourth_value, (int, float)):
+                score_black = float(fourth_value)
+                if len(result_entry) > 4 and isinstance(result_entry[4], str):
+                    outcome_type = result_entry[4]
+            else:
+                outcome_type = fourth_value
+        if outcome_type == OUTCOME_DOUBLE_FORFEIT:
+            score_black = 0.0
         white = tournament.players.get(white_id)
         black = tournament.players.get(black_id)
         lines.append(
             f"  {white.name if white else white_id} ({score_white:.1f}) - "
             f"{black.name if black else black_id} ({score_black:.1f})"
+            + (f" [{outcome_type}]" if outcome_type != "normal" else "")
         )
 
     if round_index_recorded < len(tournament.rounds_byes_ids):
@@ -489,7 +503,12 @@ def revert_player_round_data(player: Player) -> bool:
     last_opponent_id = player.opponent_ids.pop() if player.opponent_ids else None
     last_color = player.color_history.pop() if player.color_history else None
 
-    if last_color == "Black":
+    if getattr(player, "outcome_types", None):
+        player.outcome_types.pop()
+    if player.match_history:
+        player.match_history.pop()
+
+    if getattr(last_color, "value", last_color) in {"Black", "B"}:
         player.num_black_games = max(0, player.num_black_games - 1)
 
     if last_opponent_id is None:

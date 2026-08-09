@@ -19,21 +19,34 @@ This module handles calculation of various tiebreak systems used in chess tourna
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from gambitpairing.constants import (
     DRAW_SCORE,
+    TB_ARO,
+    TB_BLACK_GAMES,
+    TB_BLACK_WINS,
+    TB_BUCHHOLZ,
+    TB_BUCHHOLZ_CUT_1,
+    TB_BUCHHOLZ_MEDIAN_1,
     TB_CUMULATIVE,
     TB_CUMULATIVE_OPP,
+    TB_DIRECT_ENCOUNTER,
+    TB_GAMES_WON,
     TB_HEAD_TO_HEAD,
     TB_MEDIAN,
     TB_MOST_BLACKS,
+    TB_PROGRESSIVE,
     TB_SOLKOFF,
     TB_SONNENBORN_BERGER,
+    TB_WINS,
     WIN_SCORE,
 )
+from gambitpairing.models.enums import Colour
 from gambitpairing.models.player import Player
 from gambitpairing.utils import setup_logger
+
+BLACK = Colour.BLACK
 
 logger = setup_logger(__name__)
 
@@ -48,6 +61,7 @@ class TiebreakCalculator:
     - Sonnenborn-Berger
     - Most Blacks
     - Head-to-Head
+    - FIDE Buchholz, progressive, wins, black-game, and opponent-rating tie-breaks
     """
 
     def calculate_all_tiebreaks(self, players: Dict[str, Player]) -> None:
@@ -113,8 +127,27 @@ class TiebreakCalculator:
         )
         player.tiebreakers[TB_CUMULATIVE_OPP] = cumulative_opp_score
         player.tiebreakers[TB_SONNENBORN_BERGER] = sb_score
-        player.tiebreakers[TB_MOST_BLACKS] = float(player.num_black_games)
+        player.tiebreakers[TB_MOST_BLACKS] = self._calculate_black_games(player)
         player.tiebreakers[TB_HEAD_TO_HEAD] = 0.0  # Calculated when comparing players
+
+        # FIDE tie-breakers.  The aliases intentionally coexist with the
+        # USCF keys so saved tournaments can change display mode safely.
+        player.tiebreakers[TB_BUCHHOLZ] = sum(opponent_scores)
+        player.tiebreakers[TB_BUCHHOLZ_CUT_1] = self._calculate_buchholz_cut_1(
+            opponent_scores
+        )
+        player.tiebreakers[TB_BUCHHOLZ_MEDIAN_1] = self._calculate_buchholz_median_1(
+            opponent_scores
+        )
+        player.tiebreakers[TB_PROGRESSIVE] = (
+            sum(player.running_scores) if player.running_scores else 0.0
+        )
+        player.tiebreakers[TB_DIRECT_ENCOUNTER] = 0.0
+        player.tiebreakers[TB_WINS] = self._calculate_wins(player)
+        player.tiebreakers[TB_GAMES_WON] = self._calculate_games_won(player)
+        player.tiebreakers[TB_BLACK_GAMES] = self._calculate_black_games(player)
+        player.tiebreakers[TB_BLACK_WINS] = self._calculate_black_wins(player)
+        player.tiebreakers[TB_ARO] = self._calculate_aro(opponents)
 
     def _calculate_median(self, player: Player, opponent_scores: List[float]) -> float:
         """Calculate Modified Median (USCF Median Buchholz).
@@ -139,9 +172,11 @@ class TiebreakCalculator:
 
         # Calculate player's percentage from played games (excluding byes)
         score_from_games = sum(
-            player.results[i] or 0.0
+            result
             for i, opp_id in enumerate(player.opponent_ids)
-            if opp_id is not None and i < len(player.results)
+            if opp_id is not None
+            and i < len(player.results)
+            and (result := player.results[i]) is not None
         )
         games_played = len([opp for opp in player.opponent_ids if opp is not None])
         max_possible = float(games_played)
@@ -166,6 +201,82 @@ class TiebreakCalculator:
                 # If only 2 opponents, sum is 0 after dropping both
                 return 0.0
 
+    @staticmethod
+    def _calculate_buchholz_cut_1(opponent_scores: List[float]) -> float:
+        """Return Buchholz after dropping the lowest opponent score."""
+        if len(opponent_scores) <= 1:
+            return sum(opponent_scores)
+        return sum(sorted(opponent_scores)[1:])
+
+    @staticmethod
+    def _calculate_buchholz_median_1(opponent_scores: List[float]) -> float:
+        """Return Buchholz after dropping both extremes when possible."""
+        if len(opponent_scores) <= 2:
+            return sum(opponent_scores)
+        sorted_scores = sorted(opponent_scores)
+        return sum(sorted_scores[1:-1])
+
+    @staticmethod
+    def _calculate_wins(player: Player) -> float:
+        """Count all full-point rounds, including byes and forfeits."""
+        return float(sum(result == WIN_SCORE for result in player.results if result is not None))
+
+    @staticmethod
+    def _calculate_games_won(player: Player) -> float:
+        """Count wins in played games, excluding byes and forfeits."""
+        return float(
+            sum(
+                result == WIN_SCORE
+                for index, result in enumerate(player.results)
+                if result is not None
+                and index < len(player.opponent_ids)
+                and player.opponent_ids[index] is not None
+                and (
+                    index >= len(getattr(player, "outcome_types", []))
+                    or player.outcome_types[index] == "normal"
+                )
+            )
+        )
+
+    @staticmethod
+    def _calculate_black_games(player: Player) -> float:
+        """Count played games with black, excluding byes."""
+        return float(
+            sum(
+                color == BLACK
+                for index, color in enumerate(player.color_history)
+                if index < len(player.opponent_ids)
+                and player.opponent_ids[index] is not None
+            )
+        )
+
+    @staticmethod
+    def _calculate_black_wins(player: Player) -> float:
+        """Count normal wins made with black."""
+        return float(
+            sum(
+                result == WIN_SCORE
+                for index, result in enumerate(player.results)
+                if result is not None
+                and index < len(player.opponent_ids)
+                and player.opponent_ids[index] is not None
+                and index < len(player.color_history)
+                and player.color_history[index] == BLACK
+                and (
+                    index >= len(getattr(player, "outcome_types", []))
+                    or player.outcome_types[index] == "normal"
+                )
+            )
+        )
+
+    @staticmethod
+    def _calculate_aro(opponents: List[Optional[Player]]) -> float:
+        """Return average positive opponent rating, rounded half-up."""
+        ratings = [opponent.rating for opponent in opponents if opponent and opponent.rating > 0]
+        if not ratings:
+            return 0.0
+        return float(int(sum(ratings) / len(ratings) + 0.5))
+
     def _set_zero_tiebreaks(self, player: Player) -> None:
         """Set all tiebreaks to zero for a player with no games."""
         player.tiebreakers = {
@@ -176,6 +287,16 @@ class TiebreakCalculator:
             TB_SONNENBORN_BERGER: 0.0,
             TB_MOST_BLACKS: 0.0,
             TB_HEAD_TO_HEAD: 0.0,
+            TB_BUCHHOLZ: 0.0,
+            TB_BUCHHOLZ_CUT_1: 0.0,
+            TB_BUCHHOLZ_MEDIAN_1: 0.0,
+            TB_PROGRESSIVE: 0.0,
+            TB_DIRECT_ENCOUNTER: 0.0,
+            TB_WINS: 0.0,
+            TB_GAMES_WON: 0.0,
+            TB_BLACK_GAMES: 0.0,
+            TB_BLACK_WINS: 0.0,
+            TB_ARO: 0.0,
         }
 
     def calculate_head_to_head(

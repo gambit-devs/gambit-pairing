@@ -49,6 +49,7 @@ class Player(PlayerABC):
         self.color_history: List[Optional[Colour]] = []
         self.opponent_ids: List[Optional[str]] = []
         self.results: List[Optional[float]] = []
+        self.outcome_types: List[Optional[str]] = []
         self.running_scores: List[float] = []
         self.has_received_bye: bool = False
         self.num_black_games: int = 0
@@ -186,12 +187,21 @@ class Player(PlayerABC):
         return None
 
     def add_round_result(
-        self, opponent: Optional["Player"], result: float, color: Optional[Colour]
+        self,
+        opponent: Optional["Player"],
+        result: float,
+        color: Optional[Colour],
+        outcome_type: str = "normal",
     ) -> None:
-        """Record one round from this player's perspective."""
+        """Record one round from this player's perspective.
+
+        ``outcome_type`` distinguishes played games from forfeits and byes
+        while leaving the score history compatible with older saves.
+        """
         opponent_id = opponent.id if opponent else None
         self.opponent_ids.append(opponent_id)
         self.results.append(result)
+        self.outcome_types.append(outcome_type)
 
         player_score_before = self.score
         opponent_score_before = opponent.score if opponent else 0.0
@@ -299,6 +309,7 @@ class Player(PlayerABC):
             "color_history",
             "opponent_ids",
             "results",
+            "outcome_types",
             "running_scores",
             "float_history",
             "match_history",

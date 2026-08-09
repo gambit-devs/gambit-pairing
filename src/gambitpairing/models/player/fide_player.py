@@ -122,6 +122,7 @@ class FidePlayer(Player):
             "color_history",
             "opponent_ids",
             "results",
+            "outcome_types",
             "running_scores",
             "float_history",
             "match_history",

@@ -19,6 +19,8 @@
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
+from gambitpairing.constants import OUTCOME_NORMAL_GAME
+
 
 @dataclass
 class MatchResult:
@@ -40,6 +42,14 @@ class MatchResult:
     black_id: str
     white_score: float
     black_score_override: Optional[float] = None
+    outcome_type: str = OUTCOME_NORMAL_GAME
+
+    def __post_init__(self) -> None:
+        """Accept both the legacy black-score and FIDE outcome positional forms."""
+        if isinstance(self.black_score_override, str):
+            if self.outcome_type == OUTCOME_NORMAL_GAME:
+                self.outcome_type = self.black_score_override
+            self.black_score_override = None
 
     @property
     def black_score(self) -> float:
@@ -54,6 +64,7 @@ class MatchResult:
             "white_id": self.white_id,
             "black_id": self.black_id,
             "white_score": self.white_score,
+            "outcome_type": self.outcome_type,
         }
         if self.black_score_override is not None:
             data["black_score"] = self.black_score_override
@@ -67,4 +78,5 @@ class MatchResult:
             black_id=data["black_id"],
             white_score=data["white_score"],
             black_score_override=data.get("black_score"),
+            outcome_type=data.get("outcome_type", OUTCOME_NORMAL_GAME),
         )

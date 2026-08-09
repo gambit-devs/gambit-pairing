@@ -11,6 +11,7 @@ import functools
 from importlib import import_module
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from gambitpairing.constants import DEFAULT_MODE
 from gambitpairing.models.player import Player
 from gambitpairing.utils import setup_logger
 
@@ -31,12 +32,16 @@ class Tournament:
         num_rounds: int,
         tiebreak_order: Optional[List[str]] = None,
         pairing_system: str = "dutch_swiss",
+        tournament_mode: Optional[str] = None,
+        fide_strict: bool = False,
     ) -> None:
         self.config = TournamentConfig(
             name=name,
             num_rounds=num_rounds,
             pairing_system=pairing_system,
-            tiebreak_order=tiebreak_order or TournamentConfig("", 0).tiebreak_order,
+            tournament_mode=tournament_mode or DEFAULT_MODE,
+            fide_strict=fide_strict,
+            tiebreak_order=tiebreak_order,
         )
         self.players: Dict[str, Player] = {player.id: player for player in players}
         self.pairing_history = PairingHistory()
@@ -51,6 +56,7 @@ class Tournament:
             pairing_system=self.config.pairing_system,
             num_rounds=self.config.num_rounds,
             pairing_history=self.pairing_history,
+            fide_strict=self.config.fide_strict,
         )
         self.round_manager = self.round_controller
         self.result_recorder = ResultRecorder()
@@ -81,6 +87,23 @@ class Tournament:
     def pairing_system(self, value: str) -> None:
         self.config.pairing_system = value
         self.round_controller.pairing_system = value
+
+    @property
+    def tournament_mode(self) -> str:
+        return self.config.tournament_mode
+
+    @tournament_mode.setter
+    def tournament_mode(self, value: str) -> None:
+        self.config.tournament_mode = value
+
+    @property
+    def fide_strict(self) -> bool:
+        return self.config.fide_strict
+
+    @fide_strict.setter
+    def fide_strict(self, value: bool) -> None:
+        self.config.fide_strict = bool(value)
+        self.round_controller.fide_strict = bool(value)
 
     @property
     def tiebreak_order(self) -> List[str]:

@@ -49,6 +49,7 @@ class RoundController:
         pairing_system: str,
         num_rounds: int,
         pairing_history: PairingHistory,
+        fide_strict: bool = False,
     ):
         """Initialize the round manager.
 
@@ -56,10 +57,12 @@ class RoundController:
             pairing_system: The pairing system to use ('dutch_swiss', 'round_robin', 'manual')
             num_rounds: Total number of rounds in the tournament
             pairing_history: History of pairings to prevent repeats
+            fide_strict: Use stricter FIDE compliance search for Dutch Swiss
         """
         self.pairing_system = pairing_system
         self.num_rounds = num_rounds
         self.pairing_history = pairing_history
+        self.fide_strict = fide_strict
         self.rounds: List[RoundData] = []
         self.round_robin: Optional[RoundRobin] = None
 
@@ -173,6 +176,7 @@ class RoundController:
             bye_callback,
             repeat_pairing_callback,
             self.num_rounds,
+            fide_strict=self.fide_strict,
         )
         return pairings, bye_player
 

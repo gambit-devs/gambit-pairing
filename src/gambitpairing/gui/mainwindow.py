@@ -151,7 +151,9 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         if dialog.exec():
             data = dialog.get_data()
             if data:
-                projection = project_new_tournament_data(data)
+                projection = project_new_tournament_data(
+                    (*data, dialog.tournament_mode)
+                )
                 self.reset_tournament_state()
                 self.tournament = Tournament(
                     name=projection.name,
@@ -159,6 +161,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
                     num_rounds=projection.num_rounds,
                     tiebreak_order=projection.tiebreak_order,
                     pairing_system=projection.pairing_system,
+                    tournament_mode=projection.tournament_mode,
                 )
                 self.pairing_system = projection.pairing_system
                 self.update_history_log(build_new_tournament_history(projection))
@@ -172,7 +175,10 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             return False
 
         dialog = SettingsDialog(
-            self.tournament.num_rounds, self.tournament.tiebreak_order, self
+            self.tournament.num_rounds,
+            self.tournament.tiebreak_order,
+            self.tournament.config.tournament_mode,
+            self,
         )
         tournament_started = len(self.tournament.rounds_pairings_ids) > 0
         dialog.configure_round_count_controls(
@@ -181,7 +187,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         )
 
         if dialog.exec():
-            new_rounds, new_tiebreaks = dialog.get_settings()
+            new_rounds, new_tiebreaks, new_mode = dialog.get_settings()
             if (
                 self.tournament.num_rounds != new_rounds
                 and not tournament_started
@@ -194,6 +200,13 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             if self.tournament.tiebreak_order != new_tiebreaks:
                 self.tournament.tiebreak_order = new_tiebreaks
                 self.update_history_log("Tiebreak order updated.")
+                self.mark_dirty()
+                self.standings_tab.update_standings_table_headers()
+                self.standings_tab.update_standings_table()
+
+            if self.tournament.config.tournament_mode != new_mode:
+                self.tournament.config.tournament_mode = new_mode
+                self.update_history_log(f"Chess federation changed to {new_mode}.")
                 self.mark_dirty()
                 self.standings_tab.update_standings_table_headers()
                 self.standings_tab.update_standings_table()
@@ -692,10 +705,11 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self.start_action.setVisible(state.can_start)
         self.record_results_action.setVisible(state.can_record)
         self.prepare_round_action.setVisible(state.can_prepare)
-        self.file_separator.setVisible(
-            True
-        )  # Always show separator between file actions and info
-        self.tournament_separator.setVisible(state.tournament_exists)
+        any_tournament_actions_visible = (
+            state.can_start or state.can_prepare or state.can_record
+        )
+        self.file_separator.setVisible(any_tournament_actions_visible)
+        self.tournament_separator.setVisible(any_tournament_actions_visible)
 
         # File operations
         self.save_action.setEnabled(state.can_save)

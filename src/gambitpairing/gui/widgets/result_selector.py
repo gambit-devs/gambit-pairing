@@ -20,7 +20,14 @@ from __future__ import annotations
 
 from PyQt6 import QtWidgets
 
-from gambitpairing.constants import RESULT_BLACK_WIN, RESULT_DRAW, RESULT_WHITE_WIN
+from gambitpairing.constants import (
+    RESULT_BLACK_FORFEIT_WIN,
+    RESULT_BLACK_WIN,
+    RESULT_DOUBLE_FORFEIT,
+    RESULT_DRAW,
+    RESULT_WHITE_FORFEIT_WIN,
+    RESULT_WHITE_WIN,
+)
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
 
 from .checkable_button import CheckableButton
@@ -45,6 +52,7 @@ class ResultSelector(QtWidgets.QWidget):
 
         self.button_group = QtWidgets.QButtonGroup(self)
         self.button_group.setExclusive(True)
+        self._current_result = ""
 
         self.btn_white_win = required_child(
             self, CheckableButton, "btn_white_win"
@@ -73,6 +81,30 @@ class ResultSelector(QtWidgets.QWidget):
         for btn in buttons:
             self.button_group.addButton(btn)
 
+        self.button_group.buttonClicked.connect(lambda _button: self._clear_forfeit())
+
+        self.menu_button = QtWidgets.QPushButton("⋮")
+        self.menu_button.setToolTip("More result options")
+        self.menu_button.setFixedWidth(28)
+        self.menu_button.setProperty("class", "MenuButton")
+        self.forfeit_menu = QtWidgets.QMenu(self)
+        self.forfeit_menu.addAction(
+            "White wins by forfeit",
+            lambda: self._select_forfeit(RESULT_WHITE_FORFEIT_WIN),
+        )
+        self.forfeit_menu.addAction(
+            "Black wins by forfeit",
+            lambda: self._select_forfeit(RESULT_BLACK_FORFEIT_WIN),
+        )
+        self.forfeit_menu.addAction(
+            "Double forfeit",
+            lambda: self._select_forfeit(RESULT_DOUBLE_FORFEIT),
+        )
+        self.menu_button.setMenu(self.forfeit_menu)
+        layout = self.layout()
+        if layout is not None:
+            layout.addWidget(self.menu_button)
+
     def selectedResult(self) -> str:
         """
         Get the currently selected result.
@@ -83,8 +115,21 @@ class ResultSelector(QtWidgets.QWidget):
             The result constant (RESULT_WHITE_WIN, RESULT_DRAW, or RESULT_BLACK_WIN),
             or empty string if no result is selected.
         """
+        if self._current_result:
+            return self._current_result
         checked_button = self.button_group.checkedButton()
         return checked_button.property("result_const") if checked_button else ""
+
+    def _clear_forfeit(self) -> None:
+        self._current_result = ""
+
+    def _select_forfeit(self, result_constant: str) -> None:
+        self._current_result = result_constant
+        checked_button = self.button_group.checkedButton()
+        if checked_button:
+            self.button_group.setExclusive(False)
+            checked_button.setChecked(False)
+            self.button_group.setExclusive(True)
 
     def setResult(self, result_constant: str) -> None:
         """
@@ -96,11 +141,21 @@ class ResultSelector(QtWidgets.QWidget):
             One of RESULT_WHITE_WIN, RESULT_DRAW, or RESULT_BLACK_WIN.
             If the value doesn't match any button, the selection is cleared.
         """
+        if result_constant in {
+            RESULT_WHITE_FORFEIT_WIN,
+            RESULT_BLACK_FORFEIT_WIN,
+            RESULT_DOUBLE_FORFEIT,
+        }:
+            self._select_forfeit(result_constant)
+            return
+
         for button in self.button_group.buttons():
             if button.property("result_const") == result_constant:
+                self._current_result = ""
                 button.setChecked(True)
                 return
         # If no match, clear selection
+        self._current_result = ""
         checked_button = self.button_group.checkedButton()
         if checked_button:
             self.button_group.setExclusive(False)

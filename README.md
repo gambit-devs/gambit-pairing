@@ -99,12 +99,15 @@ Gambit Pairing is a desktop application for managing Swiss-system chess tourname
 
 ## Documentation
 
-- [Program Structure](docs/program-structure.md)
-- [Installation Guide](docs/installing.md)
-- [Before you commit](docs/before_you_commit.md)
+- [GAMBIT Test CLI](docs/GAMBIT_TEST_CLI.md)
+- [Git Commit Helper](docs/git_commit_helper.md)
 - [Developer Hacking Guide](docs/HACKING.md)
+- [Installation Guide](docs/installing.md)
 - [Manual Pairing Guide](docs/manual-pairing-guide.md)
-- [GitHub Actions Build System](docs/github-actions-build-system.md)
+- [Program Structure](docs/program-structure.md)
+- [Project Formatting](docs/project_formatting.md)
+- [Virtual Environment Management](docs/virtual_environment_managment.md)
+- [Windows Install](docs/windows_install.md)
 
 ## Downloads
 
@@ -119,8 +122,25 @@ Pre-built executables and installers are automatically created for each release:
 
 Visit the [Releases page](https://github.com/gambit-devs/gambit-pairing/releases) to download the latest version.
 
-### Build Status
-[![Build Windows Release](https://github.com/gambit-devs/gambit-pairing/actions/workflows/build-release.yml/badge.svg)](https://github.com/gambit-devs/gambit-pairing/actions/workflows/build-release.yml)
+### Python Package
+
+You can also install Gambit Pairing as a Python package using pip:
+
+```bash
+pip install gambit-pairing
+```
+
+For development or to install from source:
+
+```bash
+git clone https://github.com/gambit-devs/gambit-pairing.git
+cd gambit-pairing
+pip install -e .
+```
+
+### Build and Deploy Status
+[![Build Windows Release](https://github.com/gambit-devs/gambit-pairing/actions/workflows/build-release-windows.yml/badge.svg)](https://github.com/gambit-devs/gambit-pairing/actions/workflows/build-release-windows.yml)
+[![PyPI version](https://badge.fury.io/py/gambit-pairing.svg)](https://pypi.org/project/gambit-pairing/)
 ## Requirements
 
 To install with pip, there is a helper sh script, ensure-all-dependancies.sh
