@@ -1,34 +1,38 @@
-import os
 import importlib
 import importlib.util
+import os
 from pathlib import Path
 from typing import Any, cast
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from importlib_resources import as_file, files
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
+from importlib_resources import as_file, files
 
-from gambitpairing.constants import DEFAULT_TIEBREAK_SORT_ORDER
-from gambitpairing.constants import RESULT_BLACK_WIN, RESULT_DRAW, RESULT_WHITE_WIN
+from gambitpairing.constants import (
+    DEFAULT_TIEBREAK_SORT_ORDER,
+    RESULT_BLACK_WIN,
+    RESULT_DRAW,
+    RESULT_WHITE_WIN,
+)
 from gambitpairing.gui.dialogs.about_dialog import AboutDialog
 from gambitpairing.gui.dialogs.manual_pairing_dialog import ManualPairingDialog
 from gambitpairing.gui.dialogs.new_tournament_dialog import NewTournamentDialog
 from gambitpairing.gui.dialogs.player_management_dialog import PlayerManagementDialog
 from gambitpairing.gui.dialogs.print_options_dialog import PrintOptionsDialog
 from gambitpairing.gui.dialogs.tournament_settings_dialoug import SettingsDialog
+from gambitpairing.gui.dialogs.unsaved_changes_dialog import UnsavedChangesDialog
 from gambitpairing.gui.dialogs.update_dialog import UpdateDownloadDialog
 from gambitpairing.gui.dialogs.update_prompt_dialog import UpdatePromptDialog
-from gambitpairing.gui.dialogs.unsaved_changes_dialog import UnsavedChangesDialog
 from gambitpairing.gui.main_window_save_flow import build_unsaved_changes_prompt
 from gambitpairing.gui.widgets.header import TabHeader
 from gambitpairing.gui.widgets.pairings_table import PairingsTable
 from gambitpairing.gui.widgets.player_placeholder import PlayerPlaceholder
 from gambitpairing.gui.widgets.pre_tournament_start import PreTournamentStart
 from gambitpairing.gui.widgets.result_selector import ResultSelector
-from gambitpairing.gui.widgets.round_progress_indicator import RoundProgressIndicator
 from gambitpairing.gui.widgets.round_controls import RoundControlsWidget
+from gambitpairing.gui.widgets.round_progress_indicator import RoundProgressIndicator
 from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 from gambitpairing.models import Player
 from gambitpairing.models.enums import TournamentPhase
@@ -63,7 +67,9 @@ def test_packaged_ui_files_are_parseable():
 
 
 def test_pyinstaller_datas_include_runtime_ui_and_styles():
-    config_path = Path(__file__).resolve().parents[1] / "scripts" / "pyinstaller_common.py"
+    config_path = (
+        Path(__file__).resolve().parents[1] / "scripts" / "pyinstaller_common.py"
+    )
     spec = importlib.util.spec_from_file_location("pyinstaller_common", config_path)
     assert spec is not None
     module = importlib.util.module_from_spec(spec)
@@ -170,9 +176,10 @@ def test_designer_backed_player_management_dialog_preserves_public_api():
     create_dialog = PlayerManagementDialog()
     assert create_dialog.windowTitle() == "Player Management"
     assert create_dialog.tab_widget.count() == 3
-    assert create_dialog.buttons.button(
-        QtWidgets.QDialogButtonBox.StandardButton.Ok
-    ) is not None
+    assert (
+        create_dialog.buttons.button(QtWidgets.QDialogButtonBox.StandardButton.Ok)
+        is not None
+    )
     assert create_dialog.get_editing_player_id() is None
 
     create_dialog.name_edit.setText("Ada")
@@ -219,11 +226,28 @@ def test_designer_backed_manual_pairing_dialog_preserves_public_api():
     )
 
     assert dialog.windowTitle() == "Edit Pairings - Round 2"
-    assert dialog.buttons.button(
-        QtWidgets.QDialogButtonBox.StandardButton.Ok
-    ) is not None
+    assert (
+        dialog.buttons.button(QtWidgets.QDialogButtonBox.StandardButton.Ok) is not None
+    )
     assert dialog.main_window_widget.centralWidget() is not None
     assert dialog.player_pool_dock.widget() is not None
+    assert not dialog.main_window_widget.isWindow()
+    assert dialog.clear_all_btn.text() == "Clear All"
+    assert dialog.auto_pair_btn.text() == "Auto Pair"
+    assert dialog.player_pool.objectName() == "player_pool"
+    assert dialog.bye_list.objectName() == "bye_list"
+    assert (
+        dialog.player_pool_dock.features()
+        == QtWidgets.QDockWidget.DockWidgetFeature.NoDockWidgetFeatures
+    )
+    assert not dialog.player_pool_dock.isFloating()
+    assert (
+        dialog.player_pool.dragDropMode()
+        == QtWidgets.QAbstractItemView.DragDropMode.DropOnly
+    )
+    assert not dialog.player_pool.dragEnabled()
+    dialog.player_pool.startDrag(Qt.DropAction.MoveAction)
+    assert dialog.pairings_table.columnCount() == 3
     pairings, byes = dialog.get_pairings_and_bye()
     assert pairings == [(white, black)]
     assert byes == [bye]

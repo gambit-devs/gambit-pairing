@@ -216,3 +216,6 @@ marimo/_static/
 marimo/_lsp/
 
 .idea
+
+# Personal local launcher
+/run.sh

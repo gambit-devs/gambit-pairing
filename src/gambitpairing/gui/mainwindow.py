@@ -41,7 +41,7 @@ from .dialogs import (
     SettingsDialog,
     UnsavedChangesDialog,
 )
-from .import_player import ImportPlayer
+from .gui_utils import get_colored_icon
 from .main_window_file_flow import (
     build_load_error_prompt,
     build_load_success_history,
@@ -62,7 +62,8 @@ from .main_window_tournament_flow import (
     build_new_tournament_history,
     project_new_tournament_data,
 )
-from .ui_loader import load_ui_into
+from .player_import_workflow import PlayerImportWorkflow
+from .ui_loader import load_ui_into, required_child
 from .update_workflow import UpdateWorkflowController
 from .views.crosstable.crosstable_view import CrosstableView
 from .views.history.history_view import HistoryView
@@ -88,8 +89,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self._dirty: bool = False
         self.updater: Optional[Updater] = Updater(APP_VERSION)
         self.persistence_service = TournamentPersistenceService()
-        # import player is a class containing import player logic
-        self.import_mgr = ImportPlayer(self)
+        self.import_mgr = PlayerImportWorkflow(self)
 
         self._setup_ui()
         self.update_workflow = UpdateWorkflowController(
@@ -257,9 +257,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             )
             logging.exception("Error saving tournament:")
             prompt = build_save_error_prompt(e)
-            QtWidgets.QMessageBox.critical(
-                self, prompt.title, prompt.message
-            )
+            QtWidgets.QMessageBox.critical(self, prompt.title, prompt.message)
             raise RuntimeError(message)
 
     def restart_application(self):
@@ -460,10 +458,9 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
 
     def _setup_main_panel(self):
         """Create the tab widget and populates it with the modular tab classes."""
-        # stacked_widget comes from main_window.ui.
-        if not hasattr(self, "stacked_widget"):
-            self.stacked_widget = QtWidgets.QStackedWidget()
-            self.setCentralWidget(self.stacked_widget)
+        self.stacked_widget = required_child(
+            self, QtWidgets.QStackedWidget, "stacked_widget"
+        )
 
         # Placeholder for no tournament
         self.tournament_placeholder = TournamentPlaceholder(self)
@@ -475,8 +472,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         )
         self.stacked_widget.addWidget(self.tournament_placeholder)
 
-        self.tabs = QtWidgets.QTabWidget()
-        self.stacked_widget.addWidget(self.tabs)
+        self.tabs = required_child(self, QtWidgets.QTabWidget, "tabs")
 
         self.players_tab = PlayersView(self)
         self.rounds_tab = TournamentView(self)
@@ -521,7 +517,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
 
     def _setup_menu(self):
         """Set up the main menu bar, connecting actions to methods in the main window or tabs."""
-        menu_bar = self.menuBar()
+        menu_bar = required_child(self, QtWidgets.QMenuBar, "menubar")
 
         # File Menu
         file_menu = menu_bar.addMenu("&File")
@@ -619,12 +615,10 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         Tournament control actions show/hide based on tournament state for a cleaner UX.
         Icons are loaded from the system theme for a native look and feel.
         """
-        toolbar = self.addToolBar("Main Toolbar")
+        toolbar = required_child(self, QtWidgets.QToolBar, "main_toolbar")
         toolbar.setObjectName("MainToolbar")
         toolbar.setProperty("class", "MainToolbar")
         # Prevent detaching / floating
-        toolbar.setMovable(False)
-
         toolbar.setMovable(False)
 
         if hasattr(toolbar, "setFloatable"):
@@ -643,7 +637,9 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self.load_action.setIcon(QtGui.QIcon.fromTheme("document-open"))
         self.save_action.setIcon(QtGui.QIcon.fromTheme("document-save"))
         self.start_action.setIcon(QtGui.QIcon.fromTheme("media-playback-start"))
-        self.record_results_action.setIcon(QtGui.QIcon.fromTheme("media-record"))
+        self.record_results_action.setIcon(
+            get_colored_icon("lock-arrow.svg", "#2d5a27", 18)
+        )
         self.prepare_round_action.setIcon(QtGui.QIcon.fromTheme("go-next"))
 
         # Add file-related toolbar actions

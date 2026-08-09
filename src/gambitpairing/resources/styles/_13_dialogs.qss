@@ -10,6 +10,20 @@ QDialog[class="ManualPairingDialog"] {
   color:      {{text_body}};
 }
 
+QMainWindow[class="ManualPairingMainWindow"] {
+  background: {{bg_page}};
+  border:     none;
+}
+
+QWidget[class="ManualPairingCentralWidget"],
+QWidget[class="ManualPairingDockContents"] {
+  background: {{bg_page}};
+}
+
+QWidget[class="ManualPairingToolbar"] {
+  background: transparent;
+}
+
 QLabel[class="ManualPairingDialog"] {
   color: {{text_body}};
 }
@@ -33,6 +47,15 @@ QLabel[class="ManualPairingStatsLabel"] {
   padding:       5px;
   background:    {{bg_subtle}};
   border-radius: {{radius_sm}};
+}
+
+QLabel[class="ManualPairingByePlaceholder"] {
+  color:            {{text_muted}};
+  background:       {{bg_subtle}};
+  border:           1px dashed {{border_medium}};
+  border-radius:    {{radius_sm}};
+  padding:          10px 6px;
+  min-height:       42px;
 }
 
 QLabel[class="ManualPairingValidationLabel"] {
@@ -89,29 +112,6 @@ QDockWidget[class="ManualPairingDialog"]::title {
   text-align:  left;
   border:      1px solid {{border_medium}};
   border-bottom: none;
-}
-
-QDockWidget[class="ManualPairingDialog"]::close-button,
-QDockWidget[class="ManualPairingDialog"]::float-button {
-  background:           transparent;
-  border:               1px solid transparent;
-  border-radius:        2px;
-  subcontrol-position:  top right;
-  subcontrol-origin:    margin;
-  position:             relative;
-  width:                14px;
-  height:               14px;
-}
-
-QDockWidget[class="ManualPairingDialog"]::close-button:hover,
-QDockWidget[class="ManualPairingDialog"]::float-button:hover {
-  background: {{border_medium}};
-  border:     1px solid {{text_muted}};
-}
-
-QDockWidget[class="ManualPairingDialog"]::close-button:pressed,
-QDockWidget[class="ManualPairingDialog"]::float-button:pressed {
-  background: {{border_header}};
 }
 
 QListWidget[class="ManualPairingByeList"] {
@@ -258,6 +258,14 @@ QDialog[class="UnsavedChangesDialog"] QPushButton {
 QLabel[class="UpdateStatusLabel"] {
   font-size: 11pt;
   padding:   0 12px;
+}
+
+QLabel[class="UpdateStatusLabel"][state="success"] {
+  color: {{state_success_text}};
+}
+
+QLabel[class="UpdateStatusLabel"][state="error"] {
+  color: {{state_error_accent}};
 }
 
 QProgressBar[class="UpdateProgressBar"] {

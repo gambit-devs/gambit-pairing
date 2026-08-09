@@ -90,9 +90,6 @@ class PlayersView(QtWidgets.QWidget):
         Name, Rating, Age, Status.
     btn_add_player_detail : QtWidgets.QPushButton
         Button to open the add-player dialog.
-    list_players : QtWidgets.QListWidget
-        Legacy widget kept for compatibility with ``reset_tournament_state()``.
-        Not visible or actively used.
     tournament_placeholder : TournamentPlaceholder
         Placeholder widget shown when no tournament is loaded.
     no_players_placeholder : PlayerPlaceholder
@@ -123,9 +120,7 @@ class PlayersView(QtWidgets.QWidget):
         self.main_window = main_window
         self.tournament = None
         load_ui_into(self, "players_view.ui")
-        self.main_layout = required_child(
-            self, QtWidgets.QVBoxLayout, "main_layout"
-        )
+        self.main_layout = required_child(self, QtWidgets.QVBoxLayout, "main_layout")
         header_layout = required_child(self, QtWidgets.QVBoxLayout, "header_layout")
         placeholder_layout = required_child(
             self, QtWidgets.QVBoxLayout, "placeholder_layout"
@@ -135,9 +130,7 @@ class PlayersView(QtWidgets.QWidget):
         self.header = TabHeader("Players")
         header_layout.addWidget(self.header)
 
-        self.player_group = required_child(
-            self, QtWidgets.QGroupBox, "player_group"
-        )
+        self.player_group = required_child(self, QtWidgets.QGroupBox, "player_group")
         self.player_group.setProperty("class", "PlayerGroup")
 
         # --- Player Table ---
@@ -620,9 +613,7 @@ class PlayersView(QtWidgets.QWidget):
         """
         if not self.tournament or not self.tournament.players:
             prompt = build_export_unavailable_prompt()
-            QtWidgets.QMessageBox.information(
-                self, prompt.title, prompt.message
-            )
+            QtWidgets.QMessageBox.information(self, prompt.title, prompt.message)
 
             return
         filename, _ = QtWidgets.QFileDialog.getSaveFileName(

@@ -40,9 +40,7 @@ class NewTournamentDialog(QtWidgets.QDialog):
         self.tiebreak_list = required_child(
             self, QtWidgets.QListWidget, "tiebreak_list"
         )
-        self.pairing_combo = required_child(
-            self, QtWidgets.QComboBox, "pairing_combo"
-        )
+        self.pairing_combo = required_child(self, QtWidgets.QComboBox, "pairing_combo")
         self.pairing_combo.addItem("Dutch System (FIDE/USCF-style)", "dutch_swiss")
         self.pairing_combo.addItem("Round Robin (All-Play-All)", "round_robin")
         self.pairing_combo.addItem("Manual Pairing", "manual")
@@ -125,7 +123,7 @@ class NewTournamentDialog(QtWidgets.QDialog):
                 "desc": "Complete manual control over all pairings. Tournament director creates all pairings by hand for each round.",
                 "fide": False,
                 "uscf": False,
-                "details": "<ul><li><b>Pairing Logic:</b> No automatic pairing. TD manually creates all matches each round.</li><li><b>Best For:</b> Special events, demonstration games, custom formats.</li><li><b>Features:</b> Full pairing editor with drag-and-drop, player pool, edit mode for swapping players.</li><li><b>Notes:</b> Maximum flexibility but requires manual work for every round.</li></ul>",
+                "details": "<ul><li><b>Pairing Logic:</b> No automatic pairing. TD manually creates all matches each round.</li><li><b>Best For:</b> Special events, demonstration games, custom formats.</li><li><b>Features:</b> Full pairing editor with click-to-place controls, a player pool, drag-to-remove assignments, and color swapping.</li><li><b>Notes:</b> Maximum flexibility but requires manual work for every round.</li></ul>",
             },
         }
         dialog = QtWidgets.QDialog(self)

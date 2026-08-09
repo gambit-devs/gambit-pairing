@@ -14,16 +14,16 @@ from gambitpairing.gui.views.tournament.tournament_printing import (
 )
 from gambitpairing.utils.print import TournamentPrintUtils
 
-
 _APP: QtWidgets.QApplication | None = None
 
 
 def _app() -> QtWidgets.QApplication:
     global _APP
     app = QtWidgets.QApplication.instance()
-    if app is None:
-        app = QtWidgets.QApplication([])
-    _APP = app
+    if isinstance(app, QtWidgets.QApplication):
+        _APP = app
+    else:
+        _APP = QtWidgets.QApplication([])
     return _APP
 
 

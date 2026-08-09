@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
 import os
+from pathlib import Path
 import subprocess
 import sys
-from pathlib import Path
 
 
 def main():
@@ -34,7 +34,8 @@ def main():
         print("Python pip pkg installed in --editable mode")
 
         print(
-            "now gambit-pairing should be on your $PATH, try gambit-paining in your shell"
+            "Editable install complete. With this Python environment active, "
+            "run 'gambit-pairing' from your shell."
         )
 
     except subprocess.CalledProcessError as e:

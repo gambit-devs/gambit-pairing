@@ -1,5 +1,6 @@
 from PyQt6 import QtCore, QtWidgets
 
+from gambitpairing.gui.gui_utils import update_widget_style
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
 
 
@@ -22,9 +23,7 @@ class UpdateDownloadDialog(QtWidgets.QDialog):
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(0)
 
-        self.button_box = required_child(
-            self, QtWidgets.QDialogButtonBox, "button_box"
-        )
+        self.button_box = required_child(self, QtWidgets.QDialogButtonBox, "button_box")
         self.restart_btn = self.button_box.addButton(
             "Close", QtWidgets.QDialogButtonBox.ButtonRole.AcceptRole
         )
@@ -47,20 +46,24 @@ class UpdateDownloadDialog(QtWidgets.QDialog):
 
     def update_status(self, text: str):
         self.status_label.setText(text)
+        self.status_label.setProperty("state", "default")
+        update_widget_style(self.status_label)
 
     def show_complete(self):
         self.progress_bar.setValue(100)
         self.status_label.setText(
             "Update downloaded! Please close and restart the application to apply it."
         )
+        self.status_label.setProperty("state", "success")
+        update_widget_style(self.status_label)
         self.restart_btn.show()
         self.close_btn.show()
         self.progress_bar.setEnabled(False)
 
     def show_error(self, error_text: str):
-        self.status_label.setText(
-            f"<span style='color:#c00;'>Update failed:</span><br>{error_text}"
-        )
+        self.status_label.setText(f"Update failed:\n{error_text}")
+        self.status_label.setProperty("state", "error")
+        update_widget_style(self.status_label)
         self.progress_bar.setEnabled(False)
         self.restart_btn.hide()
         self.close_btn.show()

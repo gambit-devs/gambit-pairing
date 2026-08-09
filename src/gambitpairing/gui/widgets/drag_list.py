@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Any, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import QMimeData, Qt
@@ -53,7 +53,19 @@ class DragListWidget(QtWidgets.QListWidget):
         self.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
 
     def startDrag(self, supported_actions: Qt.DropActions) -> None:
-        """Start drag operation from player pool."""
+        """Start a drag when this list is configured as a drag source.
+
+        The manual-pairing player pool reuses this widget as a drop target so
+        paired players can be dragged back into it.  Guarding the custom drag
+        path here makes ``DropOnly`` behavior explicit even if Qt invokes the
+        virtual method during a native mouse gesture.
+        """
+        if (
+            not self.dragEnabled()
+            or self.dragDropMode() == QtWidgets.QAbstractItemView.DragDropMode.DropOnly
+        ):
+            return
+
         current_item: Optional[QtWidgets.QListWidgetItem] = self.currentItem()
         if not current_item:
             return
@@ -117,7 +129,8 @@ class DragListWidget(QtWidgets.QListWidget):
 
             if player and player.is_active:
                 self.selected_player = player
-                reset_and_set_cursor(Qt.CursorShape.ClosedHandCursor)
+                if self.dragEnabled():
+                    reset_and_set_cursor(Qt.CursorShape.ClosedHandCursor)
                 self.setCurrentItem(item)
                 self.parent_dialog._enable_click_to_place_mode(player)
 
@@ -137,12 +150,14 @@ class DragListWidget(QtWidgets.QListWidget):
 
     def dragLeaveEvent(self, event: QDragLeaveEvent) -> None:
         """Handle drag leave events."""
-        QtWidgets.QApplication.restoreOverrideCursor()
+        while QtWidgets.QApplication.overrideCursor() is not None:
+            QtWidgets.QApplication.restoreOverrideCursor()
         super().dragLeaveEvent(event)
 
     def dropEvent(self, event: QDropEvent) -> None:
         """Handle drop events."""
-        QtWidgets.QApplication.restoreOverrideCursor()
+        while QtWidgets.QApplication.overrideCursor() is not None:
+            QtWidgets.QApplication.restoreOverrideCursor()
 
         if not event.mimeData().hasText():
             event.ignore()
@@ -154,7 +169,25 @@ class DragListWidget(QtWidgets.QListWidget):
             return
 
         player_id: str = data.split(":", 1)[1]
+        dialog = self.parent_dialog
+        if not hasattr(dialog, "_remove_player_from_all_positions"):
+            event.ignore()
+            return
 
-        self.parent_dialog._save_state_for_undo()
+        # Dropping a player back into the pool removes the player from any
+        # board or bye.  The old implementation only saved an undo snapshot,
+        # leaving the visible assignment untouched.
+        is_assigned = dialog.controller.is_player_assigned(player_id)
+        if not is_assigned:
+            event.acceptProposedAction()
+            return
+
+        dialog._save_state_for_undo()
+        dialog._remove_player_from_all_positions(player_id)
+        dialog._populate_player_pool()
+        dialog._update_pairings_display()
+        dialog._update_bye_display()
+        dialog._update_stats()
+        dialog._update_validation()
 
         event.acceptProposedAction()

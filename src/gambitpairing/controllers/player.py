@@ -2,12 +2,46 @@
 
 from __future__ import annotations
 
-import csv
 from collections.abc import Iterable, Mapping
+import csv
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Tuple
+from typing import TYPE_CHECKING, List, Tuple
 
 from gambitpairing.models.player import Player, create_player
+
+if TYPE_CHECKING:
+    from gambitpairing.models.tournament import Tournament
+
+
+@dataclass(frozen=True)
+class PlayerImportAvailability:
+    """Backend decision describing whether API player import is available."""
+
+    allowed: bool
+    title: str = ""
+    message: str = ""
+
+
+def get_player_import_availability(
+    tournament: "Tournament | None",
+) -> PlayerImportAvailability:
+    """Return the import precondition result without depending on Qt."""
+    if tournament is None:
+        return PlayerImportAvailability(
+            allowed=False,
+            title="No Tournament",
+            message="Please create a tournament before importing players.",
+        )
+
+    if tournament.rounds_pairings_ids:
+        return PlayerImportAvailability(
+            allowed=False,
+            title="Tournament Active",
+            message="Cannot import players after the tournament has started.",
+        )
+
+    return PlayerImportAvailability(allowed=True)
 
 
 def import_players_from_csv(

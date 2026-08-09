@@ -6,22 +6,22 @@ The Manual Pairing Dialog provides a powerful and flexible interface for creatin
 
 The dialog is divided into three main sections:
 
-1.  **Player Pool (Left, Detachable)**: This panel lists all players who are not yet paired for the current round. You can search, filter, and select players from this list. This panel can be detached into its own floating window by clicking and dragging its title bar.
+1.  **Player Pool (Left, Fixed)**: This panel lists all players who are not yet paired for the current round. You can search, filter, and select players from this list.
 2.  **Pairings Panel (Right)**: This is where you build the pairings for the round. It includes a toolbar for common actions and a table displaying the current pairings.
 3.  **Bye Player Area (Bottom of Player Pool)**: A dedicated spot to assign a bye to a player for the round.
 ---
 
 ## Core Features
 
-### Creating Pairings with Drag and Drop
+### Creating Pairings with Selection
 
-The primary way to create pairings is by dragging players from the **Player Pool** and dropping them into the **Pairings Table**.
+The Player Pool is selection-only. Select a player, then click an empty **White**
+or **Black** cell in the Pairings Table to place them. An empty row will be
+created if needed.
 
-1.  Click and hold on a player in the Player Pool.
-2.  Drag the player over to the "White" or "Black" column in the Pairings Table.
-3.  Release the mouse button to drop the player into the pairing. An empty row will be created if needed.
-
-You can drag a second player into the same row to complete the pairing. You can also drag a player from the pool onto an existing player in the table to replace them, sending the original player back to the pool.
+You can drag players already in the Pairings Table between cells or pairings to
+change assignments. Dragging a paired player back to the Player Pool removes
+that assignment.
 
 ### Auto-Pairing
 
@@ -41,7 +41,7 @@ You can drag a second player into the same row to complete the pairing. You can 
 
 If there is an odd number of players, one player must be given a bye for the round.
 
-1.  Drag a player from the Player Pool to the **"Bye Player"** area at the bottom of the left panel.
+1.  Right-click a player in the Player Pool and select **"Set as bye player"**.
 2.  To remove the bye, drag the player from the Bye Player area back into the Player Pool.
 
 ### Undo

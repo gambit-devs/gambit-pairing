@@ -39,15 +39,12 @@ DESIGNER_BACKED_UI_FILES: tuple[str, ...] = (
     "unsaved_changes_dialog.ui",
 )
 
-REMAINING_PYTHON_BUILT_LAYOUTS: tuple[str, ...] = (
-    "ManualPairingDialog dynamic dock, toolbar, bye list, and pairings panel",
-)
+REMAINING_PYTHON_BUILT_LAYOUTS: tuple[str, ...] = ()
 
 DYNAMIC_WIDGET_EXCEPTIONS: tuple[str, ...] = (
     "DroppableByeListWidget",
     "DroppableTableWidget",
     "DragListWidget",
-    "DragTableWidget",
     "NumericTableWidgetItem",
 )
 
@@ -60,8 +57,10 @@ EXTRACTED_WORKFLOW_HELPERS: tuple[str, ...] = (
     "players_view_workflow",
     "standings_presentation",
     "player_management_data",
+    "player_import_workflow",
     "manual_pairing_state",
     "manual_pairing_io",
+    "manual_pairing_controller",
     "tournament_view_workflow",
     "tournament_printing",
 )

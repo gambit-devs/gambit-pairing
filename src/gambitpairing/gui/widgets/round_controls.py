@@ -84,7 +84,7 @@ class RoundControlsWidget(QtWidgets.QWidget):
         elif state == "record":
             self.btn_primary_action.setText("Record Results")
             self.btn_primary_action.setIcon(
-                get_colored_icon("checkmark-white.svg", "black", 16)
+                get_colored_icon("lock-arrow.svg", "#2d5a27", 16)
             )
             self.btn_primary_action.setEnabled(True)
             self.btn_primary_action.setToolTip("Save results and advance to next round")
