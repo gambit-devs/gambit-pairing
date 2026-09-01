@@ -27,7 +27,7 @@ The TournamentController handles:
 
 from __future__ import annotations
 
-from typing import Callable, List, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, List, Optional, Tuple
 
 from gambitpairing.constants import (
     BYE_SCORE,
@@ -38,12 +38,12 @@ from gambitpairing.constants import (
     RESULT_WHITE_WIN,
     WIN_SCORE,
 )
-from gambitpairing.utils import setup_logger
 from gambitpairing.models.pairing import (
     PairingGenerationResult,
     RecordingResult,
     ValidationResult,
 )
+from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)
 
@@ -153,6 +153,8 @@ class TournamentController:
                     error_message=f"Manual pairing tournaments require at least two {player_type}players.",
                 )
 
+        if pairing_system in {"round_robin", "dutch_swiss", "manual"}:
+            return ValidationResult(valid=True)
         return ValidationResult(
             valid=False,
             error_message=f"pairing system {pairing_system} not handled correctly.",
@@ -235,18 +237,45 @@ class TournamentController:
 
     def pairings_exist_for_round(self, round_index: int) -> bool:
         """Check if pairings already exist for a given round."""
+        return self.get_round_data(round_index) is not None
+
+    def get_round_data(self, round_index: int):
+        """Return the model data for a zero-based round index."""
+        if not self.tournament or round_index < 0:
+            return None
+        return self.tournament.round_controller.get_round(round_index + 1)
+
+    @property
+    def generated_round_count(self) -> int:
+        """Return the number of rounds currently represented by the model."""
         if not self.tournament:
+            return 0
+        return len(self.tournament.round_controller.rounds)
+
+    def get_round_results(self, round_index: int, pending: bool = False) -> list:
+        """Return pending or finalized results for a round without exposing storage."""
+        round_data = self.get_round_data(round_index)
+        if round_data is None:
+            return []
+        return list(round_data.pending_results if pending else round_data.results)
+
+    def set_pending_results(self, round_index: int, results_data: List[tuple]) -> bool:
+        """Persist in-progress result entry without changing standings."""
+        round_data = self.get_round_data(round_index)
+        if (
+            not self.tournament
+            or round_data is None
+            or round_data.is_completed
+        ):
             return False
-        return round_index < len(self.tournament.rounds_pairings_ids)
+        self.tournament.result_recorder.set_pending_results(round_data, results_data)
+        return True
 
     def clear_round_pairings(self, round_index: int):
         """Clear pairings for a round and all subsequent rounds."""
         if not self.tournament:
             return
-        self.tournament.rounds_pairings_ids = self.tournament.rounds_pairings_ids[
-            :round_index
-        ]
-        self.tournament.rounds_byes_ids = self.tournament.rounds_byes_ids[:round_index]
+        self.tournament.clear_rounds_from(round_index)
 
     def get_round_pairings(
         self, round_index: int
@@ -259,22 +288,22 @@ class TournamentController:
         tuple
             (list of (white, black) tuples, bye_player or None)
         """
-        if not self.tournament or round_index >= len(
-            self.tournament.rounds_pairings_ids
-        ):
+        round_data = self.get_round_data(round_index)
+        if not self.tournament or round_data is None:
             return [], None
 
-        pairings_ids = self.tournament.rounds_pairings_ids[round_index]
-        bye_id = self.tournament.rounds_byes_ids[round_index]
-
         pairings = []
-        for w_id, b_id in pairings_ids:
+        for w_id, b_id in round_data.pairings:
             w = self.tournament.players.get(w_id)
             b = self.tournament.players.get(b_id)
             if w and b:
                 pairings.append((w, b))
 
-        bye_player = self.tournament.players.get(bye_id) if bye_id else None
+        bye_player = (
+            self.tournament.players.get(round_data.bye_player_id)
+            if round_data.bye_player_id
+            else None
+        )
         return pairings, bye_player
 
     def record_results(
@@ -352,10 +381,12 @@ class TournamentController:
 
     def can_undo(self) -> bool:
         """Check if undo is possible."""
-        return (
-            self.tournament is not None
-            and len(self.last_recorded_results_data) > 0
-            and self.current_round_index > 0
+        if self.tournament is None or self.current_round_index <= 0:
+            return False
+        round_data = self.get_round_data(self.current_round_index - 1)
+        return bool(
+            self.last_recorded_results_data
+            or (round_data is not None and round_data.is_completed)
         )
 
     def undo_last_results(self) -> Tuple[bool, Optional[str]]:
@@ -372,26 +403,18 @@ class TournamentController:
 
         try:
             round_index_being_undone = self.current_round_index - 1
+            round_data = self.get_round_data(round_index_being_undone)
+            if round_data is None:
+                return False, "The completed round could not be found."
 
-            # Revert player stats for each game
-            for result_entry in self.last_recorded_results_data:
-                white_id, black_id = result_entry[:2]
-                p_white = self.tournament.players.get(white_id)
-                p_black = self.tournament.players.get(black_id)
-                if p_white:
-                    self._revert_player_round_data(p_white)
-                if p_black:
-                    self._revert_player_round_data(p_black)
-
-            # Revert bye player stats
-            if round_index_being_undone < len(self.tournament.rounds_byes_ids):
-                bye_player_id = self.tournament.rounds_byes_ids[
-                    round_index_being_undone
-                ]
-                if bye_player_id:
-                    p_bye = self.tournament.players.get(bye_player_id)
-                    if p_bye:
-                        self._revert_player_round_data(p_bye)
+            # ResultRecorder owns the player-history invariants. Keeping the
+            # mutation there prevents the view from having to know how scores,
+            # colors, byes, and match history are represented.
+            if not self.tournament.result_recorder.undo_round_results(
+                round_data, self.tournament.players
+            ):
+                return False, "The completed round could not be undone."
+            round_data.pending_results.clear()
 
             # Log warning about manual pairings
             if round_index_being_undone in self.tournament.manual_pairings:

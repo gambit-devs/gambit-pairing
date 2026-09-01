@@ -184,3 +184,200 @@ QLabel[class="StatusInstruction"][state="finished"] {
   font-weight:      600;
   border-bottom-color: {{state_success_border}};
 }
+
+/* --- Spreadsheet-style Rounds workspace ------------------------------- */
+QFrame[class="RoundCard"] {
+  background:    {{bg_surface}};
+  border:        1px solid {{border_light}};
+  border-radius: {{radius_lg}};
+}
+
+QWidget[class="RoundNavigation"] {
+  background: transparent;
+}
+
+QLabel[class="RoundStatus"] {
+  color: {{text_secondary}};
+  background: transparent;
+  border: none;
+  border-left: 2px solid {{border_medium}};
+  border-radius: 0;
+  padding: 1px 0 1px 7px;
+  font-size: {{font_size_sm}};
+  font-weight: 500;
+}
+
+QLabel[class="RoundStatus"][state="complete"] {
+  color: {{state_success_text}};
+  border-left-color: {{state_success_border}};
+  font-weight: 600;
+}
+
+QLabel[class="RoundStatus"][state="progress"] {
+  border-left-color: {{border_medium}};
+}
+
+QLabel[class="RoundStatus"][state="pending"] {
+  color: {{text_muted}};
+  border-left-color: {{border_medium}};
+}
+
+QLabel[class="RoundSummary"] {
+  color: {{text_secondary}};
+  background: transparent;
+  padding: 1px 0 1px 4px;
+  font-size: {{font_size_sm}};
+  font-weight: 400;
+}
+
+QTableWidget[class="PairingsTable"] {
+  border: none;
+  border-radius: {{radius_lg}};
+  gridline-color: {{table_grid}};
+  selection-background-color: {{bg_muted}};
+  selection-color: {{text_heading}};
+  font-size: {{font_size_sm}};
+}
+
+QTableWidget[class="PairingsTable"]::item {
+  padding: 2px 8px;
+  border-bottom: 1px solid {{border_light}};
+  color: {{text_dark}};
+}
+
+QTableWidget[class="PairingsTable"]::item:selected {
+  background: {{bg_muted}};
+  color: {{text_heading}};
+}
+
+QTableWidget[class="PairingsTable"]::item:hover:!selected {
+  background: {{bg_subtle}};
+  color: {{text_dark}};
+}
+
+QTableWidget[class="PairingsTable"] QHeaderView::section {
+  background: {{bg_subtle}};
+  color: {{text_secondary}};
+  border: none;
+  border-bottom: 1px solid {{border_medium}};
+  padding: 5px 8px;
+  font-size: {{font_size_sm}};
+  font-weight: 600;
+}
+
+QTableWidget[class="PairingsTable"] QHeaderView::section:horizontal:hover,
+QTableWidget[class="PairingsTable"] QHeaderView::section:horizontal:pressed {
+  background: {{bg_subtle}};
+  color: {{text_secondary}};
+}
+
+QWidget[class="ResultSelector"][compact="true"] {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0;
+  padding: 0;
+}
+
+QWidget[class="ResultSelector"][compact="true"][selected="true"] {
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+QPushButton[class="ResultCellButton"] {
+  background: transparent;
+  color: {{text_dark}};
+  border: none;
+  border-radius: 0;
+  min-width: 0;
+  min-height: 24px;
+  padding: 0 8px;
+  font-size: {{font_size_sm}};
+  font-weight: 500;
+}
+
+QPushButton[class="ResultCellButton"]:hover,
+QPushButton[class="ResultCellButton"]:focus {
+  background: {{bg_muted}};
+  color: {{text_heading}};
+  border: none;
+}
+
+QPushButton[class="ResultCellButton"][selected="true"] {
+  background: {{bg_muted}};
+  color: {{text_heading}};
+  border: none;
+  border-radius: {{radius_sm}};
+  font-weight: 600;
+}
+
+QPushButton[class="ResultCellButton"][has_result="true"] {
+  color: {{text_heading}};
+}
+
+QPushButton[class="ResultCellButton"]:disabled {
+  color: {{text_dark}};
+  background: transparent;
+  border: none;
+}
+
+QWidget[class="ActionFooter"] {
+  border-top: 1px solid {{border_light}};
+  border-radius: 0 0 {{radius_lg}} {{radius_lg}};
+  padding: 0;
+}
+
+QWidget[class="ActionFooter"] QLabel[class="KeyboardHints"],
+QWidget[class="ActionFooter"] QLabel[class="RoundProgress"] {
+  color: {{text_secondary}};
+  background: transparent;
+  padding: 0;
+  font-size: {{font_size_sm}};
+  font-weight: 500;
+}
+
+QWidget[class="ActionFooter"] QLabel[class="RoundProgress"][state="complete"] {
+  color: {{state_success_text}};
+  font-weight: 600;
+}
+
+QMenu[class="RoundResultMenu"],
+QMenu[class="RoundSelectorMenu"],
+QMenu[class="RoundActionsMenu"] {
+  background: {{bg_surface}};
+  color: {{text_body}};
+  border: 1px solid {{border_medium}};
+  border-radius: 4px;
+  padding: 4px;
+  font-size: {{font_size_sm}};
+}
+
+QMenu[class="RoundResultMenu"]::item,
+QMenu[class="RoundSelectorMenu"]::item,
+QMenu[class="RoundActionsMenu"]::item {
+  background: transparent;
+  color: {{text_body}};
+  border-radius: 3px;
+  padding: 6px 18px;
+}
+
+QMenu[class="RoundResultMenu"]::item:selected,
+QMenu[class="RoundSelectorMenu"]::item:selected,
+QMenu[class="RoundActionsMenu"]::item:selected {
+  background: {{bg_muted}};
+  color: {{color_primary}};
+}
+
+QMenu[class="RoundResultMenu"]::separator,
+QMenu[class="RoundSelectorMenu"]::separator,
+QMenu[class="RoundActionsMenu"]::separator {
+  height: 1px;
+  background: {{border_light}};
+  margin: 4px 0;
+}
+
+QLabel[class="RoundsEmptyState"] {
+  color: {{text_secondary}};
+  background: transparent;
+  padding: 20px;
+  font-size: {{font_size_base}};
+}

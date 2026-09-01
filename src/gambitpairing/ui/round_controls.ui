@@ -7,20 +7,40 @@
   </property>
   <layout class="QHBoxLayout" name="main_layout">
    <property name="spacing">
-    <number>12</number>
+    <number>10</number>
    </property>
    <property name="leftMargin">
-    <number>20</number>
+    <number>16</number>
    </property>
    <property name="topMargin">
-    <number>16</number>
+    <number>10</number>
    </property>
    <property name="rightMargin">
-    <number>20</number>
-   </property>
-   <property name="bottomMargin">
     <number>16</number>
    </property>
+   <property name="bottomMargin">
+    <number>10</number>
+   </property>
+   <item>
+    <widget class="QLabel" name="lbl_keyboard_hints">
+     <property name="class" stdset="0">
+      <string>KeyboardHints</string>
+     </property>
+     <property name="text">
+      <string>1  White win   D  Draw   0  Black win   Del  Clear   Enter  Next</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="lbl_progress">
+     <property name="class" stdset="0">
+      <string>RoundProgress</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+    </widget>
+   </item>
    <item>
     <layout class="QHBoxLayout" name="left_actions_layout">
      <property name="spacing">
@@ -28,6 +48,9 @@
      </property>
      <item>
       <widget class="QPushButton" name="btn_undo">
+       <property name="class" stdset="0">
+        <string>ToolbarAction</string>
+       </property>
        <property name="text">
         <string/>
        </property>
@@ -49,7 +72,10 @@
     </spacer>
    </item>
    <item>
-    <widget class="QPushButton" name="btn_primary_action">
+   <widget class="QPushButton" name="btn_primary_action">
+     <property name="class" stdset="0">
+      <string>ToolbarAction</string>
+     </property>
      <property name="text">
       <string/>
      </property>

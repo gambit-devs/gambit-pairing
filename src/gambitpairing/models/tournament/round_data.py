@@ -38,6 +38,8 @@ class RoundData:
         List of recorded match results. Empty until results are recorded.
     is_completed : bool
         Indicates whether the round's results have been finalized.
+    pending_results : list
+        Results entered in the workspace but not yet applied to player scores.
     """
 
     round_number: int
@@ -45,16 +47,25 @@ class RoundData:
     bye_player_id: Optional[str] = None
     results: List[MatchResult] = field(default_factory=list)
     is_completed: bool = False
+    # Results entered in the Rounds workspace but not yet finalized.  Keeping
+    # these separate from ``results`` means the UI can autosave data-entry
+    # progress without changing standings or player histories prematurely.
+    pending_results: List[MatchResult] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize round data to dictionary."""
-        return {
+        data = {
             "round_number": self.round_number,
             "pairings": self.pairings,
             "bye_player_id": self.bye_player_id,
             "results": [result.to_dict() for result in self.results],
             "is_completed": self.is_completed,
         }
+        if self.pending_results:
+            data["pending_results"] = [
+                result.to_dict() for result in self.pending_results
+            ]
+        return data
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "RoundData":
@@ -65,4 +76,8 @@ class RoundData:
             bye_player_id=data.get("bye_player_id"),
             results=[MatchResult.from_dict(result) for result in data.get("results", [])],
             is_completed=data.get("is_completed", False),
+            pending_results=[
+                MatchResult.from_dict(result)
+                for result in data.get("pending_results", [])
+            ],
         )

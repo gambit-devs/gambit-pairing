@@ -33,6 +33,7 @@ class RoundControlsWidget(QtWidgets.QWidget):
     prepare_requested = pyqtSignal()
     record_requested = pyqtSignal()
     undo_requested = pyqtSignal()
+    view_standings_requested = pyqtSignal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -42,6 +43,11 @@ class RoundControlsWidget(QtWidgets.QWidget):
         self.btn_primary_action = required_child(
             self, QtWidgets.QPushButton, "btn_primary_action"
         )
+        self.btn_primary_action.setProperty("class", "ToolbarAction")
+        self.lbl_keyboard_hints = required_child(
+            self, QtWidgets.QLabel, "lbl_keyboard_hints"
+        )
+        self.lbl_progress = required_child(self, QtWidgets.QLabel, "lbl_progress")
 
         self.btn_undo.setText("Undo")
         self.btn_undo.setIcon(get_colored_icon("undo.svg", "#2d5a27", 16))
@@ -101,6 +107,32 @@ class RoundControlsWidget(QtWidgets.QWidget):
         """Show or hide the undo control."""
         self.btn_undo.setVisible(visible)
 
+    def set_progress(self, text: str) -> None:
+        """Update the compact result progress label."""
+        self.lbl_progress.setText(text)
+        self.lbl_progress.setProperty(
+            "state", "complete" if text.startswith("✓") else "default"
+        )
+        self.lbl_progress.style().unpolish(self.lbl_progress)
+        self.lbl_progress.style().polish(self.lbl_progress)
+
+    def set_keyboard_hints(self, text: str) -> None:
+        """Update the keyboard help shown in the footer."""
+        self.lbl_keyboard_hints.setText(text)
+
+    def set_primary_action(
+        self,
+        text: str,
+        enabled: bool | None = None,
+        tooltip: str | None = None,
+    ) -> None:
+        """Override the primary action copy for a specific round state."""
+        self.btn_primary_action.setText(text)
+        if enabled is not None:
+            self.btn_primary_action.setEnabled(enabled)
+        if tooltip is not None:
+            self.btn_primary_action.setToolTip(tooltip)
+
     def _on_primary_action_clicked(self) -> None:
         if self._primary_action_state == "start":
             self.start_requested.emit()
@@ -108,3 +140,5 @@ class RoundControlsWidget(QtWidgets.QWidget):
             self.prepare_requested.emit()
         elif self._primary_action_state == "record":
             self.record_requested.emit()
+        elif self._primary_action_state == "finished":
+            self.view_standings_requested.emit()

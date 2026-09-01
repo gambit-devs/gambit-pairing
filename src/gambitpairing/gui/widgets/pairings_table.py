@@ -1,4 +1,4 @@
-"""Table widget for displaying pairings and entering round results."""
+"""Spreadsheet-style pairings and result-entry table for the Rounds tab."""
 
 # Gambit Pairing
 # Copyright (C) 2025  Gambit Pairing developers
@@ -7,18 +7,10 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt, pyqtSignal
@@ -39,414 +31,632 @@ from gambitpairing.constants import (
     WIN_SCORE,
 )
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
-from .result_selector import (
-    ResultSelector,
-)
 from gambitpairing.models.player import Player
 from gambitpairing.utils import setup_logger
+
+from .result_selector import ResultSelector
 
 logger = setup_logger(__name__)
 
 
 class PairingsTable(QtWidgets.QWidget):
-    """Widget for displaying pairings and entering round results.
+    """Display pairings and, in compact mode, provide keyboard-first entry.
 
-    Combines a ``QTableWidget`` showing board assignments with a bye
-    information bar beneath it. The result column embeds a
-    ``ResultSelector`` widget per row. Inactive players are visually
-    distinguished and receive automatic forfeit results.
-
-    Signals
-    -------
-    context_menu_requested : pyqtSignal(QtCore.QPoint)
-        Re-emitted from the inner table's ``customContextMenuRequested``
-        signal, forwarding the cursor position in table-local coordinates.
-
-    Attributes
-    ----------
-    table : QtWidgets.QTableWidget
-        Four-column table with headers: Board, White, Black, Result.
-    bye_container : QtWidgets.QWidget
-        Info bar shown below the table when one or more players receive a bye.
-    lbl_bye : QtWidgets.QLabel
-        Label inside ``bye_container`` describing the bye player(s) and
-        their awarded points.
+    ``compact=True`` is used by the redesigned Rounds tab.  The default keeps
+    the legacy widget presentation available to older callers while sharing
+    the same result and persistence API.
     """
 
     context_menu_requested = pyqtSignal(QtCore.QPoint)
+    result_changed = pyqtSignal(int, str, str)
+    result_undone = pyqtSignal(int, str)
+    selection_changed = pyqtSignal(int)
 
-    def __init__(self, parent=None):
-        """Initialise the widget and build the table and bye bar UI.
-
-        Parameters
-        ----------
-        parent : QtWidgets.QWidget, optional
-            Parent widget, by default ``None``.
-        """
+    def __init__(self, parent=None, compact: bool = False):
         super().__init__(parent)
         load_ui_into(self, "pairings_table.ui")
 
-        # ===== PAIRINGS TABLE =====
+        self._compact = compact
+        self._editable = True
+        self._show_ratings = False
+        self._players_by_row: Dict[int, Tuple[Player, Player]] = {}
+        self._row_metadata: Dict[int, Dict[str, Any]] = {}
+        self._result_history: List[Tuple[int, str, str]] = []
+        self._suppress_result_events = False
+
         self.table = required_child(self, QtWidgets.QTableWidget, "table")
         self.table.setRowCount(0)
         self.table.setColumnCount(4)
         self.table.setHorizontalHeaderLabels(["Board", "White", "Black", "Result"])
-
+        for column in (0, 3):
+            header_item = self.table.horizontalHeaderItem(column)
+            if header_item is not None:
+                header_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.table.verticalHeader().setVisible(False)
         self.table.setAlternatingRowColors(True)
-        self.table.setSelectionBehavior(
-            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
-        )
         self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self.context_menu_requested.emit)
+        self.table.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.table.currentCellChanged.connect(self._on_current_cell_changed)
+        self.table.cellClicked.connect(self._on_cell_clicked)
+        self.table.installEventFilter(self)
+        self.table.viewport().installEventFilter(self)
 
-        # Increase row height for a more spacious table
-        self.table.verticalHeader().setDefaultSectionSize(65)
+        if compact:
+            self.table.setSelectionBehavior(
+                QtWidgets.QAbstractItemView.SelectionBehavior.SelectItems
+            )
+            self.table.setSelectionMode(
+                QtWidgets.QAbstractItemView.SelectionMode.SingleSelection
+            )
+            self.table.verticalHeader().setDefaultSectionSize(32)
+            self.table.verticalHeader().setMinimumSectionSize(30)
+            self.table.setSizeAdjustPolicy(
+                QtWidgets.QAbstractScrollArea.SizeAdjustPolicy.AdjustToContents
+            )
+        else:
+            self.table.setSelectionBehavior(
+                QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
+            )
+            self.table.verticalHeader().setDefaultSectionSize(65)
 
-        # Configure column sizing modes
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeMode.Stretch)
-        # Use ResizeToContents for the result column to ensure it fits the buttons
         header.setSectionResizeMode(
-            3, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
+            3,
+            QtWidgets.QHeaderView.ResizeMode.Fixed
+            if compact
+            else QtWidgets.QHeaderView.ResizeMode.ResizeToContents,
         )
+        self.table.setColumnWidth(0, 62 if compact else 70)
+        if compact:
+            self.table.setColumnWidth(3, 96)
 
-        self.table.setColumnWidth(0, 70)  # Board column - wider for header
-
-        # ===== BYE INFO BAR =====
         self.bye_container = required_child(self, QtWidgets.QWidget, "bye_container")
         self.bye_icon = required_child(self, QtWidgets.QLabel, "bye_icon")
         self.lbl_bye = required_child(self, QtWidgets.QLabel, "lbl_bye")
         self.bye_container.hide()
+
+    @property
+    def compact(self) -> bool:
+        return self._compact
 
     def display_pairings(
         self,
         pairings: List[Tuple[Player, Player]],
         bye_players: List[Player],
         current_round_index: int,
+        results: Optional[Sequence[Any]] = None,
+        editable: bool = True,
     ):
-        """Populate the table with pairings and update the bye info bar.
+        """Populate the table with pairings, results, and optional bye row."""
+        self._editable = editable
+        self._players_by_row.clear()
+        self._row_metadata.clear()
+        self._result_history.clear()
+        self._suppress_result_events = True
 
-        Clears any existing rows before inserting new ones. Each pairing
-        tuple may be a 2-tuple ``(white, black)`` or a 3-tuple
-        ``(p1, p2, color)`` where *color* is ``"W"`` or ``"B"`` indicating
-        which player has the white pieces.
-
-        Inactive players are marked with ``" (I)"`` in their cell and
-        rendered in grey. Forfeit results are pre-selected automatically:
-
-        - Both inactive → draw (0–0).
-        - White inactive → black wins by forfeit.
-        - Black inactive → white wins by forfeit.
-
-        The bye bar is shown when ``bye_players`` is non-empty, displaying
-        each player's name, rating, and awarded points (``BYE_SCORE`` for
-        active players, 0 for inactive). It is hidden otherwise.
-
-        Parameters
-        ----------
-        pairings : list of tuple
-            Sequence of ``(Player, Player)`` or ``(Player, Player, str)``
-            tuples representing each board's pairing.
-        bye_players : list of Player
-            Players who receive a bye this round. May be empty.
-        current_round_index : int
-            Zero-based index of the round being displayed. Currently
-            unused internally but accepted for interface consistency.
-        """
+        bye_player = bye_players[0] if bye_players else None
+        row_count = len(pairings) + (1 if self._compact and bye_player else 0)
         self.table.clearContents()
-        self.table.setRowCount(len(pairings))
+        self.table.setRowCount(row_count)
+
+        result_map = self._build_result_map(results or [])
+        fallback_numbers: Dict[str, int] = {}
+        next_fallback_number = 1
 
         for row, pair in enumerate(pairings):
-            # Support (Player, Player, color) tuples
-            if len(pair) == 3:
-                p1, p2, color = pair
-                if color == "W":
-                    white, black = p1, p2
-                else:
-                    white, black = p2, p1
-            else:
-                white, black = pair
-                color = None
+            white, black, color = self._normalise_pair(pair)
+            for player in (white, black):
+                if player.id not in fallback_numbers:
+                    fallback_numbers[player.id] = next_fallback_number
+                    next_fallback_number += 1
 
-            # Board number column
-            board_num = row + 1
-            item_board = QtWidgets.QTableWidgetItem(str(board_num))
-            item_board.setFlags(item_board.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            item_board.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            item_board.setFont(
-                QtGui.QFont(item_board.font().family(), -1, QtGui.QFont.Weight.Bold)
+            self._players_by_row[row] = (white, black)
+            self._row_metadata[row] = {
+                "white_id": white.id,
+                "black_id": black.id,
+                "is_bye": False,
+                "board": row + 1,
+            }
+
+            self.table.setItem(row, 0, self._board_item(row + 1))
+            self.table.setItem(
+                row,
+                1,
+                self._player_item(
+                    white,
+                    fallback_numbers[white.id],
+                    color_info=f"Color: {color}" if color else "",
+                ),
             )
-            self.table.setItem(row, 0, item_board)
-
-            # White player column
-            item_white = QtWidgets.QTableWidgetItem(
-                f"{white.name} ({white.rating})"
-                + (" (I)" if not white.is_active else "")
+            self.table.setItem(
+                row,
+                2,
+                self._player_item(black, fallback_numbers[black.id]),
             )
-            item_white.setFlags(item_white.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            color_info = f"Color: {color}" if color else ""
-            item_white.setToolTip(
-                f"ID: {white.id}\nColor History: {' '.join(c or '_' for c in white.color_history)}\n{color_info}"
-            )
-            if not white.is_active:
-                item_white.setForeground(QtGui.QColor("gray"))
-            self.table.setItem(row, 1, item_white)
 
-            # Black player column
-            item_black = QtWidgets.QTableWidgetItem(
-                f"{black.name} ({black.rating})"
-                + (" (I)" if not black.is_active else "")
-            )
-            item_black.setFlags(item_black.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            item_black.setToolTip(
-                f"ID: {black.id}\nColor History: {' '.join(c or '_' for c in black.color_history)}"
-            )
-            if not black.is_active:
-                item_black.setForeground(QtGui.QColor("gray"))
-            self.table.setItem(row, 2, item_black)
-
-            # Result selector widget
-            result_selector = ResultSelector()
-            result_selector.setProperty("row", row)
-            result_selector.setProperty("white_id", white.id)
-            result_selector.setProperty("black_id", black.id)
-
-            # Auto-set result for inactive players
-            if not white.is_active and not black.is_active:
-                result_selector.setResult(RESULT_DOUBLE_FORFEIT)
-            elif not white.is_active:
-                result_selector.setResult(RESULT_BLACK_FORFEIT_WIN)
-            elif not black.is_active:
-                result_selector.setResult(RESULT_WHITE_FORFEIT_WIN)
-
-            self.table.setCellWidget(row, 3, result_selector)
-
-        # Handle bye players display
-        if bye_players:
-            if len(bye_players) == 1:
-                player = bye_players[0]
-                status = " (Inactive)" if not player.is_active else ""
-                bye_score_info = BYE_SCORE if player.is_active else 0.0
-                self.lbl_bye.setText(
-                    f"{player.name} ({player.rating}){status} receives {bye_score_info} point"
+            selector = ResultSelector(compact=self._compact)
+            selector.setProperty("row", row)
+            selector.setProperty("white_id", white.id)
+            selector.setProperty("black_id", black.id)
+            selector.result_changed.connect(
+                lambda new, previous, row=row: self._on_result_changed(
+                    row, new, previous
                 )
-            else:
-                active_byes = [p for p in bye_players if p.is_active]
-                inactive_byes = [p for p in bye_players if not p.is_active]
+            )
+            selector.activated.connect(
+                lambda row=row: self._activate_result_cell(row)
+            )
+            selector.key_pressed.connect(
+                lambda key, text, modifiers, row=row: self._handle_selector_key(
+                    row, key, text, modifiers
+                )
+            )
+            selector.installEventFilter(self)
+            selector.menu_button.installEventFilter(self)
 
-                player_details = []
-                for player in bye_players:
-                    status = " (Inactive)" if not player.is_active else ""
-                    player_details.append(f"{player.name} ({player.rating}){status}")
+            result_constant = result_map.get((white.id, black.id), "")
+            if not result_constant:
+                result_constant = self._automatic_result_for_inactive_players(
+                    white, black
+                )
+            selector.setResult(result_constant, emit=False)
+            selector.setEditable(self._compact and editable or not self._compact)
+            self.table.setCellWidget(row, 3, selector)
 
-                bye_text = ", ".join(player_details)
+        if bye_player:
+            self._add_bye_row(
+                len(pairings),
+                bye_player,
+                fallback_numbers.get(bye_player.id, next_fallback_number),
+            )
 
-                if active_byes and inactive_byes:
-                    bye_text += f" — {len(active_byes)} receive {BYE_SCORE}pts, {len(inactive_byes)} receive 0pts"
-                elif active_byes:
-                    bye_text += f" — Each receives {BYE_SCORE} point{'s' if BYE_SCORE != 1 else ''}"
-                elif inactive_byes:
-                    bye_text += " — Each receives 0 points"
+        self._update_bye_bar(bye_players)
+        self._suppress_result_events = False
 
-                self.lbl_bye.setText(bye_text)
+        if self._compact:
+            self.bye_container.hide()
+            if pairings:
+                self.table.setCurrentCell(0, 3)
+                self._update_selected_result_cell()
+        elif pairings:
+            self.table.setCurrentCell(0, 0)
 
-            self.bye_container.show()
+    def _normalise_pair(
+        self, pair: Tuple[Player, Player] | Tuple[Player, Player, str]
+    ) -> Tuple[Player, Player, Optional[str]]:
+        if len(pair) == 3:
+            p1, p2, color = pair
+            return (p1, p2, color) if color == "W" else (p2, p1, color)
+        white, black = pair
+        return white, black, None
+
+    def _board_item(self, board_number: int) -> QtWidgets.QTableWidgetItem:
+        item = QtWidgets.QTableWidgetItem(str(board_number))
+        item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+        item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        return item
+
+    def _player_number(self, player: Player, fallback: int) -> int:
+        return int(
+            getattr(player, "pairing_number", None)
+            or getattr(player, "bsn", None)
+            or fallback
+        )
+
+    def _player_item(
+        self,
+        player: Player,
+        fallback_number: int,
+        color_info: str = "",
+    ) -> QtWidgets.QTableWidgetItem:
+        number = self._player_number(player, fallback_number)
+        if self._compact:
+            text = f"#{number} {player.name}"
+            if self._show_ratings:
+                text += f" ({player.rating})"
         else:
+            text = f"{player.name} ({player.rating})"
+        if not player.is_active:
+            text += " (I)"
+
+        item = QtWidgets.QTableWidgetItem(text)
+        item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+        item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        item.setToolTip(
+            f"ID: {player.id}\n"
+            f"Color History: {' '.join(str(c or '_') for c in player.color_history)}"
+            + (f"\n{color_info}" if color_info else "")
+        )
+        if not player.is_active:
+            item.setForeground(QtGui.QColor("gray"))
+        return item
+
+    def _add_bye_row(
+        self,
+        row: int,
+        player: Player,
+        fallback_number: int,
+    ) -> None:
+        number = self._player_number(player, fallback_number)
+        score = BYE_SCORE if player.is_active else 0.0
+        score_text = f"{score:g} point" if score == 1 else f"{score:g} points"
+        board = QtWidgets.QTableWidgetItem("—")
+        white = QtWidgets.QTableWidgetItem(
+            f"#{number} {player.name}" + (" (I)" if not player.is_active else "")
+        )
+        black = QtWidgets.QTableWidgetItem("— Bye —")
+        result = QtWidgets.QTableWidgetItem(score_text)
+        for item in (board, white, black, result):
+            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            item.setBackground(QtGui.QColor("#fff7df"))
+            item.setForeground(QtGui.QColor("#805b12"))
+            font = item.font()
+            font.setItalic(True)
+            item.setFont(font)
+        board.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        result.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.table.setItem(row, 0, board)
+        self.table.setItem(row, 1, white)
+        self.table.setItem(row, 2, black)
+        self.table.setItem(row, 3, result)
+        self._row_metadata[row] = {
+            "is_bye": True,
+            "bye_player_id": player.id,
+            "board": None,
+        }
+        self.table.setRowHeight(row, 30)
+
+    def _update_bye_bar(self, bye_players: List[Player]) -> None:
+        if not bye_players:
             self.lbl_bye.setText("No bye this round")
             self.bye_container.hide()
+            return
+        details = []
+        for player in bye_players:
+            score = BYE_SCORE if player.is_active else 0.0
+            details.append(f"{player.name} ({player.rating}) — {score:g} point")
+        self.lbl_bye.setText("; ".join(details))
+        if self._compact:
+            self.bye_container.hide()
+        else:
+            self.bye_container.show()
+
+    def _build_result_map(self, results: Sequence[Any]) -> Dict[Tuple[str, str], str]:
+        result_map: Dict[Tuple[str, str], str] = {}
+        for result in results:
+            if hasattr(result, "white_id"):
+                white_id = result.white_id
+                black_id = result.black_id
+                result_map[(white_id, black_id)] = self._result_constant_from_model(
+                    result
+                )
+                continue
+            if len(result) < 3:
+                continue
+            white_id, black_id, white_score = result[:3]
+            outcome = result[3] if len(result) > 3 and isinstance(result[3], str) else OUTCOME_NORMAL_GAME
+            if len(result) > 4 and isinstance(result[4], str):
+                outcome = result[4]
+            result_map[(white_id, black_id)] = self._result_constant_from_score(
+                float(white_score), outcome
+            )
+        return result_map
+
+    @staticmethod
+    def _result_constant_from_model(result: Any) -> str:
+        return PairingsTable._result_constant_from_score(
+            float(result.white_score), getattr(result, "outcome_type", OUTCOME_NORMAL_GAME)
+        )
+
+    @staticmethod
+    def _result_constant_from_score(white_score: float, outcome_type: str) -> str:
+        if outcome_type == OUTCOME_DOUBLE_FORFEIT:
+            return RESULT_DOUBLE_FORFEIT
+        if outcome_type == OUTCOME_FORFEIT_WIN:
+            return (
+                RESULT_WHITE_FORFEIT_WIN
+                if white_score > DRAW_SCORE
+                else RESULT_BLACK_FORFEIT_WIN
+            )
+        if white_score > DRAW_SCORE:
+            return RESULT_WHITE_WIN
+        if white_score < DRAW_SCORE:
+            return RESULT_BLACK_WIN
+        return RESULT_DRAW
+
+    @staticmethod
+    def _automatic_result_for_inactive_players(
+        white: Player, black: Player
+    ) -> str:
+        if not white.is_active and not black.is_active:
+            return RESULT_DOUBLE_FORFEIT
+        if not white.is_active:
+            return RESULT_BLACK_FORFEIT_WIN
+        if not black.is_active:
+            return RESULT_WHITE_FORFEIT_WIN
+        return ""
+
+    def _on_result_changed(self, row: int, new: str, previous: str) -> None:
+        if self._suppress_result_events or new == previous:
+            return
+        if not self._editable or self._row_metadata.get(row, {}).get("is_bye"):
+            return
+        self._result_history.append((row, previous, new))
+        self.result_changed.emit(row, new, previous)
+
+    def _activate_result_cell(self, row: int) -> None:
+        if 0 <= row < self.table.rowCount() and not self._row_metadata.get(row, {}).get(
+            "is_bye"
+        ):
+            self.table.setCurrentCell(row, 3)
+            self.table.setFocus(Qt.FocusReason.MouseFocusReason)
+
+    def _on_cell_clicked(self, row: int, column: int) -> None:
+        if column == 3 and not self._row_metadata.get(row, {}).get("is_bye"):
+            self._activate_result_cell(row)
+
+    def _on_current_cell_changed(
+        self,
+        current_row: int,
+        current_column: int,
+        _previous_row: int,
+        _previous_column: int,
+    ) -> None:
+        self._update_selected_result_cell()
+        if current_column == 3 and current_row >= 0:
+            if not self._row_metadata.get(current_row, {}).get("is_bye"):
+                self.selection_changed.emit(current_row)
+
+    def _update_selected_result_cell(self) -> None:
+        for row in range(self.table.rowCount()):
+            selector = self.table.cellWidget(row, 3)
+            if not isinstance(selector, ResultSelector):
+                continue
+            selected = row == self.table.currentRow() and self.table.currentColumn() == 3
+            selector.setProperty("selected", selected)
+            selector.menu_button.setProperty("selected", selected)
+            selector.menu_button.style().unpolish(selector.menu_button)
+            selector.menu_button.style().polish(selector.menu_button)
+            selector.style().unpolish(selector)
+            selector.style().polish(selector)
+
+    def _handle_selector_key(
+        self, row: int, key: int, text: str, modifiers: int
+    ) -> None:
+        self._handle_result_key(row, key, text, modifiers)
+
+    def _handle_result_key(
+        self, row: int, key: int, text: str, modifiers: int = 0
+    ) -> bool:
+        if row < 0 or row >= self.table.rowCount():
+            return False
+        if self._row_metadata.get(row, {}).get("is_bye"):
+            return False
+        self.table.setCurrentCell(row, 3)
+
+        key_enum = Qt.Key(key)
+        modifier_flags = Qt.KeyboardModifier(modifiers)
+        if modifier_flags & Qt.KeyboardModifier.ControlModifier and key_enum == Qt.Key.Key_Z:
+            return self.undo_last_edit()
+
+        if key_enum in {Qt.Key.Key_Up, Qt.Key.Key_Down}:
+            direction = -1 if key_enum == Qt.Key.Key_Up else 1
+            self._move_result_selection(row, direction)
+            return True
+        if key_enum in {Qt.Key.Key_Return, Qt.Key.Key_Enter}:
+            self._commit_and_advance(row)
+            return True
+        if key_enum in {Qt.Key.Key_Delete, Qt.Key.Key_Backspace}:
+            self._set_result(row, "")
+            return True
+
+        normalized = text.strip().upper()
+        if normalized == "1":
+            self._set_result(row, RESULT_WHITE_WIN)
+            self._move_result_selection(row, 1)
+            return True
+        if normalized == "0":
+            self._set_result(row, RESULT_BLACK_WIN)
+            self._move_result_selection(row, 1)
+            return True
+        if key_enum == Qt.Key.Key_Equal or normalized in {"D", "="}:
+            self._set_result(row, RESULT_DRAW)
+            self._move_result_selection(row, 1)
+            return True
+        return False
+
+    def _set_result(self, row: int, result: str) -> None:
+        selector = self.table.cellWidget(row, 3)
+        if isinstance(selector, ResultSelector) and self._editable:
+            selector.setResult(result)
+
+    def _move_result_selection(self, row: int, direction: int) -> None:
+        target = row + direction
+        while 0 <= target < self.table.rowCount():
+            if not self._row_metadata.get(target, {}).get("is_bye"):
+                self.table.setCurrentCell(target, 3)
+                selector = self.table.cellWidget(target, 3)
+                if isinstance(selector, ResultSelector):
+                    selector.setFocus(Qt.FocusReason.OtherFocusReason)
+                return
+            target += direction
+
+    def _commit_and_advance(self, row: int) -> None:
+        self._move_result_selection(row, 1)
+
+    def undo_last_edit(self) -> bool:
+        """Undo the most recent cell edit, if there is one."""
+        if not self._editable or not self._result_history:
+            return False
+        row, previous, current = self._result_history.pop()
+        selector = self.table.cellWidget(row, 3)
+        if not isinstance(selector, ResultSelector):
+            return False
+        self._suppress_result_events = True
+        selector.setResult(previous, emit=False)
+        self._suppress_result_events = False
+        self.result_changed.emit(row, previous, current)
+        self.result_undone.emit(row, previous)
+        self.table.setCurrentCell(row, 3)
+        return True
+
+    def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
+        if event.type() == QtCore.QEvent.Type.KeyPress:
+            key_event = event
+            if isinstance(key_event, QtGui.QKeyEvent):
+                if watched is self.table or watched is self.table.viewport():
+                    row = self.table.currentRow()
+                    if self.table.currentColumn() == 3 and self._handle_result_key(
+                        row,
+                        key_event.key(),
+                        key_event.text(),
+                        key_event.modifiers().value,
+                    ):
+                        key_event.accept()
+                        return True
+                elif isinstance(watched, ResultSelector):
+                    row = watched.property("row")
+                    if isinstance(row, int) and self._handle_result_key(
+                        row,
+                        key_event.key(),
+                        key_event.text(),
+                        key_event.modifiers().value,
+                    ):
+                        key_event.accept()
+                        return True
+                elif watched is not None:
+                    row = watched.property("row")
+                    if isinstance(row, int) and self._handle_result_key(
+                        row,
+                        key_event.key(),
+                        key_event.text(),
+                        key_event.modifiers().value,
+                    ):
+                        key_event.accept()
+                        return True
+        if event.type() == QtCore.QEvent.Type.FocusIn:
+            row = watched.property("row")
+            if isinstance(row, int) and not self._row_metadata.get(row, {}).get(
+                "is_bye"
+            ):
+                self.table.setCurrentCell(row, 3)
+        return super().eventFilter(watched, event)
+
+    def set_show_ratings(self, show: bool) -> None:
+        """Toggle optional rating text without adding a rating column."""
+        self._show_ratings = show
+        if not self._compact:
+            return
+        for row, (white, black) in self._players_by_row.items():
+            for column, player in ((1, white), (2, black)):
+                item = self.table.item(row, column)
+                if item is None:
+                    continue
+                fallback = getattr(player, "pairing_number", None) or getattr(
+                    player, "bsn", None
+                ) or row + 1
+                item.setText(self._player_item(player, int(fallback)).text())
+
+    def progress(self) -> Tuple[int, int]:
+        """Return ``(entered, boards)`` excluding bye rows."""
+        total = 0
+        entered = 0
+        for row, metadata in self._row_metadata.items():
+            if metadata.get("is_bye"):
+                continue
+            total += 1
+            selector = self.table.cellWidget(row, 3)
+            if isinstance(selector, ResultSelector) and selector.selectedResult():
+                entered += 1
+        return entered, total
+
+    def board_count(self) -> int:
+        return self.progress()[1]
+
+    def has_bye(self) -> bool:
+        return any(metadata.get("is_bye") for metadata in self._row_metadata.values())
+
+    def selected_board_number(self) -> Optional[int]:
+        row = self.table.currentRow()
+        metadata = self._row_metadata.get(row, {})
+        return metadata.get("board") if not metadata.get("is_bye") else None
+
+    def is_bye_row(self, row: int) -> bool:
+        return bool(self._row_metadata.get(row, {}).get("is_bye"))
 
     def get_results(self) -> Tuple[Optional[List[tuple]], bool]:
-        """Collect results from every ``ResultSelector`` in the table.
-
-        Iterates all rows and reads the selected result from each
-        ``ResultSelector`` cell widget. Converts the result constant to a
-        numeric white score (``WIN_SCORE``, ``DRAW_SCORE``, or
-        ``LOSS_SCORE``).
-
-        Returns
-        -------
-        results : list of (str, str, float) or None
-            Each element is ``(white_id, black_id, white_score, outcome_type)``.
-            Returns ``None`` if a ``ResultSelector`` is missing from a row
-            or if a player ID cannot be read, indicating a configuration
-            error.
-        all_entered : bool
-            ``True`` if every row has a result selected, ``False`` if any
-            row is still pending. Always ``True`` when the table is empty
-            and the bye bar is hidden.
-        """
-        results_data = []
+        """Collect results as tuples accepted by ``Tournament.record_results``."""
+        results_data: List[tuple] = []
         all_entered = True
-        if (
-            self.table.rowCount() == 0 and not self.bye_container.isVisible()
-        ):  # No pairings, no bye
-            return (
-                [],
-                True,
-            )  # Valid state of no results to record
 
-        for row in range(self.table.rowCount()):
-            result_selector = self.table.cellWidget(row, 3)  # Column 3 for results
-            if isinstance(result_selector, ResultSelector):
-                result_const = result_selector.selectedResult()
-                white_id = result_selector.property("white_id")
-                black_id = result_selector.property("black_id")
-
-                if not result_const:
-                    all_entered = False
-                    break
-
-                white_score = -1.0
-                outcome_type = OUTCOME_NORMAL_GAME
-                if result_const == RESULT_WHITE_WIN:
-                    white_score = WIN_SCORE
-                elif result_const == RESULT_DRAW:
-                    white_score = DRAW_SCORE
-                elif result_const == RESULT_BLACK_WIN:
-                    white_score = LOSS_SCORE
-                elif result_const == RESULT_WHITE_FORFEIT_WIN:
-                    white_score = WIN_SCORE
-                    outcome_type = OUTCOME_FORFEIT_WIN
-                elif result_const == RESULT_BLACK_FORFEIT_WIN:
-                    white_score = LOSS_SCORE
-                    outcome_type = OUTCOME_FORFEIT_WIN
-                elif result_const == RESULT_DOUBLE_FORFEIT:
-                    white_score = LOSS_SCORE
-                    outcome_type = OUTCOME_DOUBLE_FORFEIT
-
-                black_score_override = result_selector.property(
-                    "black_score_override"
-                )
-                if white_score >= 0 and white_id and black_id:
-                    if black_score_override is not None:
-                        white_score = float(
-                            result_selector.property("white_score_override")
-                        )
-                        if outcome_type == OUTCOME_NORMAL_GAME:
-                            results_data.append(
-                                (
-                                    white_id,
-                                    black_id,
-                                    white_score,
-                                    float(black_score_override),
-                                )
-                            )
-                        else:
-                            results_data.append(
-                                (
-                                    white_id,
-                                    black_id,
-                                    white_score,
-                                    float(black_score_override),
-                                    outcome_type,
-                                )
-                            )
-                    else:
-                        if outcome_type == OUTCOME_NORMAL_GAME:
-                            results_data.append((white_id, black_id, white_score))
-                        else:
-                            results_data.append(
-                                (white_id, black_id, white_score, outcome_type)
-                            )
-                else:
-                    logger.error(
-                        f"Invalid result data in table row {row}: Result='{result_const}', W_ID='{white_id}', B_ID='{black_id}'"
-                    )
-                    if not white_id or not black_id:
-                        return None, False
-                    all_entered = False
-                    break
-            else:
-                logger.error(
-                    f"Missing ResultSelector in pairings table, row {row}. Table improperly configured."
-                )
+        for row, metadata in self._row_metadata.items():
+            if metadata.get("is_bye"):
+                continue
+            selector = self.table.cellWidget(row, 3)
+            if not isinstance(selector, ResultSelector):
+                logger.error("Missing ResultSelector in row %s", row)
                 return None, False
+            result_const = selector.selectedResult()
+            if not result_const:
+                all_entered = False
+                continue
+
+            white_id = metadata.get("white_id")
+            black_id = metadata.get("black_id")
+            if not white_id or not black_id:
+                return None, False
+            white_score = LOSS_SCORE
+            outcome_type = OUTCOME_NORMAL_GAME
+            if result_const in {RESULT_WHITE_WIN, RESULT_WHITE_FORFEIT_WIN}:
+                white_score = WIN_SCORE
+            elif result_const == RESULT_DRAW:
+                white_score = DRAW_SCORE
+            elif result_const in {RESULT_BLACK_WIN, RESULT_BLACK_FORFEIT_WIN}:
+                white_score = LOSS_SCORE
+            elif result_const == RESULT_DOUBLE_FORFEIT:
+                white_score = LOSS_SCORE
+
+            if result_const in {
+                RESULT_WHITE_FORFEIT_WIN,
+                RESULT_BLACK_FORFEIT_WIN,
+            }:
+                outcome_type = OUTCOME_FORFEIT_WIN
+            elif result_const == RESULT_DOUBLE_FORFEIT:
+                outcome_type = OUTCOME_DOUBLE_FORFEIT
+
+            if outcome_type == OUTCOME_NORMAL_GAME:
+                results_data.append((white_id, black_id, white_score))
+            else:
+                results_data.append((white_id, black_id, white_score, outcome_type))
+
         return results_data, all_entered
 
     def reset_display(self):
-        """Remove all rows and reset the bye bar to its hidden default state."""
+        """Remove all rows and reset the bye bar."""
         self.table.setRowCount(0)
+        self._players_by_row.clear()
+        self._row_metadata.clear()
+        self._result_history.clear()
         self.lbl_bye.setText("No bye this round")
         self.bye_container.hide()
 
     def rowCount(self) -> int:
-        """Return the number of rows in the inner table.
-
-        Returns
-        -------
-        int
-            Current row count of ``self.table``.
-        """
         return self.table.rowCount()
 
     def itemAt(self, pos: QtCore.QPoint) -> QtWidgets.QTableWidgetItem | None:
-        """Return the item at the given viewport position.
-
-        Delegates to ``self.table.itemAt``.
-
-        Parameters
-        ----------
-        pos : QtCore.QPoint
-            Position in the table's viewport coordinates.
-
-        Returns
-        -------
-        QtWidgets.QTableWidgetItem or None
-        """
         return self.table.itemAt(pos)
 
     def cellWidget(self, row: int, col: int) -> QtWidgets.QWidget | None:
-        """Return the widget in the given cell, if any.
-
-        Delegates to ``self.table.cellWidget``.
-
-        Parameters
-        ----------
-        row : int
-            Row index.
-        col : int
-            Column index.
-
-        Returns
-        -------
-        QtWidgets.QWidget or None
-        """
         return self.table.cellWidget(row, col)
 
     def viewport(self) -> QtWidgets.QWidget:
-        """Return the inner table's viewport widget.
-
-        Useful for mapping coordinates or installing event filters on the
-        scrollable area.
-
-        Returns
-        -------
-        QtWidgets.QWidget
-        """
         viewport = self.table.viewport()
         assert viewport is not None
         return viewport
 
     def item(self, row: int, col: int) -> QtWidgets.QTableWidgetItem | None:
-        """Return the item at the given cell, if any.
-
-        Delegates to ``self.table.item``.
-
-        Parameters
-        ----------
-        row : int
-            Row index.
-        col : int
-            Column index.
-
-        Returns
-        -------
-        QtWidgets.QTableWidgetItem or None
-        """
         return self.table.item(row, col)
-
-
-#  LocalWords:  PairingsTableContainer PairingsTable

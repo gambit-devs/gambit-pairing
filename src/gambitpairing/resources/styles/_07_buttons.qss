@@ -88,6 +88,45 @@ QPushButton[class="Primary"]:disabled {
   border:     none;
 }
 
+/* --- Toolbar-style text action ------------------------------------------- */
+/* Shared by compact contextual actions outside the main toolbar. */
+QPushButton[class="ToolbarAction"],
+QToolButton[class="ToolbarAction"] {
+  background:    transparent;
+  border:        1.5px solid transparent;
+  border-radius: {{radius_sm}};
+  padding:       6px 10px;
+  margin:        0 2px;
+  color:         {{text_dark}};
+  font-size:     {{font_size_sm}};
+  font-weight:   500;
+  min-width:     32px;
+  min-height:    32px;
+  outline:       none;
+}
+
+QPushButton[class="ToolbarAction"]:hover,
+QPushButton[class="ToolbarAction"]:focus,
+QToolButton[class="ToolbarAction"]:hover,
+QToolButton[class="ToolbarAction"]:focus {
+  background:    {{color_accent_hover}};
+  color:         {{color_primary}};
+  border-color:  transparent;
+}
+
+QPushButton[class="ToolbarAction"]:pressed,
+QToolButton[class="ToolbarAction"]:pressed {
+  background:    {{color_accent}};
+  color:         {{color_accent_dark}};
+}
+
+QPushButton[class="ToolbarAction"]:disabled,
+QToolButton[class="ToolbarAction"]:disabled {
+  background:    transparent;
+  color:         {{border_medium}};
+  border-color:  transparent;
+}
+
 /* --- Icon button (utility / toolbar) -------------------------------------- */
 QPushButton[class="IconButton"] {
   background:    transparent;

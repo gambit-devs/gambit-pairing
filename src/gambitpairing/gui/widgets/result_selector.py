@@ -1,24 +1,13 @@
-"""Selector widget for reporting match results."""
+"""Compact result cell used by the Rounds workspace.
 
-# Gambit Pairing
-# Copyright (C) 2025  Gambit Pairing developers
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+The original widget exposed three permanent buttons.  That API is retained
+for older callers, while the compact variant used by the Rounds tab presents
+one spreadsheet-like cell that opens a small result menu.
+"""
 
 from __future__ import annotations
 
-from PyQt6 import QtWidgets
+from PyQt6 import QtCore, QtGui, QtWidgets
 
 from gambitpairing.constants import (
     RESULT_BLACK_FORFEIT_WIN,
@@ -34,24 +23,26 @@ from .checkable_button import CheckableButton
 
 
 class ResultSelector(QtWidgets.QWidget):
-    """
-    A widget for selecting chess game results.
+    """A result cell with normal and exceptional result choices.
 
-    Displays three mutually exclusive buttons for:
-    - White wins (1-0)
-    - Draw (½-½)
-    - Black wins (0-1)
-
-    The selected result can be retrieved via selectedResult() and
-    programmatically set via setResult().
+    ``compact=True`` is the Rounds-tab presentation.  The legacy button
+    attributes remain available in both modes so existing integrations and
+    tests can continue to use ``setResult``/``selectedResult``.
     """
 
-    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+    result_changed = QtCore.pyqtSignal(str, str)
+    activated = QtCore.pyqtSignal()
+    key_pressed = QtCore.pyqtSignal(int, str, int)
+
+    def __init__(
+        self,
+        parent: QtWidgets.QWidget | None = None,
+        compact: bool = False,
+    ) -> None:
         super().__init__(parent)
         load_ui_into(self, "result_selector.ui")
 
-        self.button_group = QtWidgets.QButtonGroup(self)
-        self.button_group.setExclusive(True)
+        self.compact = compact
         self._current_result = ""
 
         self.btn_white_win = required_child(
@@ -77,90 +68,177 @@ class ResultSelector(QtWidgets.QWidget):
         self.btn_black_win.setProperty("result_type", "black")
         self.btn_black_win.setToolTip("Black wins")
 
-        buttons = [self.btn_white_win, self.btn_draw, self.btn_black_win]
-        for btn in buttons:
-            self.button_group.addButton(btn)
+        self.button_group = QtWidgets.QButtonGroup(self)
+        self.button_group.setExclusive(True)
+        for button in (
+            self.btn_white_win,
+            self.btn_draw,
+            self.btn_black_win,
+        ):
+            self.button_group.addButton(button)
+        self.button_group.buttonClicked.connect(self._on_legacy_button_clicked)
 
-        self.button_group.buttonClicked.connect(lambda _button: self._clear_forfeit())
+        self.menu_button = QtWidgets.QPushButton()
+        self.menu_button.setObjectName("result_menu_button")
+        self.menu_button.setProperty("class", "ResultCellButton")
+        self.menu_button.setToolTip("Choose result (1, D, or 0)")
+        self.menu_button.setAccessibleName("Result")
+        self.menu_button.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self.menu_button.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.menu_button.pressed.connect(self.activated.emit)
 
-        self.menu_button = QtWidgets.QPushButton("⋮")
-        self.menu_button.setToolTip("More result options")
-        self.menu_button.setFixedWidth(28)
-        self.menu_button.setProperty("class", "MenuButton")
-        self.forfeit_menu = QtWidgets.QMenu(self)
+        self.result_menu = QtWidgets.QMenu(self)
+        self.result_menu.setProperty("class", "RoundResultMenu")
+        self.result_menu.addAction("1-0", lambda: self.setResult(RESULT_WHITE_WIN))
+        self.result_menu.addAction("½-½", lambda: self.setResult(RESULT_DRAW))
+        self.result_menu.addAction("0-1", lambda: self.setResult(RESULT_BLACK_WIN))
+        self.result_menu.addSeparator()
+        self.forfeit_menu = self.result_menu.addMenu("Other...")
+        self.forfeit_menu.setProperty("class", "RoundResultMenu")
         self.forfeit_menu.addAction(
             "White wins by forfeit",
-            lambda: self._select_forfeit(RESULT_WHITE_FORFEIT_WIN),
+            lambda: self.setResult(RESULT_WHITE_FORFEIT_WIN),
         )
         self.forfeit_menu.addAction(
             "Black wins by forfeit",
-            lambda: self._select_forfeit(RESULT_BLACK_FORFEIT_WIN),
+            lambda: self.setResult(RESULT_BLACK_FORFEIT_WIN),
         )
         self.forfeit_menu.addAction(
             "Double forfeit",
-            lambda: self._select_forfeit(RESULT_DOUBLE_FORFEIT),
+            lambda: self.setResult(RESULT_DOUBLE_FORFEIT),
         )
-        self.menu_button.setMenu(self.forfeit_menu)
+        self.menu_button.setMenu(self.result_menu)
+
         layout = self.layout()
         if layout is not None:
-            layout.addWidget(self.menu_button)
+            if compact:
+                for button in (
+                    self.btn_white_win,
+                    self.btn_draw,
+                    self.btn_black_win,
+                ):
+                    button.hide()
+                layout.setContentsMargins(2, 1, 2, 1)
+                layout.addWidget(self.menu_button)
+            else:
+                self.menu_button.setText("⋮")
+                self.menu_button.setFixedWidth(28)
+                self.menu_button.setProperty("class", "MenuButton")
+                layout.addWidget(self.menu_button)
+
+        if compact:
+            self.setProperty("class", "ResultSelector")
+            self.setProperty("compact", True)
+            self.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
+            self.setMinimumSize(78, 28)
+            self.setMaximumHeight(32)
+            self.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Expanding,
+                QtWidgets.QSizePolicy.Policy.Fixed,
+            )
+            self._refresh_display()
 
     def selectedResult(self) -> str:
-        """
-        Get the currently selected result.
-
-        Returns
-        -------
-        str
-            The result constant (RESULT_WHITE_WIN, RESULT_DRAW, or RESULT_BLACK_WIN),
-            or empty string if no result is selected.
-        """
+        """Return the result constant or an empty string for a blank cell."""
         if self._current_result:
             return self._current_result
         checked_button = self.button_group.checkedButton()
         return checked_button.property("result_const") if checked_button else ""
 
-    def _clear_forfeit(self) -> None:
-        self._current_result = ""
+    def displayText(self) -> str:
+        """Return the short value shown in the compact result cell."""
+        return self.formatResult(self.selectedResult()) or "—"
 
-    def _select_forfeit(self, result_constant: str) -> None:
-        self._current_result = result_constant
+    @staticmethod
+    def formatResult(result: str) -> str:
+        """Format an internal result constant for the operator-facing UI."""
+        return "½-½" if result == RESULT_DRAW else result
+
+    def _on_legacy_button_clicked(self, button: QtWidgets.QAbstractButton) -> None:
+        result = button.property("result_const")
+        if result:
+            self._set_result(result, emit=True)
+
+    def _set_result(self, result_constant: str, emit: bool) -> None:
+        previous = self.selectedResult()
+        valid_results = {
+            "",
+            RESULT_WHITE_WIN,
+            RESULT_DRAW,
+            RESULT_BLACK_WIN,
+            RESULT_WHITE_FORFEIT_WIN,
+            RESULT_BLACK_FORFEIT_WIN,
+            RESULT_DOUBLE_FORFEIT,
+        }
+        result = result_constant if result_constant in valid_results else ""
+
+        self._current_result = ""
         checked_button = self.button_group.checkedButton()
         if checked_button:
             self.button_group.setExclusive(False)
             checked_button.setChecked(False)
             self.button_group.setExclusive(True)
 
-    def setResult(self, result_constant: str) -> None:
-        """
-        Programmatically set the selected result.
-
-        Parameters
-        ----------
-        result_constant : str
-            One of RESULT_WHITE_WIN, RESULT_DRAW, or RESULT_BLACK_WIN.
-            If the value doesn't match any button, the selection is cleared.
-        """
-        if result_constant in {
+        if result in {RESULT_WHITE_WIN, RESULT_DRAW, RESULT_BLACK_WIN}:
+            for button in self.button_group.buttons():
+                if button.property("result_const") == result:
+                    button.setChecked(True)
+                    break
+        elif result in {
             RESULT_WHITE_FORFEIT_WIN,
             RESULT_BLACK_FORFEIT_WIN,
             RESULT_DOUBLE_FORFEIT,
         }:
-            self._select_forfeit(result_constant)
-            return
+            self._current_result = result
 
+        self._refresh_display()
+        if emit and previous != result:
+            self.result_changed.emit(result, previous)
+
+    def setResult(self, result_constant: str, emit: bool = True) -> None:
+        """Set the selected result, preserving the legacy public API."""
+        self._set_result(result_constant, emit=emit)
+
+    def clearResult(self, emit: bool = True) -> None:
+        """Clear the cell back to a blank result."""
+        self._set_result("", emit=emit)
+
+    def setEditable(self, editable: bool) -> None:
+        """Enable or disable mouse and menu entry for this result cell."""
+        self.setEnabled(editable)
+        self.menu_button.setEnabled(editable)
         for button in self.button_group.buttons():
-            if button.property("result_const") == result_constant:
-                self._current_result = ""
-                button.setChecked(True)
-                return
-        # If no match, clear selection
-        self._current_result = ""
-        checked_button = self.button_group.checkedButton()
-        if checked_button:
-            self.button_group.setExclusive(False)
-            checked_button.setChecked(False)
-            self.button_group.setExclusive(True)
+            button.setEnabled(editable)
 
+    def _refresh_display(self) -> None:
+        if not self.compact:
+            return
+        result = self.selectedResult()
+        self.menu_button.setText(self.displayText())
+        self.menu_button.setToolTip(
+            f"{result or 'Blank'} result — click for options; 1, D, 0 to enter"
+        )
+        self.menu_button.setProperty("has_result", bool(result))
+        self.menu_button.style().unpolish(self.menu_button)
+        self.menu_button.style().polish(self.menu_button)
 
-#  LocalWords:  setResult ResultSelector
+    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
+        if (
+            self.compact
+            and event.button() == QtCore.Qt.MouseButton.LeftButton
+        ):
+            self.activated.emit()
+            self.menu_button.showMenu()
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        """Forward keyboard input to the containing pairing table."""
+        if self.compact:
+            self.key_pressed.emit(
+                event.key(), event.text(), event.modifiers().value
+            )
+            event.accept()
+            return
+        super().keyPressEvent(event)

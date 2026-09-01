@@ -33,9 +33,9 @@ from gambitpairing.constants import (
     WIN_SCORE,
     ZERO_POINT_BYE_SCORE,
 )
+from gambitpairing.models.enums import Colour
 from gambitpairing.models.player import Player
 from gambitpairing.models.tournament import MatchResult, RoundData
-from gambitpairing.models.enums import Colour
 from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)
@@ -140,6 +140,45 @@ class ResultRecorder:
             )
 
         return success
+
+    def set_pending_results(
+        self,
+        round_data: RoundData,
+        results_data: List[tuple],
+    ) -> None:
+        """Store result-entry progress without applying player scores.
+
+        The Rounds workspace is intentionally allowed to autosave partially
+        entered rows. Pending results use the same ``MatchResult`` shape as
+        finalized results, but remain outside ``round_data.results`` until
+        ``record_round_results`` succeeds.
+        """
+        round_data.pending_results = [
+            self._match_result_from_entry(result_entry)
+            for result_entry in results_data
+        ]
+
+    @staticmethod
+    def _match_result_from_entry(result_entry: tuple) -> MatchResult:
+        """Convert a UI/controller result tuple into a model result."""
+        white_id, black_id, white_score = result_entry[:3]
+        black_score_override = None
+        outcome_type = OUTCOME_NORMAL_GAME
+        if len(result_entry) > 3:
+            fourth_value = result_entry[3]
+            if isinstance(fourth_value, str):
+                outcome_type = fourth_value
+            else:
+                black_score_override = float(fourth_value)
+        if len(result_entry) > 4 and isinstance(result_entry[4], str):
+            outcome_type = result_entry[4]
+        return MatchResult(
+            white_id=white_id,
+            black_id=black_id,
+            white_score=float(white_score),
+            black_score_override=black_score_override,
+            outcome_type=outcome_type,
+        )
 
     def _validate_result_entry(
         self,

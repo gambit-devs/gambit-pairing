@@ -46,8 +46,8 @@ class Tournament:
         self.players: Dict[str, Player] = {player.id: player for player in players}
         self.pairing_history = PairingHistory()
 
-        from gambitpairing.controllers.tournament.round import RoundController
         from gambitpairing.controllers.tournament.result import ResultRecorder
+        from gambitpairing.controllers.tournament.round import RoundController
         from gambitpairing.controllers.tournament.tiebreak_calculator import (
             TiebreakCalculator,
         )
@@ -198,8 +198,23 @@ class Tournament:
             round_data, results_data, self.players
         )
         if success:
+            round_data.pending_results.clear()
             self.round_controller.mark_round_completed(round_index + 1)
         return success
+
+    def set_pending_results(self, round_index: int, results_data: List[tuple]) -> bool:
+        """Persist result-entry progress for an uncompleted round.
+
+        Pending results deliberately do not touch player scores, standings, or
+        the completed-round count. They are part of the round model so the
+        normal tournament save/load path can restore an interrupted entry
+        session.
+        """
+        round_data = self.round_controller.get_round(round_index + 1)
+        if round_data is None or round_data.is_completed:
+            return False
+        self.result_recorder.set_pending_results(round_data, results_data)
+        return True
 
     def compute_tiebreakers(self) -> None:
         self.tiebreak_calculator.calculate_all_tiebreaks(self.players)
@@ -305,6 +320,7 @@ class Tournament:
                     bye_player_id=existing.bye_player_id if existing else None,
                     results=existing.results if existing else [],
                     is_completed=existing.is_completed if existing else False,
+                    pending_results=(existing.pending_results if existing else []),
                 )
             )
         self.rounds = new_rounds
