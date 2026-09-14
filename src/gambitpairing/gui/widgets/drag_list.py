@@ -50,7 +50,7 @@ class DragListWidget(QtWidgets.QListWidget):
         self.setDefaultDropAction(Qt.DropAction.MoveAction)
         self.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
 
-    def startDrag(self, supported_actions: Qt.DropActions) -> None:
+    def startDrag(self, supported_actions: Qt.DropAction) -> None:
         """Start a drag when this list is configured as a drag source.
 
         The manual-pairing player pool reuses this widget as a drop target so

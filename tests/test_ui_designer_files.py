@@ -2,7 +2,7 @@ import importlib
 import importlib.util
 import os
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, cast, get_type_hints
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -27,6 +27,7 @@ from gambitpairing.gui.dialogs.unsaved_changes_dialog import UnsavedChangesDialo
 from gambitpairing.gui.dialogs.update_dialog import UpdateDownloadDialog
 from gambitpairing.gui.dialogs.update_prompt_dialog import UpdatePromptDialog
 from gambitpairing.gui.main_window_save_flow import build_unsaved_changes_prompt
+from gambitpairing.gui.widgets.drag_list import DragListWidget
 from gambitpairing.gui.widgets.header import TabHeader
 from gambitpairing.gui.widgets.pairings_table import PairingsTable
 from gambitpairing.gui.widgets.player_placeholder import PlayerPlaceholder
@@ -64,6 +65,12 @@ def test_packaged_ui_files_are_parseable():
             form_class, base_class = load_ui_type(str(path))
             assert form_class is not None, resource.name
             assert base_class is not None, resource.name
+
+
+def test_drag_list_start_drag_uses_pyqt6_drop_action_type():
+    annotations = get_type_hints(DragListWidget.startDrag)
+
+    assert annotations["supported_actions"] is Qt.DropAction
 
 
 def test_pyinstaller_datas_include_runtime_ui_and_icons():
