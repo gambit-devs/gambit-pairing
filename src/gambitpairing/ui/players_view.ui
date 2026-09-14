@@ -6,66 +6,18 @@
    <string>Players</string>
   </property>
   <layout class="QVBoxLayout" name="main_layout">
-   <property name="spacing">
-    <number>12</number>
-   </property>
-   <property name="leftMargin">
-    <number>12</number>
-   </property>
-   <property name="topMargin">
-    <number>12</number>
-   </property>
-   <property name="rightMargin">
-    <number>12</number>
-   </property>
-   <property name="bottomMargin">
-    <number>12</number>
-   </property>
    <item>
     <widget class="QWidget" name="header_container">
      <layout class="QVBoxLayout" name="header_layout">
-      <property name="leftMargin">
-       <number>0</number>
-      </property>
-      <property name="topMargin">
-       <number>0</number>
-      </property>
-      <property name="rightMargin">
-       <number>0</number>
-      </property>
-      <property name="bottomMargin">
-       <number>0</number>
-      </property>
      </layout>
     </widget>
    </item>
    <item>
-    <widget class="QGroupBox" name="player_group">
-     <property name="class" stdset="0">
-      <string>FlatContentGroup</string>
-     </property>
+    <widget class="QWidget" name="player_group">
      <property name="toolTip">
       <string>Manage players. Right-click a row for actions.</string>
      </property>
-     <property name="title">
-      <string/>
-     </property>
      <layout class="QVBoxLayout" name="player_group_layout">
-      <property name="spacing">
-       <number>8</number>
-      </property>
-      <property name="leftMargin">
-       <number>0</number>
-      </property>
-      <property name="topMargin">
-       <number>0</number>
-      </property>
-      <property name="rightMargin">
-       <number>0</number>
-      </property>
-      <property name="bottomMargin">
-       <number>0</number>
-      </property>
       <item>
        <widget class="QTableWidget" name="table_players">
         <property name="toolTip">
@@ -106,34 +58,41 @@
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="btn_add_player_detail">
-        <property name="toolTip">
-         <string>Open dialog to add a new player with full details.</string>
-        </property>
-        <property name="text">
-         <string> Add New Player...</string>
-        </property>
-       </widget>
+       <layout class="QHBoxLayout" name="player_actions_layout">
+        <item>
+         <spacer name="player_actions_spacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeType">
+           <enum>QSizePolicy::Expanding</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>0</width>
+            <height>0</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btn_add_player_detail">
+          <property name="toolTip">
+           <string>Open dialog to add a new player with full details.</string>
+          </property>
+          <property name="text">
+           <string>Add New Player...</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
      </layout>
     </widget>
    </item>
    <item>
     <widget class="QWidget" name="placeholder_container">
-     <layout class="QVBoxLayout" name="placeholder_layout">
-      <property name="leftMargin">
-       <number>0</number>
-      </property>
-      <property name="topMargin">
-       <number>0</number>
-      </property>
-      <property name="rightMargin">
-       <number>0</number>
-      </property>
-      <property name="bottomMargin">
-       <number>0</number>
-      </property>
-     </layout>
+     <layout class="QVBoxLayout" name="placeholder_layout"/>
     </widget>
    </item>
   </layout>

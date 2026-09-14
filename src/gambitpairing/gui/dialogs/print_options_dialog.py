@@ -65,7 +65,6 @@ class PrintOptionsDialog(QtWidgets.QDialog):
             Whether standings checkbox is checked by default
         """
         super().__init__(parent)
-        self.setProperty("class", "PrintOptionsDialog")
         self.setWindowFlags(
             self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint
         )
@@ -89,9 +88,7 @@ class PrintOptionsDialog(QtWidgets.QDialog):
         else:
             self.round_info_label.hide()
 
-        self.chk_pairings = required_child(
-            self, QtWidgets.QCheckBox, "chk_pairings"
-        )
+        self.chk_pairings = required_child(self, QtWidgets.QCheckBox, "chk_pairings")
         self.chk_pairings.setChecked(self._has_pairings and self._default_pairings)
         self.chk_pairings.setEnabled(self._has_pairings)
         if not self._has_pairings:
@@ -99,9 +96,7 @@ class PrintOptionsDialog(QtWidgets.QDialog):
         else:
             self.chk_pairings.setToolTip("Include the pairings for the current round")
 
-        self.chk_standings = required_child(
-            self, QtWidgets.QCheckBox, "chk_standings"
-        )
+        self.chk_standings = required_child(self, QtWidgets.QCheckBox, "chk_standings")
         self.chk_standings.setChecked(self._has_standings and self._default_standings)
         self.chk_standings.setEnabled(self._has_standings)
         if not self._has_standings:
@@ -119,11 +114,18 @@ class PrintOptionsDialog(QtWidgets.QDialog):
         self.chk_pairings.toggled.connect(self._update_page_break_visibility)
         self.chk_standings.toggled.connect(self._update_page_break_visibility)
 
-        self.btn_cancel = required_child(self, QtWidgets.QPushButton, "btn_cancel")
-        self.btn_cancel.clicked.connect(self.reject)
-
-        self.btn_print = required_child(self, QtWidgets.QPushButton, "btn_print")
-        self.btn_print.clicked.connect(self._validate_and_accept)
+        self.button_box = required_child(self, QtWidgets.QDialogButtonBox, "button_box")
+        self.btn_cancel = self.button_box.button(
+            QtWidgets.QDialogButtonBox.StandardButton.Cancel
+        )
+        if self.btn_cancel is None:
+            raise RuntimeError("Print options dialog is missing its Cancel button")
+        self.btn_print = self.button_box.addButton(
+            "Print Preview", QtWidgets.QDialogButtonBox.ButtonRole.AcceptRole
+        )
+        self.btn_print.setDefault(True)
+        self.button_box.accepted.connect(self._validate_and_accept)
+        self.button_box.rejected.connect(self.reject)
 
         # Update initial state
         self._update_page_break_visibility()

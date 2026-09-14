@@ -18,11 +18,11 @@
 
 
 import logging
-import os
-import sys
 from logging.handlers import RotatingFileHandler
-
-from PyQt6 import QtCore
+import os
+from pathlib import Path
+import sys
+import tempfile
 
 LOG_FMT = (
     "LVL: %(levelname)s | FILE: %(pathname)s | "
@@ -36,17 +36,13 @@ BACKUP_COUNT = 5
 
 def _get_log_dir() -> str:
     """Return a writable directory for logs, or None if unavailable."""
-    paths = QtCore.QStandardPaths
-
-    # Prefer AppDataLocation, fall back to Temp Location
-    base = paths.writableLocation(paths.StandardLocation.AppDataLocation)
-    if not base:
-        print("logging to temporary location!")
-        base = paths.writableLocation(paths.StandardLocation.TempLocation)
-    if not base:
-        raise RuntimeError("Could not find a writable log dir.")
-
-    log_dir = os.path.join(base, "logs")
+    if sys.platform == "win32":
+        base = os.environ.get("LOCALAPPDATA", tempfile.gettempdir())
+    elif sys.platform == "darwin":
+        base = str(Path.home() / "Library" / "Logs")
+    else:
+        base = os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local" / "state"))
+    log_dir = os.path.join(base, "gambit-pairing", "logs")
     os.makedirs(log_dir, exist_ok=True)
     return log_dir
 

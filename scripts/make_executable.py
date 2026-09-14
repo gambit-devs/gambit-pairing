@@ -14,10 +14,10 @@ The onedir build is required for MSI creation, while onefile is more portable.
 """
 
 import argparse
-import subprocess
 import os
-import sys
 from pathlib import Path
+import subprocess
+import sys
 
 
 def run_command(cmd, description):
@@ -70,8 +70,8 @@ def build_executable(spec_file: Path):
     name = "gambit-pairing"
     # Verify the build
     if spec_file.name.endswith("-onedir.spec"):
-        expected_exe = Path("dist") / (
-            name + (".exe" if sys.platform == "win32" else "")
+        expected_exe = (
+            Path("dist") / name / (name + (".exe" if sys.platform == "win32" else ""))
         )
         build_type = "onedir"
     else:

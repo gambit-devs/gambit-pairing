@@ -174,12 +174,6 @@ class IconException(ResourceException):
     pass
 
 
-class StyleException(ResourceException):
-    """Raised when there's an error loading or applying the app style."""
-
-    pass
-
-
 class FileLoadException(ResourceException):
     """Raised when a file cannot be loaded."""
 

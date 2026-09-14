@@ -19,8 +19,6 @@ from gambitpairing.constants import (
 )
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
 
-from .checkable_button import CheckableButton
-
 
 class ResultSelector(QtWidgets.QWidget):
     """A result cell with normal and exceptional result choices.
@@ -46,27 +44,30 @@ class ResultSelector(QtWidgets.QWidget):
         self._current_result = ""
 
         self.btn_white_win = required_child(
-            self, CheckableButton, "btn_white_win"
+            self, QtWidgets.QPushButton, "btn_white_win"
         )
-        self.btn_draw = required_child(self, CheckableButton, "btn_draw")
+        self.btn_draw = required_child(self, QtWidgets.QPushButton, "btn_draw")
         self.btn_black_win = required_child(
-            self, CheckableButton, "btn_black_win"
+            self, QtWidgets.QPushButton, "btn_black_win"
         )
 
         self.btn_white_win.setText("1-0")
-        self.btn_white_win.setProperty("result_const", RESULT_WHITE_WIN)
-        self.btn_white_win.setProperty("result_type", "white")
         self.btn_white_win.setToolTip("White wins")
 
         self.btn_draw.setText("½-½")
-        self.btn_draw.setProperty("result_const", RESULT_DRAW)
-        self.btn_draw.setProperty("result_type", "draw")
         self.btn_draw.setToolTip("Draw")
 
         self.btn_black_win.setText("0-1")
-        self.btn_black_win.setProperty("result_const", RESULT_BLACK_WIN)
-        self.btn_black_win.setProperty("result_type", "black")
         self.btn_black_win.setToolTip("Black wins")
+
+        self._button_results = {
+            self.btn_white_win: RESULT_WHITE_WIN,
+            self.btn_draw: RESULT_DRAW,
+            self.btn_black_win: RESULT_BLACK_WIN,
+        }
+
+        for button in (self.btn_white_win, self.btn_draw, self.btn_black_win):
+            button.setCheckable(True)
 
         self.button_group = QtWidgets.QButtonGroup(self)
         self.button_group.setExclusive(True)
@@ -78,23 +79,26 @@ class ResultSelector(QtWidgets.QWidget):
             self.button_group.addButton(button)
         self.button_group.buttonClicked.connect(self._on_legacy_button_clicked)
 
-        self.menu_button = QtWidgets.QPushButton()
+        self.menu_button = QtWidgets.QToolButton()
         self.menu_button.setObjectName("result_menu_button")
-        self.menu_button.setProperty("class", "ResultCellButton")
         self.menu_button.setToolTip("Choose result (1, D, or 0)")
         self.menu_button.setAccessibleName("Result")
-        self.menu_button.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         self.menu_button.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.menu_button.setAutoRaise(True)
+        self.menu_button.setToolButtonStyle(
+            QtCore.Qt.ToolButtonStyle.ToolButtonTextOnly
+        )
+        self.menu_button.setPopupMode(
+            QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup
+        )
         self.menu_button.pressed.connect(self.activated.emit)
 
         self.result_menu = QtWidgets.QMenu(self)
-        self.result_menu.setProperty("class", "RoundResultMenu")
         self.result_menu.addAction("1-0", lambda: self.setResult(RESULT_WHITE_WIN))
         self.result_menu.addAction("½-½", lambda: self.setResult(RESULT_DRAW))
         self.result_menu.addAction("0-1", lambda: self.setResult(RESULT_BLACK_WIN))
         self.result_menu.addSeparator()
         self.forfeit_menu = self.result_menu.addMenu("Other...")
-        self.forfeit_menu.setProperty("class", "RoundResultMenu")
         self.forfeit_menu.addAction(
             "White wins by forfeit",
             lambda: self.setResult(RESULT_WHITE_FORFEIT_WIN),
@@ -118,20 +122,13 @@ class ResultSelector(QtWidgets.QWidget):
                     self.btn_black_win,
                 ):
                     button.hide()
-                layout.setContentsMargins(2, 1, 2, 1)
                 layout.addWidget(self.menu_button)
             else:
-                self.menu_button.setText("⋮")
-                self.menu_button.setFixedWidth(28)
-                self.menu_button.setProperty("class", "MenuButton")
+                self.menu_button.setText("More")
                 layout.addWidget(self.menu_button)
 
         if compact:
-            self.setProperty("class", "ResultSelector")
-            self.setProperty("compact", True)
             self.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
-            self.setMinimumSize(78, 28)
-            self.setMaximumHeight(32)
             self.setSizePolicy(
                 QtWidgets.QSizePolicy.Policy.Expanding,
                 QtWidgets.QSizePolicy.Policy.Fixed,
@@ -143,7 +140,11 @@ class ResultSelector(QtWidgets.QWidget):
         if self._current_result:
             return self._current_result
         checked_button = self.button_group.checkedButton()
-        return checked_button.property("result_const") if checked_button else ""
+        return (
+            self._button_results.get(checked_button, "")
+            if isinstance(checked_button, QtWidgets.QPushButton)
+            else ""
+        )
 
     def displayText(self) -> str:
         """Return the short value shown in the compact result cell."""
@@ -155,7 +156,11 @@ class ResultSelector(QtWidgets.QWidget):
         return "½-½" if result == RESULT_DRAW else result
 
     def _on_legacy_button_clicked(self, button: QtWidgets.QAbstractButton) -> None:
-        result = button.property("result_const")
+        result = (
+            self._button_results.get(button, "")
+            if isinstance(button, QtWidgets.QPushButton)
+            else ""
+        )
         if result:
             self._set_result(result, emit=True)
 
@@ -180,8 +185,8 @@ class ResultSelector(QtWidgets.QWidget):
             self.button_group.setExclusive(True)
 
         if result in {RESULT_WHITE_WIN, RESULT_DRAW, RESULT_BLACK_WIN}:
-            for button in self.button_group.buttons():
-                if button.property("result_const") == result:
+            for button, button_result in self._button_results.items():
+                if button_result == result:
                     button.setChecked(True)
                     break
         elif result in {
@@ -218,15 +223,9 @@ class ResultSelector(QtWidgets.QWidget):
         self.menu_button.setToolTip(
             f"{result or 'Blank'} result — click for options; 1, D, 0 to enter"
         )
-        self.menu_button.setProperty("has_result", bool(result))
-        self.menu_button.style().unpolish(self.menu_button)
-        self.menu_button.style().polish(self.menu_button)
 
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
-        if (
-            self.compact
-            and event.button() == QtCore.Qt.MouseButton.LeftButton
-        ):
+        if self.compact and event.button() == QtCore.Qt.MouseButton.LeftButton:
             self.activated.emit()
             self.menu_button.showMenu()
             event.accept()
@@ -236,9 +235,7 @@ class ResultSelector(QtWidgets.QWidget):
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         """Forward keyboard input to the containing pairing table."""
         if self.compact:
-            self.key_pressed.emit(
-                event.key(), event.text(), event.modifiers().value
-            )
+            self.key_pressed.emit(event.key(), event.text(), event.modifiers().value)
             event.accept()
             return
         super().keyPressEvent(event)

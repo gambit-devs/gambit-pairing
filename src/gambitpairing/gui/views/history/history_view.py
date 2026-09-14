@@ -19,14 +19,13 @@
 
 from __future__ import annotations
 
-from gambitpairing.utils import setup_logger
-
 from PyQt6 import QtGui, QtWidgets
 from PyQt6.QtCore import QDateTime
 
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
-from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 from gambitpairing.gui.widgets.header import TabHeader
+from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
+from gambitpairing.utils import setup_logger
 
 logger = setup_logger(__name__)
 
@@ -36,9 +35,7 @@ class HistoryView(QtWidgets.QWidget):
         super().__init__(parent)
         self.tournament = None
         load_ui_into(self, "history_view.ui")
-        self.main_layout = required_child(
-            self, QtWidgets.QVBoxLayout, "main_layout"
-        )
+        self.main_layout = required_child(self, QtWidgets.QVBoxLayout, "main_layout")
         header_layout = required_child(self, QtWidgets.QVBoxLayout, "header_layout")
         placeholder_layout = required_child(
             self, QtWidgets.QVBoxLayout, "placeholder_layout"
@@ -49,9 +46,7 @@ class HistoryView(QtWidgets.QWidget):
         header_layout.addWidget(self.header)
 
         # History group
-        self.history_group = required_child(
-            self, QtWidgets.QGroupBox, "history_group"
-        )
+        self.history_group = required_child(self, QtWidgets.QWidget, "history_group")
 
         self.history_log_widget = required_child(
             self, QtWidgets.QPlainTextEdit, "history_log_widget"
@@ -73,6 +68,14 @@ class HistoryView(QtWidgets.QWidget):
     def reset_display(self) -> None:
         """Reset the UI to default state."""
         self.history_log_widget.clear()
+
+    def history_entries(self) -> list[str]:
+        """Return the displayed history entries."""
+        return self.history_log_widget.toPlainText().splitlines()
+
+    def set_history_entries(self, entries: list[str]) -> None:
+        """Replace the displayed history entries."""
+        self.history_log_widget.setPlainText("\n".join(entries))
 
     def set_tournament(self, tournament):
         self.tournament = tournament

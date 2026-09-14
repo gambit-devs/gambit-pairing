@@ -23,8 +23,6 @@ This module provides shared functionality for generating print content across di
 import re
 from typing import Tuple
 
-from PyQt6 import QtWidgets
-from PyQt6.QtCore import Qt
 from PyQt6.QtPrintSupport import QPrinter, QPrintPreviewDialog
 
 
@@ -106,20 +104,5 @@ class TournamentPrintUtils:
         printer = QPrinter(QPrinter.PrinterMode.HighResolution)
         preview = QPrintPreviewDialog(printer, parent)
         preview.setWindowTitle(title)
-        TournamentPrintUtils._lock_preview_toolbar(preview)
 
         return printer, preview
-
-    @staticmethod
-    def _lock_preview_toolbar(preview: QPrintPreviewDialog) -> None:
-        """Keep Qt's built-in print-preview toolbar fixed in place."""
-        toolbar = preview.findChild(QtWidgets.QToolBar)
-        if toolbar is None:
-            return
-
-        toolbar.setMovable(False)
-        toolbar.setFloatable(False)
-        toolbar.setAllowedAreas(Qt.ToolBarArea.TopToolBarArea)
-        toolbar.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
-
-

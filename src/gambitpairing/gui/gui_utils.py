@@ -2,73 +2,54 @@
 
 from collections.abc import Callable
 
-from PyQt6 import QtGui, QtWidgets
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QCursor
-from PyQt6.QtWidgets import QApplication
-
-from gambitpairing.resources.resource_utils import get_resource_path
+from PyQt6 import QtCore, QtGui, QtWidgets
 
 
-def set_svg_icon(
-    label: QtWidgets.QLabel, icon_name: str, color: str = "#2d5a27", size: int = 24
-):
-    """Help set an SVG icon on a QLabel with color overlay."""
-    icon_path = get_resource_path(icon_name, "icons")
-    # Use QIcon to load SVG and generate pixmap at desired size
-    icon = QtGui.QIcon(str(icon_path))
-    pixmap = icon.pixmap(size, size)
+def get_native_icon(
+    theme_name: str, fallback: QtWidgets.QStyle.StandardPixmap
+) -> QtGui.QIcon:
+    """Get a theme icon with a fallback supplied by the active Qt style.
 
-    if not pixmap.isNull():
-        # Apply color overlay
-        painter = QtGui.QPainter(pixmap)
-        painter.setCompositionMode(
-            QtGui.QPainter.CompositionMode.CompositionMode_SourceIn
+    A bundled Python Qt runtime may not have access to the desktop icon theme,
+    while the active style still knows how to draw standard application icons.
+    This keeps actions legible without adding application-specific styling.
+    """
+    icon = QtGui.QIcon.fromTheme(theme_name)
+    if not icon.isNull():
+        return icon
+
+    app = QtWidgets.QApplication.instance()
+    if app is not None:
+        return app.style().standardIcon(fallback)
+
+    return QtGui.QIcon()
+
+
+def set_native_icon(
+    label: QtWidgets.QLabel,
+    theme_name: str,
+    fallback: QtWidgets.QStyle.StandardPixmap = QtWidgets.QStyle.StandardPixmap.SP_FileIcon,
+    size: int | None = None,
+) -> None:
+    """Show a platform/theme icon in a label using the active Qt metrics."""
+    icon = get_native_icon(theme_name, fallback)
+    if icon.isNull():
+        return
+    if size is None:
+        size = label.style().pixelMetric(
+            QtWidgets.QStyle.PixelMetric.PM_LargeIconSize, None, label
         )
-        painter.fillRect(pixmap.rect(), QtGui.QColor(color))
-        painter.end()
+    pixmap = icon.pixmap(QtCore.QSize(size, size))
+    if not pixmap.isNull():
         label.setPixmap(pixmap)
         label.setText("")
 
 
-def get_colored_icon(
-    icon_name: str, color: str = "#2d5a27", size: int = 24
-) -> QtGui.QIcon:
-    """Help getting a colored QIcon from SVG."""
-    icon_path = get_resource_path(icon_name, "icons")
-    pixmap = QtGui.QPixmap(str(icon_path))
-    if not pixmap.isNull():
-        pixmap = pixmap.scaled(
-            size,
-            size,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
-        painter = QtGui.QPainter(pixmap)
-        painter.setCompositionMode(
-            QtGui.QPainter.CompositionMode.CompositionMode_SourceIn
-        )
-        painter.fillRect(pixmap.rect(), QtGui.QColor(color))
-        painter.end()
-        return QtGui.QIcon(pixmap)
-    return QtGui.QIcon()
-
-
-def update_widget_style(widget: QtWidgets.QWidget) -> None:
-    """Change the style on a widget."""
-    widget.style().unpolish(widget)
-    widget.style().polish(widget)
-    widget.update()
-
-
-def reset_and_set_cursor(cursor_shape: Qt.CursorShape):
-    """Remove all override cursors and set a new one."""
-    # Remove all existing override cursors
-    while QApplication.overrideCursor() is not None:
-        QApplication.restoreOverrideCursor()
-
-    # Set new override cursor
-    QApplication.setOverrideCursor(QCursor(cursor_shape))
+def set_native_heading(label: QtWidgets.QLabel) -> None:
+    """Use the platform's title font for a section heading."""
+    label.setFont(
+        QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.SystemFont.TitleFont)
+    )
 
 
 def create_action(
@@ -99,5 +80,4 @@ def create_action(
     if tooltip:
         action.setToolTip(tooltip)
         action.setStatusTip(tooltip)
-    action.setIconVisibleInMenu(False)  # Hide icon in menus
     return action

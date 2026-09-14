@@ -29,7 +29,7 @@ $$ |                                            \$$$$$$  |
 ```
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Python Version](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://www.python.org/)
+[![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![PyQt6](https://img.shields.io/badge/PyQt6-Used-green.svg)](https://riverbankcomputing.com/software/pyqt/intro)
 [![Discord](https://img.shields.io/badge/Discord-Join%20Chat-blue.svg)](https://discord.gg/eEnnetMDfr)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Chickaboo/gambit-pairing)
@@ -138,6 +138,12 @@ cd gambit-pairing
 pip install -e .
 ```
 
+### Dutch Swiss pairing backend
+
+New tournaments use one `Dutch System` format backed by the upstream [bbpPairings](https://github.com/BieremaBoyzProgramming/bbpPairings) engine through the TRF(bx) file interface. The tournament dialog includes a Dutch-only `Use Gambit Dutch (Experimental)` checkbox for selecting Gambit's native implementation directly. If BBP is unavailable or cannot represent the tournament state, the GUI asks for approval before applying experimental fallback pairings. Pairing runs in a cancellable background process; cancelling leaves the tournament unchanged. The wheel does not bundle a BBP executable.
+
+To select an executable explicitly, set `GAMBIT_BBP_EXECUTABLE` to its path. The application also searches for `bbpPairings`/`bbpPairings.exe` on `PATH` and in the packaged `resources/bin` directory. Set `GAMBIT_PAIRING_ENGINE=native` when automation needs to exercise the native implementation directly instead of using the checkbox.
+
 ### Build and Deploy Status
 [![Build Windows Release](https://github.com/gambit-devs/gambit-pairing/actions/workflows/build-release-windows.yml/badge.svg)](https://github.com/gambit-devs/gambit-pairing/actions/workflows/build-release-windows.yml)
 [![PyPI version](https://badge.fury.io/py/gambit-pairing.svg)](https://pypi.org/project/gambit-pairing/)
@@ -187,7 +193,7 @@ it will parse the pyproject.toml and install all the runtime and development dep
 
     ## Notes
 
-- The pairing algorithm follows USCF-style Swiss rules, including color balancing and bye assignment.
+- `Dutch System` is the primary Dutch format; enable `Use Gambit Dutch (Experimental)` only for native-engine development and comparison.
 - Tiebreak order is fully configurable and reflected in the standings and printouts.
 - Manual pairing adjustments are logged and cannot be undone automatically.
 - Tournament data is saved in `.json` files (JSON format).

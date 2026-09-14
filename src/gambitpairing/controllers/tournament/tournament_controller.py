@@ -48,8 +48,10 @@ from gambitpairing.utils import setup_logger
 logger = setup_logger(__name__)
 
 if TYPE_CHECKING:
+    from gambitpairing.controllers.tournament.session import (
+        TournamentSession as Tournament,
+    )
     from gambitpairing.models.player import Player
-    from gambitpairing.models.tournament.tournament import Tournament
 
 
 class TournamentController:
@@ -75,12 +77,17 @@ class TournamentController:
 
     def __init__(self, tournament: Optional["Tournament"] = None):
         self.tournament = tournament
-        self.current_round_index = 0
+        self.current_round_index = (
+            tournament.get_completed_rounds() if tournament else 0
+        )
         self.last_recorded_results_data: List[tuple] = []
 
     def set_tournament(self, tournament: Optional["Tournament"]):
         """Set the tournament to manage."""
         self.tournament = tournament
+        self.current_round_index = (
+            tournament.get_completed_rounds() if tournament else 0
+        )
         if tournament is None:
             self.current_round_index = 0
             self.last_recorded_results_data = []
@@ -129,12 +136,12 @@ class TournamentController:
                     valid=False,
                     error_message=f"Round Robin tournaments require at least three {player_type}players.",
                 )
-        elif pairing_system == "dutch_swiss":
+        elif pairing_system in {"bbp_dutch", "dutch_swiss"}:
             min_players = 2**self.tournament.num_rounds
             if num_players < 2:
                 return ValidationResult(
                     valid=False,
-                    error_message=f"FIDE Dutch Swiss tournaments require at least two {player_type}players.",
+                    error_message=f"Dutch Swiss tournaments require at least two {player_type}players.",
                 )
             if num_players < min_players:
                 return ValidationResult(
@@ -153,7 +160,7 @@ class TournamentController:
                     error_message=f"Manual pairing tournaments require at least two {player_type}players.",
                 )
 
-        if pairing_system in {"round_robin", "dutch_swiss", "manual"}:
+        if pairing_system in {"round_robin", "bbp_dutch", "dutch_swiss", "manual"}:
             return ValidationResult(valid=True)
         return ValidationResult(
             valid=False,
@@ -199,24 +206,28 @@ class TournamentController:
         display_round_number = round_index + 1
 
         try:
-            pairings, bye_player = self.tournament.create_pairings(
+            from copy import deepcopy
+
+            from .pairing_job import commit_pairing_document
+
+            expected = self.tournament.to_dict()
+            prepared = deepcopy(self.tournament)
+            if round_index != prepared.get_completed_rounds():
+                raise ValueError("Only the next uncompleted round can be paired")
+            prepared.clear_rounds_from(round_index)
+            prepared.create_pairings(
                 display_round_number,
                 allow_repeat_pairing_callback=allow_repeat_callback,
             )
-
-            # Validate pairings
-            active_players = self.tournament._get_active_players()
-            if not pairings and len(active_players) > 1 and not bye_player:
-                if len(active_players) % 2 == 0:
-                    return PairingGenerationResult(
-                        success=False,
-                        pairings=[],
-                        bye_player=None,
-                        error_message=(
-                            f"Pairing generation failed for Round {display_round_number}. "
-                            f"No pairings returned. Check logs and player statuses."
-                        ),
-                    )
+            commit_pairing_document(
+                self.tournament,
+                expected,
+                {
+                    "document": prepared.to_dict(),
+                    "engine": prepared.round_controller.last_engine,
+                },
+            )
+            pairings, bye_player = self.tournament.get_pairings_for_round(round_index)
 
             return PairingGenerationResult(
                 success=True,
@@ -262,14 +273,11 @@ class TournamentController:
     def set_pending_results(self, round_index: int, results_data: List[tuple]) -> bool:
         """Persist in-progress result entry without changing standings."""
         round_data = self.get_round_data(round_index)
-        if (
-            not self.tournament
-            or round_data is None
-            or round_data.is_completed
-        ):
+        if not self.tournament or round_data is None or round_data.is_completed:
             return False
-        self.tournament.result_recorder.set_pending_results(round_data, results_data)
-        return True
+        return self.tournament.result_recorder.set_pending_results(
+            round_data, results_data
+        )
 
     def clear_round_pairings(self, round_index: int):
         """Clear pairings for a round and all subsequent rounds."""
@@ -325,9 +333,7 @@ class TournamentController:
             Contains success status and tournament completion state
         """
         if not self.tournament:
-            return RecordingResult(
-                success=False, error_message="No tournament loaded."
-            )
+            return RecordingResult(success=False, error_message="No tournament loaded.")
 
         if round_index >= len(self.tournament.rounds_pairings_ids):
             return RecordingResult(
@@ -415,6 +421,7 @@ class TournamentController:
             ):
                 return False, "The completed round could not be undone."
             round_data.pending_results.clear()
+            self.tournament.clear_rounds_from(round_index_being_undone + 1)
 
             # Log warning about manual pairings
             if round_index_being_undone in self.tournament.manual_pairings:
@@ -473,6 +480,7 @@ class TournamentController:
         round_index: int,
         pairings: List[Tuple[Player, Player]],
         bye_player: Optional[Player],
+        bye_type: str = "full",
     ) -> bool:
         """
         Set manual pairings for a round.
@@ -493,7 +501,9 @@ class TournamentController:
         """
         if not self.tournament:
             return False
-        return self.tournament.set_manual_pairings(round_index, pairings, bye_player)
+        return self.tournament.set_manual_pairings(
+            round_index, pairings, bye_player, bye_type
+        )
 
     def get_active_players(self) -> List["Player"]:
         """Get list of active players in the tournament."""

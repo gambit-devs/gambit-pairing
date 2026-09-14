@@ -16,7 +16,10 @@ permissions:
   contents: read
 
 jobs:
+  checks:
+    uses: ./.github/workflows/tests.yml
   release-build:
+    needs: checks
     runs-on: ubuntu-latest
 
     steps:

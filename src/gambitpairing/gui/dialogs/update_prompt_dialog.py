@@ -11,8 +11,6 @@ class UpdatePromptDialog(QtWidgets.QDialog):
         self, new_version: str, current_version: str, release_notes: str, parent=None
     ):
         super().__init__(parent)
-        self.setProperty("class", "UpdatePromptDialog")
-
         load_ui_into(self, "update_prompt_dialog.ui")
 
         self.title_label = required_child(self, QtWidgets.QLabel, "title_label")
@@ -30,9 +28,7 @@ class UpdatePromptDialog(QtWidgets.QDialog):
         )
         self.release_notes_text.setMarkdown(release_notes)
 
-        self.button_box = required_child(
-            self, QtWidgets.QDialogButtonBox, "button_box"
-        )
+        self.button_box = required_child(self, QtWidgets.QDialogButtonBox, "button_box")
         self.download_button = self.button_box.addButton(
             "Download", QtWidgets.QDialogButtonBox.ButtonRole.AcceptRole
         )

@@ -222,13 +222,18 @@ def evaluate_minimum_player_check(
             ),
         )
 
-    if pairing_system == "dutch_swiss":
+    if pairing_system in {"bbp_dutch", "dutch_swiss"}:
+        system_name = (
+            "Gambit Dutch (experimental)"
+            if getattr(tournament, "use_experimental_dutch", False)
+            else "BBP Dutch"
+        )
         if num_players < 2:
             return MinimumPlayerCheck(
                 kind="blocking",
                 title=title,
                 message=(
-                    f"FIDE Dutch Swiss tournaments require at least two "
+                    f"{system_name} tournaments require at least two "
                     f"{player_type}players."
                 ),
             )
@@ -237,7 +242,7 @@ def evaluate_minimum_player_check(
                 kind="confirm",
                 title="Insufficient Players",
                 message=(
-                    f"For a {tournament.num_rounds}-round FIDE Dutch Swiss "
+                    f"For a {tournament.num_rounds}-round {system_name} "
                     f"tournament, a minimum of {min_players} players is "
                     "recommended. The tournament may not work properly. Do you "
                     "want to continue anyway?"
@@ -281,9 +286,7 @@ def build_round_preparation_messages(
 ) -> RoundPreparationMessages:
     return RoundPreparationMessages(
         started_status=f"Generating pairings for Round {display_round_number}...",
-        ready_status=(
-            f"Round {display_round_number} pairings ready. Enter results."
-        ),
+        ready_status=(f"Round {display_round_number} pairings ready. Enter results."),
         error_status=f"Error generating pairings for Round {display_round_number}.",
         header_title=f"Round {display_round_number} Pairings & Results",
         reprepare_history_line=(
@@ -302,7 +305,9 @@ def should_report_empty_pairings_failure(
     return not pairings and active_player_count > 1 and not bye_player
 
 
-def build_pairing_generation_failure_prompt(display_round_number: int) -> WorkflowPrompt:
+def build_pairing_generation_failure_prompt(
+    display_round_number: int,
+) -> WorkflowPrompt:
     return WorkflowPrompt(
         title="Pairing Error",
         message=(
@@ -396,7 +401,13 @@ def format_recorded_result_history_lines(
             bye_player = tournament.players.get(bye_id)
             if bye_player:
                 status = " (Inactive - No Score)" if not bye_player.is_active else ""
-                bye_score_awarded = BYE_SCORE if bye_player.is_active else 0.0
+                rounds = getattr(tournament, "rounds", [])
+                bye_type = (
+                    rounds[round_index_recorded].bye_type
+                    if round_index_recorded < len(rounds)
+                    else ("full" if bye_player.is_active else "zero")
+                )
+                bye_score_awarded = {"full": 1.0, "half": 0.5, "zero": 0.0}[bye_type]
                 lines.append(
                     f"  Bye point ({bye_score_awarded:.1f}) awarded to: "
                     f"{bye_player.name}{status}"
@@ -459,7 +470,9 @@ def undo_confirmation_message(current_round_index: int) -> str:
 
 
 def players_to_revert_for_undo(
-    tournament: Any, results_data: Sequence[Sequence[Any]], round_index_being_undone: int
+    tournament: Any,
+    results_data: Sequence[Sequence[Any]],
+    round_index_being_undone: int,
 ) -> list[Player]:
     """Resolve players whose last-round data should be reverted for undo."""
 
@@ -488,36 +501,10 @@ def players_to_revert_for_undo(
 
 
 def revert_player_round_data(player: Player) -> bool:
-    """Remove the last round's result/history data from a player."""
+    """Compatibility wrapper; rollback belongs to the result controller."""
+    from gambitpairing.controllers.tournament.result import ResultRecorder
 
-    if not player.results:
-        return False
-
-    last_result = player.results.pop()
-    if last_result is not None:
-        player.score = round(player.score - last_result, 1)
-
-    if player.running_scores:
-        player.running_scores.pop()
-
-    last_opponent_id = player.opponent_ids.pop() if player.opponent_ids else None
-    last_color = player.color_history.pop() if player.color_history else None
-
-    if getattr(player, "outcome_types", None):
-        player.outcome_types.pop()
-    if player.match_history:
-        player.match_history.pop()
-
-    if getattr(last_color, "value", last_color) in {"Black", "B"}:
-        player.num_black_games = max(0, player.num_black_games - 1)
-
-    if last_opponent_id is None:
-        player.has_received_bye = (
-            (None in player.opponent_ids) if player.opponent_ids else False
-        )
-
-    player._opponents_played_cache = []
-    return True
+    return ResultRecorder._pop_player_result(player)
 
 
 def _round_control_state(phase: TournamentPhase) -> RoundControlState:

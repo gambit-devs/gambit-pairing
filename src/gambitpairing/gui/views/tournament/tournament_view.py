@@ -27,6 +27,7 @@ from gambitpairing.controllers import (
     TournamentController,
 )
 from gambitpairing.gui.dialogs import ManualPairingDialog
+from gambitpairing.gui.gui_utils import get_native_icon
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
 from gambitpairing.gui.views.tournament.tournament_printing import (
     PairingsPrintRow,
@@ -66,7 +67,8 @@ from gambitpairing.gui.widgets.tournament_placeholder import (
 from gambitpairing.models import (
     Player,
 )
-from gambitpairing.utils import PairingsPrinter, setup_logger
+from gambitpairing.utils import setup_logger
+from gambitpairing.utils.pairings_printer import PairingsPrinter
 
 logger = setup_logger(__name__)
 
@@ -139,13 +141,9 @@ class TournamentView(QtWidgets.QWidget):
         self.printer = PairingsPrinter(self)
 
         load_ui_into(self, "tournament_view.ui")
-        self.main_layout = required_child(
-            self, QtWidgets.QVBoxLayout, "main_layout"
-        )
+        self.main_layout = required_child(self, QtWidgets.QVBoxLayout, "main_layout")
         header_layout = required_child(self, QtWidgets.QVBoxLayout, "header_layout")
-        header_container = required_child(
-            self, QtWidgets.QWidget, "header_container"
-        )
+        header_container = required_child(self, QtWidgets.QWidget, "header_container")
         header_container.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Expanding,
             QtWidgets.QSizePolicy.Policy.Maximum,
@@ -163,25 +161,9 @@ class TournamentView(QtWidgets.QWidget):
             QtWidgets.QSizePolicy.Policy.Expanding,
             QtWidgets.QSizePolicy.Policy.Maximum,
         )
-        self.btn_edit_pairings = self.header.add_action_button(
-            "edit.svg", "Edit Pairings", self._edit_all_pairings
-        )
-        self.btn_edit_pairings.hide()
-        self.btn_print_pairings = self.header.add_action_button(
-            "print.svg",
-            "Print Pairings",
-            lambda: self.open_print_dialog(
-                default_pairings=True, default_standings=False
-            ),
-        )
         # ``round_navigation`` is part of the Designer-owned header layout.
         # Insert the runtime header above it so the view only wires behavior.
         header_layout.insertWidget(0, self.header)
-        header_layout.setSpacing(4)
-        header_widget_layout = self.header.layout()
-        if isinstance(header_widget_layout, QtWidgets.QVBoxLayout):
-            header_widget_layout.setSpacing(8)
-            header_widget_layout.setContentsMargins(0, 0, 0, 8)
         self._setup_round_navigation()
 
         # ===== ROUND CARD CONTAINER =====
@@ -191,10 +173,6 @@ class TournamentView(QtWidgets.QWidget):
         # ===== PRE-TOURNAMENT WIDGET =====
         self.pre_tournament_start_widget = PreTournamentStart(self)
         self.pre_tournament_start_widget.start_requested.connect(self.start_tournament)
-        self.pre_tournament_start_widget.icon_label.hide()
-        self.pre_tournament_start_widget.btn_start.setProperty(
-            "class", "Primary"
-        )
         self.pre_tournament_start_widget.hide()
         pre_tournament_layout.addWidget(self.pre_tournament_start_widget)
 
@@ -224,7 +202,7 @@ class TournamentView(QtWidgets.QWidget):
             self, QtWidgets.QToolButton, "btn_next_round"
         )
         self.round_selector = required_child(
-            self, QtWidgets.QPushButton, "round_selector"
+            self, QtWidgets.QToolButton, "round_selector"
         )
         self.lbl_round_status = required_child(
             self, QtWidgets.QLabel, "lbl_round_status"
@@ -235,28 +213,52 @@ class TournamentView(QtWidgets.QWidget):
         self.btn_edit_results = required_child(
             self, QtWidgets.QPushButton, "btn_edit_results"
         )
-        self.btn_view = required_child(self, QtWidgets.QPushButton, "btn_view")
+        self.btn_view = required_child(self, QtWidgets.QToolButton, "btn_view")
         self.btn_pairing_actions = required_child(
-            self, QtWidgets.QPushButton, "btn_pairing_actions"
+            self, QtWidgets.QToolButton, "btn_pairing_actions"
         )
 
-        self.btn_previous_round.clicked.connect(
-            lambda: self._navigate_round(-1)
-        )
+        self.btn_previous_round.clicked.connect(lambda: self._navigate_round(-1))
         self.btn_next_round.clicked.connect(lambda: self._navigate_round(1))
+        for button, theme_name, fallback, label in (
+            (
+                self.btn_previous_round,
+                "go-previous",
+                QtWidgets.QStyle.StandardPixmap.SP_ArrowLeft,
+                "Previous round",
+            ),
+            (
+                self.btn_next_round,
+                "go-next",
+                QtWidgets.QStyle.StandardPixmap.SP_ArrowRight,
+                "Next round",
+            ),
+        ):
+            button.setText("")
+            button.setIcon(get_native_icon(theme_name, fallback))
+            button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+            button.setAutoRaise(True)
+            button.setAccessibleName(label)
         self.btn_edit_results.clicked.connect(self._edit_selected_completed_round)
 
         round_menu = QtWidgets.QMenu(self.round_selector)
-        round_menu.setProperty("class", "RoundSelectorMenu")
         self.round_selector.setMenu(round_menu)
+        self.round_selector.setToolButtonStyle(
+            QtCore.Qt.ToolButtonStyle.ToolButtonTextOnly
+        )
+        self.round_selector.setPopupMode(
+            QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup
+        )
 
         self._setup_pairing_actions_menu()
 
     def _setup_pairing_actions_menu(self) -> None:
         """Create the secondary pairing action menu without adding toolbar noise."""
         self.pairing_actions_menu = QtWidgets.QMenu(self.btn_pairing_actions)
-        self.pairing_actions_menu.setProperty("class", "RoundActionsMenu")
         self.btn_pairing_actions.setMenu(self.pairing_actions_menu)
+        for button in (self.btn_view, self.btn_pairing_actions):
+            button.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextOnly)
+            button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
 
         self.action_edit_displayed_pairings = self.pairing_actions_menu.addAction(
             "Edit pairings"
@@ -281,16 +283,10 @@ class TournamentView(QtWidgets.QWidget):
         )
 
         self.view_menu = QtWidgets.QMenu(self.btn_view)
-        self.view_menu.setProperty("class", "RoundActionsMenu")
         self.btn_view.setMenu(self.view_menu)
         self.action_show_ratings = self.view_menu.addAction("Show Ratings")
         self.action_show_ratings.setCheckable(True)
         self.action_show_ratings.toggled.connect(self._toggle_show_ratings)
-
-        # Keep the existing icon actions available through the new menu while
-        # keeping the permanent action row compact and Designer-owned.
-        self.btn_edit_pairings.hide()
-        self.btn_print_pairings.hide()
 
     def _navigate_round(self, direction: int) -> None:
         if not self.tournament:
@@ -319,7 +315,7 @@ class TournamentView(QtWidgets.QWidget):
         if round_data is None:
             return "Not Paired"
         if round_data.is_completed or round_index < self.current_round_index:
-            return "Complete ✓"
+            return "Complete"
         if round_data.pairings:
             return "In Progress"
         return "Not Paired"
@@ -339,15 +335,12 @@ class TournamentView(QtWidgets.QWidget):
         menu = self.round_selector.menu()
         if menu is None:
             menu = QtWidgets.QMenu(self.round_selector)
-            menu.setProperty("class", "RoundSelectorMenu")
             self.round_selector.setMenu(menu)
         else:
             menu.clear()
         for round_index in range(total_rounds):
             status = self._round_status(round_index)
-            action = menu.addAction(
-                f"Round {round_index + 1}   {status.replace(' ✓', '')}"
-            )
+            action = menu.addAction(f"Round {round_index + 1}   {status}")
             action.setCheckable(True)
             action.setChecked(round_index == index)
             action.triggered.connect(
@@ -359,20 +352,9 @@ class TournamentView(QtWidgets.QWidget):
         self.btn_previous_round.setEnabled(index > 0)
         self.btn_next_round.setEnabled(index < total_rounds - 1)
         displayed_status = (
-            "Complete ✓" if self._final_summary_visible else self._round_status(index)
+            "Complete" if self._final_summary_visible else self._round_status(index)
         )
         self.lbl_round_status.setText(displayed_status)
-        self.lbl_round_status.setProperty(
-            "state",
-            "complete"
-            if displayed_status.startswith("Complete")
-            else "pending"
-            if displayed_status == "Not Paired"
-            else "progress",
-        )
-        self.lbl_round_status.style().unpolish(self.lbl_round_status)
-        self.lbl_round_status.style().polish(self.lbl_round_status)
-
         entered, total = self.pairings_table.progress()
         self.lbl_round_summary.setText(self._round_summary_text(entered, total))
 
@@ -398,7 +380,6 @@ class TournamentView(QtWidgets.QWidget):
         """Render the selected round without changing tournament state."""
         if not self.tournament:
             self.pairings_table.reset_display()
-            self._update_round_card_size_policy()
             self.pairings_table.hide()
             self.lbl_empty_state.hide()
             self._rendered_round_index = None
@@ -406,7 +387,6 @@ class TournamentView(QtWidgets.QWidget):
 
         if self._final_summary_visible:
             self.pairings_table.reset_display()
-            self._update_round_card_size_policy()
             self.pairings_table.hide()
             self.lbl_empty_state.setText(
                 "All scheduled rounds are complete.\n"
@@ -419,7 +399,6 @@ class TournamentView(QtWidgets.QWidget):
         round_index = self.displayed_round_index
         if not self.controller.pairings_exist_for_round(round_index):
             self.pairings_table.reset_display()
-            self._update_round_card_size_policy()
             self.pairings_table.hide()
             self.lbl_empty_state.setText(
                 f"Round {round_index + 1}\n\nThis round has not been paired yet."
@@ -445,8 +424,8 @@ class TournamentView(QtWidgets.QWidget):
             round_index,
             results=results,
             editable=is_editable,
+            bye_type=round_data.bye_type if round_data is not None else "full",
         )
-        self._update_round_card_size_policy()
         self.lbl_empty_state.hide()
         self._rendered_round_index = round_index
 
@@ -462,19 +441,6 @@ class TournamentView(QtWidgets.QWidget):
             f"{cls._count_text(entered, 'result')} entered"
         )
 
-    def _update_round_card_size_policy(self) -> None:
-        """Keep short rounds compact while larger grids use available height."""
-        rows = self.pairings_table.rowCount()
-        vertical_policy = (
-            QtWidgets.QSizePolicy.Policy.Maximum
-            if rows <= 12
-            else QtWidgets.QSizePolicy.Policy.Expanding
-        )
-        self.round_card.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Expanding,
-            vertical_policy,
-        )
-
     def _on_board_selected(self, row: int) -> None:
         board = self.pairings_table.selected_board_number()
         if board is not None and self.current_round_index == self.displayed_round_index:
@@ -484,7 +450,10 @@ class TournamentView(QtWidgets.QWidget):
             )
 
     def _on_result_changed(self, row: int, result: str, previous: str) -> None:
-        if not self.tournament or self.displayed_round_index != self.current_round_index:
+        if (
+            not self.tournament
+            or self.displayed_round_index != self.current_round_index
+        ):
             return
         results_data, _all_entered = self.pairings_table.get_results()
         if results_data is None:
@@ -513,7 +482,7 @@ class TournamentView(QtWidgets.QWidget):
     def _update_round_progress(self) -> None:
         entered, total = self.pairings_table.progress()
         if total and entered == total:
-            progress_text = "✓ All results entered"
+            progress_text = "All results entered"
         elif total:
             result_label = "result" if total == 1 else "results"
             progress_text = (
@@ -536,21 +505,11 @@ class TournamentView(QtWidgets.QWidget):
 
     def _setup_round_card(self):
         """Create the round card container with pairings table and action footer."""
-        self.round_card = required_child(self, QtWidgets.QFrame, "round_card")
-        self.round_card.setProperty("class", "RoundCard")
-        pairings_layout = required_child(
-            self, QtWidgets.QVBoxLayout, "pairings_layout"
-        )
+        self.round_card = required_child(self, QtWidgets.QWidget, "round_card")
+        pairings_layout = required_child(self, QtWidgets.QVBoxLayout, "pairings_layout")
         round_controls_layout = required_child(
             self, QtWidgets.QVBoxLayout, "round_controls_layout"
         )
-
-        # ===== STATUS BAR =====
-        self.lbl_status_instruction = required_child(
-            self, QtWidgets.QLabel, "lbl_status_instruction"
-        )
-        self.lbl_status_instruction.setProperty("class", "StatusInstruction")
-        self.lbl_status_instruction.setProperty("state", "default")
 
         # ===== PAIRINGS TABLE =====
         self.pairings_table = PairingsTable(compact=True)
@@ -563,7 +522,6 @@ class TournamentView(QtWidgets.QWidget):
         pairings_layout.addWidget(self.pairings_table, 1)
 
         self.lbl_empty_state = QtWidgets.QLabel()
-        self.lbl_empty_state.setProperty("class", "RoundsEmptyState")
         self.lbl_empty_state.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_empty_state.setWordWrap(True)
         self.lbl_empty_state.hide()
@@ -575,9 +533,7 @@ class TournamentView(QtWidgets.QWidget):
         self.round_controls.prepare_requested.connect(self.prepare_next_round)
         self.round_controls.record_requested.connect(self.record_and_advance)
         self.round_controls.undo_requested.connect(self.undo_last_results)
-        self.round_controls.view_standings_requested.connect(
-            self._view_final_standings
-        )
+        self.round_controls.view_standings_requested.connect(self._view_final_standings)
         self.round_controls.set_keyboard_hints(
             "1  White win   D  Draw   0  Black win   Del  Clear   Enter  Next"
         )
@@ -655,14 +611,11 @@ class TournamentView(QtWidgets.QWidget):
                 QtWidgets.QMessageBox.StandardButton.No,
             )
             if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-                # The controller owns round replacement and pairing history.
-                self.controller.clear_round_pairings(round_index)
-                self.history_message.emit(messages.reprepare_history_line)
+                # Replacement is committed only after generation succeeds.
+                pass
             else:
                 # Just display existing pairings
-                existing = resolve_existing_round_pairings(
-                    self.tournament, round_index
-                )
+                existing = resolve_existing_round_pairings(self.tournament, round_index)
                 self.header.set_title("Rounds")
                 self.display_pairings_for_input(existing.pairings, existing.bye_players)
                 self.update_ui_state()
@@ -674,28 +627,42 @@ class TournamentView(QtWidgets.QWidget):
             return True
 
         self.status_message.emit(messages.started_status)
-        QtWidgets.QApplication.processEvents()
-
         try:
-            generation = self.controller.generate_pairings(
-                round_index,
-                allow_repeat_callback=self.prompt_repeat_pairing,
+            from gambitpairing.controllers.tournament.pairing_job import (
+                commit_pairing_document,
             )
-            if not generation.success:
-                prompt = build_pairing_generation_failure_prompt(
-                    display_round_number
-                )
+            from gambitpairing.gui.pairing_job import generate_with_progress
+
+            expected = self.tournament.to_dict()
+            generation = generate_with_progress(self, expected, round_index)
+            if generation.get("cancelled"):
+                self.status_message.emit("Pairing cancelled. Original round preserved.")
+                return False
+            if generation.get("error"):
+                prompt = build_pairing_generation_failure_prompt(display_round_number)
                 QtWidgets.QMessageBox.critical(
                     self,
                     prompt.title,
-                    generation.error_message or prompt.message,
+                    generation["error"] or prompt.message,
                 )
                 self.status_message.emit(messages.error_status)
                 self.update_ui_state()
                 return False
 
-            pairings = generation.pairings
-            bye_player = generation.bye_player
+            if generation.get("fallback_reason"):
+                reply = QtWidgets.QMessageBox.question(
+                    self,
+                    "BBP unavailable",
+                    f"{generation['fallback_reason']}\n\nUse the pairings generated by Gambit Dutch (Experimental)?",
+                    QtWidgets.QMessageBox.StandardButton.Yes
+                    | QtWidgets.QMessageBox.StandardButton.No,
+                    QtWidgets.QMessageBox.StandardButton.No,
+                )
+                if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+                    return False
+            engine = commit_pairing_document(self.tournament, expected, generation)
+            pairings, bye_player = self.controller.get_round_pairings(round_index)
+            self.history_message.emit(f"Round {display_round_number} engine: {engine}")
 
             self.header.set_title("Rounds")
             self.display_pairings_for_input(
@@ -770,6 +737,7 @@ class TournamentView(QtWidgets.QWidget):
         pending_results = self.controller.get_round_results(
             self.current_round_index, pending=True
         )
+        round_data = self.controller.get_round_data(self.current_round_index)
         self.pairings_table.set_show_ratings(self.show_ratings)
         self.pairings_table.show()
         self.pairings_table.display_pairings(
@@ -778,8 +746,8 @@ class TournamentView(QtWidgets.QWidget):
             self.current_round_index,
             results=pending_results,
             editable=True,
+            bye_type=round_data.bye_type if round_data is not None else "full",
         )
-        self._update_round_card_size_policy()
         self.lbl_empty_state.hide()
         self._rendered_round_index = self.current_round_index
         self._update_round_navigation()
@@ -791,7 +759,6 @@ class TournamentView(QtWidgets.QWidget):
         Clears the pairings table and bye player label.
         """
         self.pairings_table.reset_display()
-        self._update_round_card_size_policy()
         self.pairings_table.hide()
         self.lbl_empty_state.hide()
         self._rendered_round_index = None
@@ -819,9 +786,7 @@ class TournamentView(QtWidgets.QWidget):
         adjust_action = menu.addAction("Manually Adjust Pairing...")
 
         # Only allow adjustment for the current round before results are recorded
-        can_adjust = self.controller.pairings_exist_for_round(
-            self.current_round_index
-        )
+        can_adjust = self.controller.pairings_exist_for_round(self.current_round_index)
         adjust_action.setEnabled(can_adjust)
         edit_all_action.setEnabled(can_adjust)
 
@@ -914,9 +879,7 @@ class TournamentView(QtWidgets.QWidget):
                 )
                 self.current_round_index = self.controller.current_round_index
                 if self.current_round_index >= self.tournament.num_rounds:
-                    self.displayed_round_index = max(
-                        0, self.tournament.num_rounds - 1
-                    )
+                    self.displayed_round_index = max(0, self.tournament.num_rounds - 1)
                     self._final_summary_visible = True
                 else:
                     self.displayed_round_index = self.current_round_index
@@ -1261,7 +1224,8 @@ class TournamentView(QtWidgets.QWidget):
             complete = entered == total and (total > 0 or self.pairings_table.has_bye())
             self.round_controls.set_primary_action(
                 "Complete Round",
-                enabled=complete and self.displayed_round_index == self.current_round_index,
+                enabled=complete
+                and self.displayed_round_index == self.current_round_index,
                 tooltip=(
                     "Complete the round and advance"
                     if complete
@@ -1270,12 +1234,6 @@ class TournamentView(QtWidgets.QWidget):
             )
         self.round_controls.set_undo_enabled(False)
         self.round_controls.set_undo_visible(False)
-
-        # The compact grid carries its own contextual status via the main
-        # window status bar; the old instructional banner is intentionally
-        # kept hidden for fast data entry.
-        self.lbl_status_instruction.clear()
-        self.lbl_status_instruction.hide()
 
     def _open_manual_pairing_dialog(self, display_round_number: int, round_idx: int):
         """Helper to open manual pairing dialog and handle results."""
@@ -1300,15 +1258,37 @@ class TournamentView(QtWidgets.QWidget):
             self.tournament,
         )
 
+        bye_type_combo = dialog.findChild(QtWidgets.QComboBox, "bye_type_combo")
+        existing_round = self.controller.get_round_data(round_idx)
+        if bye_type_combo is not None and existing_round is not None:
+            bye_type_combo.setCurrentIndex(
+                ("full", "half", "zero").index(existing_round.bye_type)
+            )
+
         if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
             pairings, bye_players = dialog.get_pairings_and_bye()
+
+            if len(bye_players) > 1:
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    "Invalid byes",
+                    "Only one bye per round is supported. No pairings were changed.",
+                )
+                return
 
             # For now, handle legacy compatibility by using the first bye player
             # TODO: Update tournament logic to handle multiple bye players
             bye_player = bye_players[0] if bye_players else None
 
             # Pairing mutations belong to the controller, not the widget.
-            if self.controller.set_manual_pairings(round_idx, pairings, bye_player):
+            bye_type = (
+                ("full", "half", "zero")[bye_type_combo.currentIndex()]
+                if bye_type_combo is not None
+                else "full"
+            )
+            if self.controller.set_manual_pairings(
+                round_idx, pairings, bye_player, bye_type
+            ):
                 self.display_pairings_for_input(pairings, bye_players)
 
                 # Log the updated pairings

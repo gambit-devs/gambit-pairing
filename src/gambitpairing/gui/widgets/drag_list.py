@@ -29,8 +29,6 @@ from PyQt6.QtGui import (
     QMouseEvent,
 )
 
-from gambitpairing.gui.gui_utils import reset_and_set_cursor
-
 if TYPE_CHECKING:
     from gambitpairing.models.player import Player
 
@@ -89,31 +87,6 @@ class DragListWidget(QtWidgets.QListWidget):
         mime_data.setText(f"player:{player.id}")
         drag.setMimeData(mime_data)
 
-        pixmap = QtGui.QPixmap(250, 35)
-        pixmap.fill(QtGui.QColor(255, 255, 255, 200))
-
-        painter = QtGui.QPainter(pixmap)
-        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
-
-        painter.setPen(QtGui.QPen(QtGui.QColor(33, 150, 243), 2))
-        painter.setBrush(QtGui.QBrush(QtGui.QColor(227, 242, 253, 180)))
-        painter.drawRoundedRect(1, 1, 248, 33, 4, 4)
-
-        painter.setPen(QtGui.QColor(0, 0, 0))
-        font = painter.font()
-        font.setPointSize(10)
-        painter.setFont(font)
-
-        painter.drawText(
-            pixmap.rect(),
-            Qt.AlignmentFlag.AlignCenter,
-            f"{player.name} ({player.rating})",
-        )
-        painter.end()
-
-        drag.setPixmap(pixmap)
-        drag.setHotSpot(QtCore.QPoint(125, 17))
-
         drag.exec(supported_actions)
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
@@ -129,8 +102,6 @@ class DragListWidget(QtWidgets.QListWidget):
 
             if player and player.is_active:
                 self.selected_player = player
-                if self.dragEnabled():
-                    reset_and_set_cursor(Qt.CursorShape.ClosedHandCursor)
                 self.setCurrentItem(item)
                 self.parent_dialog._enable_click_to_place_mode(player)
 
@@ -150,15 +121,10 @@ class DragListWidget(QtWidgets.QListWidget):
 
     def dragLeaveEvent(self, event: QDragLeaveEvent) -> None:
         """Handle drag leave events."""
-        while QtWidgets.QApplication.overrideCursor() is not None:
-            QtWidgets.QApplication.restoreOverrideCursor()
         super().dragLeaveEvent(event)
 
     def dropEvent(self, event: QDropEvent) -> None:
         """Handle drop events."""
-        while QtWidgets.QApplication.overrideCursor() is not None:
-            QtWidgets.QApplication.restoreOverrideCursor()
-
         if not event.mimeData().hasText():
             event.ignore()
             return

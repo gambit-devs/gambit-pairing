@@ -17,32 +17,17 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-import random
-
-from PyQt6 import QtCore
-from PyQt6.QtCore import QDateTime
+from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtWidgets import QListWidget
+
+from .identity import generate_id
 
 
 # --- Utility Functions ---
-def generate_id(prefix: str = "item_") -> str:
-    """Generate a simple unique ID."""
-    return f"{prefix}{random.randint(100000, 999999)}_{int(QDateTime.currentMSecsSinceEpoch())}"
-
-
 def resize_list_to_show_all_items(list_widget: QListWidget) -> None:
-    """Resize QListWidget to show all items without scrolling."""
-    if list_widget.count() == 0:
-        return
-
-    # Calculate total height needed
-    total_height = 0
-    for i in range(list_widget.count()):
-        total_height += list_widget.sizeHintForRow(i)
-
-    # Add frame margins
-    frame_height = list_widget.frameWidth() * 2
-
-    # Disable vertical scrollbar and set height
-    list_widget.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-    list_widget.setFixedHeight(total_height + frame_height)
+    """Let Qt size a list to its contents while retaining native scrolling."""
+    list_widget.setSizeAdjustPolicy(
+        QtWidgets.QAbstractScrollArea.SizeAdjustPolicy.AdjustToContents
+    )
+    list_widget.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+    list_widget.updateGeometry()

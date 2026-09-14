@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from PyQt6 import QtCore, QtGui, QtWidgets
+from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtCore import Qt, pyqtSignal
 
 from gambitpairing.controllers.player import (
@@ -29,6 +29,7 @@ from gambitpairing.controllers.player import (
     import_players_from_csv,
 )
 from gambitpairing.gui.dialogs import PlayerManagementDialog
+from gambitpairing.gui.gui_utils import get_native_icon
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
 from gambitpairing.gui.views.players.players_view_workflow import (
     build_duplicate_player_prompt,
@@ -83,8 +84,8 @@ class PlayersView(QtWidgets.QWidget):
         The top-level vertical layout of the widget.
     header : TabHeader
         The header widget displaying the tab title "Players".
-    player_group : QtWidgets.QGroupBox
-        Group box containing the player table and add-player button.
+    player_group : QtWidgets.QWidget
+        Content container holding the player table and add-player button.
     table_players : QtWidgets.QTableWidget
         Table displaying all registered players with columns:
         Name, Rating, Age, Status.
@@ -130,8 +131,7 @@ class PlayersView(QtWidgets.QWidget):
         self.header = TabHeader("Players")
         header_layout.addWidget(self.header)
 
-        self.player_group = required_child(self, QtWidgets.QGroupBox, "player_group")
-        self.player_group.setProperty("class", "PlayerGroup")
+        self.player_group = required_child(self, QtWidgets.QWidget, "player_group")
 
         # --- Player Table ---
         self.table_players = required_child(
@@ -144,32 +144,30 @@ class PlayersView(QtWidgets.QWidget):
             self.on_player_context_menu
         )
 
-        # Resize columns
+        # Let the native header calculate data columns while the name column
+        # takes the remaining space.
         header = self.table_players.horizontalHeader()
         header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Interactive)
-        header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeMode.Interactive)
-        header.setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeMode.Interactive)
-        self.table_players.setColumnWidth(1, 110)  # Rating
-        self.table_players.setColumnWidth(2, 90)  # Age
-        self.table_players.setColumnWidth(3, 130)  # Status
+        for column in range(1, self.table_players.columnCount()):
+            header.setSectionResizeMode(
+                column, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
+            )
 
         header.setSortIndicatorShown(True)
         header.setSectionsClickable(True)
-        header.setSectionsMovable(True)
-        header.setHighlightSections(True)
 
         self.table_players.hide()  # Hide table initially
 
         self.btn_add_player_detail = required_child(
             self, QtWidgets.QPushButton, "btn_add_player_detail"
         )
+        self.btn_add_player_detail.setIcon(
+            get_native_icon(
+                "list-add",
+                QtWidgets.QStyle.StandardPixmap.SP_FileDialogNewFolder,
+            )
+        )
         self.btn_add_player_detail.clicked.connect(self.add_player_detailed)
-
-        # Ensure sufficient row height for padded cells
-        vheader = self.table_players.verticalHeader()
-        vheader.setDefaultSectionSize(38)  # Increase default row height
-        vheader.setMinimumSectionSize(38)
 
         # Initialize placeholders
         self.tournament_placeholder = TournamentPlaceholder(self, "Players")
@@ -312,13 +310,13 @@ class PlayersView(QtWidgets.QWidget):
                     return
 
                 # Update player attributes
-                self._update_player_from_data(player, data)
+                player = self.tournament.update_player(player.id, data)
 
                 self.update_player_table_row(player)
                 self.history_message.emit(f"Player '{player.name}' details updated.")
                 self.dirty.emit()
         elif action == withdraw_action:
-            player.is_active = not player.is_active
+            self.tournament.set_player_active(player.id, not player.is_active)
             status_log_msg = "Withdrawn" if not player.is_active else "Reactivated"
             self.update_player_table_row(player)
             self.history_message.emit(f"Player '{player.name}' {status_log_msg}.")
@@ -337,12 +335,14 @@ class PlayersView(QtWidgets.QWidget):
             )
             if reply == QtWidgets.QMessageBox.StandardButton.Yes:
                 if player.id in self.tournament.players:
-                    del self.tournament.players[player.id]
+                    self.tournament.remove_player(player.id)
                     self.history_message.emit(
                         f"Player '{player.name}' removed from tournament."
                     )
                 self.table_players.removeRow(row)
                 self.status_message.emit(f"Player '{player.name}' removed.")
+                self.dirty.emit()
+                self.standings_update_requested.emit()
         self.update_ui_state()
 
     def add_player_detailed(self) -> None:
@@ -408,7 +408,7 @@ class PlayersView(QtWidgets.QWidget):
                     return
 
                 # Update player attributes
-                self._update_player_from_data(player, data)
+                player = self.tournament.update_player(player.id, data)
                 self.update_player_table_row(player)
                 self.history_message.emit(f"Player '{player.name}' details updated.")
                 self.dirty.emit()
@@ -428,7 +428,7 @@ class PlayersView(QtWidgets.QWidget):
                 # Use factory to create player (automatically detects FidePlayer)
                 new_player = create_player_from_dict(data)
 
-                self.tournament.players[new_player.id] = new_player
+                self.tournament.add_player(new_player)
                 self.add_player_to_table(new_player)
                 self.status_message.emit(f"Added player: {new_player.name}")
                 self.history_message.emit(
@@ -442,8 +442,8 @@ class PlayersView(QtWidgets.QWidget):
         """Find the table row for the given player and refresh its contents.
 
         Searches all rows for a matching ``UserRole`` data value. Updates
-        the Name, Rating, Age, and Status cells, and sets the foreground
-        colour to grey for inactive players.
+        the Name, Rating, Age, and Status cells, and marks inactive players in
+        the status text.
 
         Parameters
         ----------
@@ -469,18 +469,6 @@ class PlayersView(QtWidgets.QWidget):
                 status_item = self.table_players.item(i, 3)
                 status_item.setText(projection.status)
 
-                # Update row color
-                color = (
-                    QtGui.QColor("gray")
-                    if not player.is_active
-                    else self.table_players.palette().color(
-                        QtGui.QPalette.ColorRole.Text
-                    )
-                )
-                item.setForeground(color)
-                rating_item.setForeground(color)
-                age_item.setForeground(color)
-                status_item.setForeground(color)
                 break
 
     def add_player_to_table(self, player: Player):
@@ -521,14 +509,6 @@ class PlayersView(QtWidgets.QWidget):
         rating_item.setToolTip(tooltip)
         age_item.setToolTip(tooltip)
         status_item.setToolTip(tooltip)
-
-        # Set color for inactive players
-        if projection.inactive:
-            color = QtGui.QColor("gray")
-            name_item.setForeground(color)
-            rating_item.setForeground(color)
-            age_item.setForeground(color)
-            status_item.setForeground(color)
 
         self.table_players.setItem(row_position, 0, name_item)
         self.table_players.setItem(row_position, 1, rating_item)
@@ -580,7 +560,7 @@ class PlayersView(QtWidgets.QWidget):
             file_name, self.tournament.players.values()
         )
         for player in imported_players:
-            self.tournament.players[player.id] = player
+            self.tournament.add_player(player)
 
         if added_count > 0:
             self.history_message.emit(

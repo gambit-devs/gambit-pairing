@@ -28,7 +28,7 @@ def test_architecture_inventory_records_refactor_boundary_rules():
 
     assert "Designer .ui" in rules
     assert "Behavior" in rules
-    assert "QSS" in rules
+    assert "native Qt/KDE platform style" in rules
     assert "Models hold data only" in rules
     assert "serialization and save/load" in rules
     assert "Qt-free domain logic" in rules

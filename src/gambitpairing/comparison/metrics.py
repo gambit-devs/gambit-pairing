@@ -33,6 +33,16 @@ from gambitpairing.validation.fpc import (
 
 logger = setup_logger(__name__)
 
+
+def _violation_count(value: object) -> int:
+    if not isinstance(value, (str, int, float)) or isinstance(value, bool):
+        return 1
+    try:
+        return max(1, int(value))
+    except (ValueError, OverflowError):
+        return 1
+
+
 # FIDE Compliance Violation Penalties (out of 100 points)
 VIOLATION_PENALTIES = {
     # Absolute Criteria (C1-C3) - Critical violations
@@ -150,7 +160,7 @@ def calculate_fide_score(fpc_report: ValidationReport) -> float:
                 # Default to 1 if not available
                 try:
                     violation_count = (
-                        int(violation.details.get("violation_count", 1))
+                        _violation_count(violation.details.get("violation_count", 1))
                         if violation.details
                         else 1
                     )
@@ -161,7 +171,7 @@ def calculate_fide_score(fpc_report: ValidationReport) -> float:
                 # Quality criteria: scale by severity
                 try:
                     violation_count = (
-                        int(violation.details.get("violation_count", 1))
+                        _violation_count(violation.details.get("violation_count", 1))
                         if violation.details
                         else 1
                     )
@@ -380,7 +390,7 @@ def extract_violations_dict(fpc_report: ValidationReport) -> Dict[str, int]:
             criterion_id = violation.criterion.split(":")[0].strip()
             try:
                 violations[criterion_id] = (
-                    int(violation.details.get("violation_count", 1))
+                    _violation_count(violation.details.get("violation_count", 1))
                     if violation.details
                     else 1
                 )

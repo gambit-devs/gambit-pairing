@@ -1,6 +1,7 @@
 from gambitpairing.controllers import TournamentController
+from gambitpairing.controllers.tournament.session import TournamentSession as Tournament
 from gambitpairing.models.player import Player
-from gambitpairing.models.tournament import RoundData, Tournament
+from gambitpairing.models.tournament import RoundData
 
 
 def _round_tournament() -> tuple[Tournament, Player, Player]:

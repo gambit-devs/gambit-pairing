@@ -19,9 +19,12 @@
 from __future__ import annotations
 
 from PyQt6 import QtCore, QtWidgets
-from PyQt6.QtCore import Qt
 
-from gambitpairing.gui.gui_utils import set_svg_icon
+from gambitpairing.gui.gui_utils import (
+    get_native_icon,
+    set_native_heading,
+    set_native_icon,
+)
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
 
 
@@ -39,14 +42,23 @@ class PreTournamentStart(QtWidgets.QWidget):
         self.desc_label = required_child(self, QtWidgets.QLabel, "desc_label")
         self.btn_start = required_child(self, QtWidgets.QPushButton, "btn_start")
 
-        set_svg_icon(self.icon_label, "play.svg", "#2d5a27", 64)
+        set_native_icon(
+            self.icon_label,
+            "media-playback-start",
+            QtWidgets.QStyle.StandardPixmap.SP_MediaPlay,
+        )
         self.title_label.setText("Ready to Start")
+        set_native_heading(self.title_label)
         self.desc_label.setText(
             "The tournament is set up and ready to begin.\n"
             "Click the button below to generate the first round pairings."
         )
         self.btn_start.setText("Start Tournament")
-        self.btn_start.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_start.setIcon(
+            get_native_icon(
+                "media-playback-start", QtWidgets.QStyle.StandardPixmap.SP_MediaPlay
+            )
+        )
         self.btn_start.clicked.connect(self.start_requested.emit)
 
 

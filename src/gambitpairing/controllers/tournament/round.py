@@ -23,9 +23,15 @@ round progression, and round history management.
 from typing import Callable, Dict, List, Optional, Tuple
 
 from gambitpairing.controllers.pairing import (
-    create_dutch_swiss_pairings,
     RoundRobin,
+    create_dutch_swiss_pairings,
     create_round_robin,
+)
+from gambitpairing.controllers.pairing.bbp_dutch import (
+    BBPPairingBackend,
+    BBPPairingEngine,
+    BBPPairingError,
+    BBPUnavailableError,
 )
 from gambitpairing.models.player import Player
 from gambitpairing.models.tournament import PairingHistory, RoundData
@@ -50,21 +56,51 @@ class RoundController:
         num_rounds: int,
         pairing_history: PairingHistory,
         fide_strict: bool = False,
+        bbp_engine: Optional[BBPPairingBackend] = None,
+        use_experimental_dutch: bool = False,
+        model=None,
     ):
         """Initialize the round manager.
 
         Args:
-            pairing_system: The pairing system to use ('dutch_swiss', 'round_robin', 'manual')
+            pairing_system: The pairing system to use ('dutch_swiss',
+                'round_robin', 'manual')
             num_rounds: Total number of rounds in the tournament
             pairing_history: History of pairings to prevent repeats
             fide_strict: Use stricter FIDE compliance search for Dutch Swiss
+            bbp_engine: Optional BBP backend, primarily for dependency
+                injection and tests
+            use_experimental_dutch: Use Gambit's native Dutch engine directly
+                instead of the primary BBP engine
         """
+        if pairing_system == "bbp_dutch":
+            # Keep callers of the short-lived separate BBP ID compatible while
+            # keeping the controller's canonical state format-oriented.
+            pairing_system = "dutch_swiss"
+            use_experimental_dutch = False
         self.pairing_system = pairing_system
         self.num_rounds = num_rounds
         self.pairing_history = pairing_history
         self.fide_strict = fide_strict
-        self.rounds: List[RoundData] = []
+        self.use_experimental_dutch = bool(use_experimental_dutch)
+        self.bbp_engine = bbp_engine if bbp_engine is not None else BBPPairingEngine()
+        self._model = model
+        self._rounds: List[RoundData] = []
         self.round_robin: Optional[RoundRobin] = None
+        self._round_robin_player_ids: Optional[Tuple[str, ...]] = None
+        self.last_engine = pairing_system
+        self.fallback_reason = None
+
+    @property
+    def rounds(self) -> List[RoundData]:
+        return self._model.rounds if self._model is not None else self._rounds
+
+    @rounds.setter
+    def rounds(self, value: List[RoundData]) -> None:
+        if self._model is not None:
+            self._model.rounds = value
+        else:
+            self._rounds = value
 
     @property
     def current_round_number(self) -> int:
@@ -123,7 +159,12 @@ class RoundController:
                 f"Cannot create more rounds: already at {self.num_rounds} rounds"
             )
 
+        if any(not round_data.is_completed for round_data in self.rounds):
+            raise ValueError("Complete the previous round before generating another")
+
         round_number = len(self.rounds) + 1
+        self.last_engine = self.pairing_system
+        self.fallback_reason = None
         active_players = [p for p in players.values() if p.is_active]
 
         logger.info(
@@ -131,9 +172,21 @@ class RoundController:
         )
 
         if self.pairing_system == "dutch_swiss":
-            pairings, bye_player = self._create_swiss_pairings(
-                active_players, round_number, bye_callback, repeat_pairing_callback
-            )
+            if self.use_experimental_dutch:
+                pairings, bye_player = self._create_swiss_pairings(
+                    active_players,
+                    round_number,
+                    bye_callback,
+                    repeat_pairing_callback,
+                )
+            else:
+                pairings, bye_player = self._create_bbp_pairings(
+                    active_players,
+                    round_number,
+                    bye_callback,
+                    repeat_pairing_callback,
+                    all_players=list(players.values()),
+                )
         elif self.pairing_system == "round_robin":
             pairings, bye_player = self._create_round_robin_pairings(
                 active_players, round_number
@@ -150,7 +203,10 @@ class RoundController:
         bye_id = bye_player.id if bye_player else None
 
         round_data = RoundData(
-            round_number=round_number, pairings=pairing_ids, bye_player_id=bye_id
+            round_number=round_number,
+            pairings=pairing_ids,
+            bye_player_id=bye_id,
+            active_player_ids=[player.id for player in active_players],
         )
 
         self.rounds.append(round_data)
@@ -168,8 +224,63 @@ class RoundController:
         bye_callback: Optional[Callable],
         repeat_pairing_callback: Optional[Callable],
     ) -> Tuple[List[Tuple[Player, Player]], Optional[Player]]:
-        """Create pairings using Dutch Swiss system."""
-        pairings, bye_player, pairing_ids, bye_id = create_dutch_swiss_pairings(
+        """Create pairings using Gambit's experimental Dutch implementation."""
+        return self._create_native_swiss_pairings(
+            active_players,
+            round_number,
+            bye_callback,
+            repeat_pairing_callback,
+        )
+
+    def _create_bbp_pairings(
+        self,
+        active_players: List[Player],
+        round_number: int,
+        bye_callback: Optional[Callable],
+        repeat_pairing_callback: Optional[Callable],
+        all_players: Optional[List[Player]] = None,
+    ) -> Tuple[List[Tuple[Player, Player]], Optional[Player]]:
+        """Create pairings with BBP, falling back to experimental Dutch."""
+        try:
+            result = self.bbp_engine.generate_pairings(
+                active_players,
+                current_round=round_number,
+                total_rounds=self.num_rounds,
+                all_players=all_players,
+            )
+            self.last_engine = "BBP Dutch"
+            return result
+        except BBPUnavailableError as error:
+            self.fallback_reason = str(error)
+            logger.info(
+                "BBP Dutch unavailable; using Gambit Dutch (experimental): %s",
+                error,
+            )
+        except BBPPairingError as error:
+            self.fallback_reason = str(error)
+            logger.warning(
+                "BBP Dutch could not pair round %s; using Gambit Dutch (experimental): %s",
+                round_number,
+                error,
+            )
+
+        return self._create_native_swiss_pairings(
+            active_players,
+            round_number,
+            bye_callback,
+            repeat_pairing_callback,
+        )
+
+    def _create_native_swiss_pairings(
+        self,
+        active_players: List[Player],
+        round_number: int,
+        bye_callback: Optional[Callable],
+        repeat_pairing_callback: Optional[Callable],
+    ) -> Tuple[List[Tuple[Player, Player]], Optional[Player]]:
+        """Create pairings using Gambit's native Dutch implementation."""
+        self.last_engine = "Gambit Dutch (Experimental)"
+        pairings, bye_player, _pairing_ids, _bye_id = create_dutch_swiss_pairings(
             active_players,
             round_number,
             self.pairing_history.previous_matches,
@@ -184,9 +295,13 @@ class RoundController:
         self, active_players: List[Player], round_number: int
     ) -> Tuple[List[Tuple[Player, Player]], Optional[Player]]:
         """Create pairings using Round Robin system."""
-        # Initialize round robin on first call
-        if self.round_robin is None:
+        active_player_ids = tuple(player.id for player in active_players)
+        if (
+            self.round_robin is None
+            or self._round_robin_player_ids != active_player_ids
+        ):
             self.round_robin = create_round_robin(active_players)
+            self._round_robin_player_ids = active_player_ids
             # Update num_rounds to match round robin requirements
             if self.num_rounds != self.round_robin.number_of_rounds:
                 logger.info(
@@ -195,8 +310,18 @@ class RoundController:
                 )
                 self.num_rounds = self.round_robin.number_of_rounds
 
-        pairings, bye_player = self.round_robin.get_round_pairings(round_number)
-        return list(pairings), bye_player
+        for schedule_round in range(1, self.round_robin.number_of_rounds + 1):
+            pairings, bye_player = self.round_robin.get_round_pairings(schedule_round)
+            if all(
+                not self.pairing_history.have_played(white.id, black.id)
+                for white, black in pairings
+            ):
+                return list(pairings), bye_player
+
+        raise ValueError(
+            f"No round-robin pairing is available for round {round_number} "
+            "without repeating a pairing"
+        )
 
     def _create_manual_pairings(
         self,
@@ -220,8 +345,25 @@ class RoundController:
         Returns:
             True if successful, False otherwise
         """
-        if round_number < 1:
+        if (
+            round_number < 1
+            or round_number > self.num_rounds
+            or round_number > len(self.rounds) + 1
+        ):
             logger.error(f"Invalid round number: {round_number}")
+            return False
+
+        if any(not item.is_completed for item in self.rounds[: round_number - 1]):
+            return False
+        if (
+            round_number <= len(self.rounds)
+            and self.rounds[round_number - 1].is_completed
+        ):
+            return False
+        assigned = [player.id for pair in pairings for player in pair]
+        if bye_player is not None:
+            assigned.append(bye_player.id)
+        if len(set(assigned)) != len(assigned):
             return False
 
         # Ensure we have enough rounds
@@ -230,13 +372,21 @@ class RoundController:
 
         round_data = self.rounds[round_number - 1]
 
+        new_pairs = {(white.id, black.id) for white, black in pairings}
+        round_data.pending_results = [
+            result
+            for result in round_data.pending_results
+            if (result.white_id, result.black_id) in new_pairs
+        ]
+
         # Update pairings
         round_data.pairings = [(white.id, black.id) for white, black in pairings]
         round_data.bye_player_id = bye_player.id if bye_player else None
 
         # Update pairing history
-        for white, black in pairings:
-            self.pairing_history.add_pairing(white.id, black.id)
+        self.pairing_history.previous_matches = {
+            frozenset(pair) for item in self.rounds for pair in item.pairings
+        }
 
         logger.info(
             f"Set manual pairings for round {round_number}: "

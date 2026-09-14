@@ -13,23 +13,25 @@ PATHEX = [str(SRC)]
 
 # Data files to include (source path or glob, destination relative path inside bundle)
 DATAS = [
-    # styles.qss no longer shipped; individual partials are compiled at runtime
     (str(ROOT / "licenses" / "LICENSE"), "gambitpairing/resources/"),
-    (
-        str(SRC / "gambitpairing" / "resources" / "styles" / "*.qss"),
-        "gambitpairing/resources/styles/",
-    ),
-    (
-        str(SRC / "gambitpairing" / "resources" / "icons" / "*"),
-        "gambitpairing/resources/icons/",
-    ),
     (
         str(SRC / "gambitpairing" / "ui" / "*.ui"),
         "gambitpairing/ui/",
     ),
 ]
 
+_ICON_ROOT = SRC / "gambitpairing" / "resources" / "icons"
+for _icon_pattern in ("*.png", "*.ico", "*.webp"):
+    DATAS.extend(
+        (str(icon_path), "gambitpairing/resources/icons/")
+        for icon_path in sorted(_ICON_ROOT.glob(_icon_pattern))
+    )
+
 BINARIES = []
+_BBP_BIN_ROOT = SRC / "gambitpairing" / "resources" / "bin"
+for _bbp_binary in sorted(_BBP_BIN_ROOT.glob("bbpPairings*")):
+    if _bbp_binary.is_file() and _bbp_binary.name != "README.txt":
+        BINARIES.append((str(_bbp_binary), "gambitpairing/resources/bin"))
 HIDDENIMPORTS = []
 HOOKSPATH = []
 RUNTIME_HOOKS = []

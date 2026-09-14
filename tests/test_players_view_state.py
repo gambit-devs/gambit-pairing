@@ -5,10 +5,10 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt6 import QtWidgets
 
+from gambitpairing.controllers.tournament.session import TournamentSession as Tournament
 from gambitpairing.gui.mainwindow import GambitPairingMainWindow
 from gambitpairing.gui.views.players.players_view import PlayersView
 from gambitpairing.models.player import Player
-from gambitpairing.models.tournament import Tournament
 
 _APP: QtWidgets.QApplication | None = None
 
@@ -67,6 +67,11 @@ def test_players_view_shows_table_after_players_are_added():
 def test_main_window_propagates_new_tournament_to_players_view():
     _app()
     window = GambitPairingMainWindow()
+
+    toolbar = window.findChild(QtWidgets.QToolBar, "main_toolbar")
+    assert toolbar is not None
+    assert not toolbar.isMovable()
+    assert not toolbar.isFloatable()
 
     window.tournament = Tournament("City Open", [], 5)
     window._set_tournament_on_tabs()

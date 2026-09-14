@@ -18,12 +18,11 @@
 
 from __future__ import annotations
 
-from PyQt6 import QtCore, QtGui, QtWidgets
+from PyQt6 import QtGui, QtWidgets
 from PyQt6.QtCore import pyqtSignal
 
-from gambitpairing.gui.gui_utils import get_colored_icon
+from gambitpairing.gui.gui_utils import get_native_icon
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
-from gambitpairing.resources.resource_utils import get_resource_path
 
 
 class RoundControlsWidget(QtWidgets.QWidget):
@@ -43,19 +42,19 @@ class RoundControlsWidget(QtWidgets.QWidget):
         self.btn_primary_action = required_child(
             self, QtWidgets.QPushButton, "btn_primary_action"
         )
-        self.btn_primary_action.setProperty("class", "ToolbarAction")
         self.lbl_keyboard_hints = required_child(
             self, QtWidgets.QLabel, "lbl_keyboard_hints"
         )
         self.lbl_progress = required_child(self, QtWidgets.QLabel, "lbl_progress")
 
         self.btn_undo.setText("Undo")
-        self.btn_undo.setIcon(get_colored_icon("undo.svg", "#2d5a27", 16))
+        self.btn_undo.setIcon(
+            get_native_icon("edit-undo", QtWidgets.QStyle.StandardPixmap.SP_ArrowBack)
+        )
         self.btn_undo.setToolTip("Undo the last recorded round results")
         self.btn_undo.clicked.connect(self.undo_requested.emit)
 
         self.btn_primary_action.setText("Start Tournament")
-        self.btn_primary_action.setIconSize(QtCore.QSize(16, 16))
         self.btn_primary_action.setToolTip(
             "Start the tournament and generate first round pairings"
         )
@@ -75,22 +74,31 @@ class RoundControlsWidget(QtWidgets.QWidget):
 
         if state == "start":
             self.btn_primary_action.setText("Start Tournament")
-            play_icon_path = get_resource_path("play.svg", subpackage="icons")
-            self.btn_primary_action.setIcon(QtGui.QIcon(str(play_icon_path)))
+            self.btn_primary_action.setIcon(
+                get_native_icon(
+                    "media-playback-start", QtWidgets.QStyle.StandardPixmap.SP_MediaPlay
+                )
+            )
             self.btn_primary_action.setEnabled(True)
             self.btn_primary_action.setToolTip(
                 "Start the tournament and generate first round pairings"
             )
         elif state == "prepare":
             self.btn_primary_action.setText("Prepare Next Round")
-            refresh_icon_path = get_resource_path("refresh.svg", subpackage="icons")
-            self.btn_primary_action.setIcon(QtGui.QIcon(str(refresh_icon_path)))
+            self.btn_primary_action.setIcon(
+                get_native_icon(
+                    "view-refresh", QtWidgets.QStyle.StandardPixmap.SP_BrowserReload
+                )
+            )
             self.btn_primary_action.setEnabled(True)
             self.btn_primary_action.setToolTip("Generate pairings for the next round")
         elif state == "record":
             self.btn_primary_action.setText("Record Results")
             self.btn_primary_action.setIcon(
-                get_colored_icon("lock-arrow.svg", "#2d5a27", 16)
+                get_native_icon(
+                    "dialog-ok-apply",
+                    QtWidgets.QStyle.StandardPixmap.SP_DialogApplyButton,
+                )
             )
             self.btn_primary_action.setEnabled(True)
             self.btn_primary_action.setToolTip("Save results and advance to next round")
@@ -110,11 +118,6 @@ class RoundControlsWidget(QtWidgets.QWidget):
     def set_progress(self, text: str) -> None:
         """Update the compact result progress label."""
         self.lbl_progress.setText(text)
-        self.lbl_progress.setProperty(
-            "state", "complete" if text.startswith("✓") else "default"
-        )
-        self.lbl_progress.style().unpolish(self.lbl_progress)
-        self.lbl_progress.style().polish(self.lbl_progress)
 
     def set_keyboard_hints(self, text: str) -> None:
         """Update the keyboard help shown in the footer."""

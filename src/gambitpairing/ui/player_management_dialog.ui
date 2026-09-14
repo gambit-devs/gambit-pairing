@@ -8,28 +8,7 @@
   <property name="modal">
    <bool>true</bool>
   </property>
-  <property name="minimumSize">
-   <size>
-    <width>900</width>
-    <height>600</height>
-   </size>
-  </property>
-  <layout class="QVBoxLayout" name="main_layout">
-   <property name="leftMargin">
-    <number>12</number>
-   </property>
-   <property name="topMargin">
-    <number>12</number>
-   </property>
-   <property name="rightMargin">
-    <number>12</number>
-   </property>
-   <property name="bottomMargin">
-    <number>12</number>
-   </property>
-   <property name="spacing">
-    <number>10</number>
-   </property>
+ <layout class="QVBoxLayout" name="main_layout">
    <item>
     <widget class="QTabWidget" name="tab_widget">
      <property name="currentIndex">
@@ -57,26 +36,17 @@
            <layout class="QHBoxLayout" name="name_layout">
             <item>
              <widget class="QLineEdit" name="name_edit">
-              <property name="maximumSize">
-               <size>
-                <width>16777215</width>
-                <height>40</height>
-               </size>
-              </property>
               <property name="toolTip">
                <string>Full name of the player</string>
               </property>
              </widget>
             </item>
             <item>
-             <widget class="QPushButton" name="btn_copy_name">
-              <property name="class" stdset="0">
-               <string>PlayerManagementCopyButton</string>
-              </property>
+             <widget class="QToolButton" name="btn_copy_name">
               <property name="toolTip">
                <string>Copy name to clipboard</string>
               </property>
-              <property name="flat">
+              <property name="autoRaise">
                <bool>true</bool>
               </property>
              </widget>
@@ -94,12 +64,6 @@
            <layout class="QHBoxLayout" name="rating_layout">
             <item>
              <widget class="QSpinBox" name="rating_spin">
-              <property name="maximumSize">
-               <size>
-                <width>16777215</width>
-                <height>40</height>
-               </size>
-              </property>
               <property name="toolTip">
                <string>Player's rating (0-3500)</string>
               </property>
@@ -112,14 +76,11 @@
              </widget>
             </item>
             <item>
-             <widget class="QPushButton" name="btn_copy_rating">
-              <property name="class" stdset="0">
-               <string>PlayerManagementCopyButton</string>
-              </property>
+             <widget class="QToolButton" name="btn_copy_rating">
               <property name="toolTip">
                <string>Copy rating to clipboard</string>
               </property>
-              <property name="flat">
+              <property name="autoRaise">
                <bool>true</bool>
               </property>
              </widget>
@@ -137,12 +98,6 @@
             </item>
             <item>
              <widget class="QComboBox" name="gender_combo">
-              <property name="maximumSize">
-               <size>
-                <width>16777215</width>
-                <height>40</height>
-               </size>
-              </property>
               <property name="toolTip">
                <string>Select gender (optional)</string>
               </property>
@@ -164,19 +119,6 @@
              </widget>
             </item>
             <item>
-             <spacer name="gender_dob_spacing">
-              <property name="orientation">
-               <enum>Qt::Horizontal</enum>
-              </property>
-              <property name="sizeHint" stdset="0">
-               <size>
-                <width>10</width>
-                <height>20</height>
-               </size>
-              </property>
-             </spacer>
-            </item>
-            <item>
              <widget class="QLabel" name="dob_label">
               <property name="text">
                <string>Date of Birth:</string>
@@ -185,12 +127,6 @@
             </item>
             <item>
              <widget class="QDateEdit" name="dob_edit">
-              <property name="maximumSize">
-               <size>
-                <width>16777215</width>
-                <height>40</height>
-               </size>
-              </property>
               <property name="toolTip">
                <string>Date of birth (optional)</string>
               </property>
@@ -210,14 +146,17 @@
              </widget>
             </item>
             <item>
-             <spacer name="gender_dob_stretch">
-              <property name="orientation">
-               <enum>Qt::Horizontal</enum>
-              </property>
-              <property name="sizeHint" stdset="0">
-               <size>
-                <width>40</width>
-                <height>20</height>
+            <spacer name="gender_dob_stretch">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeType">
+              <enum>QSizePolicy::Expanding</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>0</width>
+               <height>0</height>
                </size>
               </property>
              </spacer>
@@ -244,26 +183,17 @@
            <layout class="QHBoxLayout" name="phone_layout">
             <item>
              <widget class="QLineEdit" name="phone_edit">
-              <property name="maximumSize">
-               <size>
-                <width>16777215</width>
-                <height>40</height>
-               </size>
-              </property>
               <property name="toolTip">
                <string>Phone number (optional)</string>
               </property>
              </widget>
             </item>
             <item>
-             <widget class="QPushButton" name="btn_copy_phone">
-              <property name="class" stdset="0">
-               <string>PlayerManagementCopyButton</string>
-              </property>
+             <widget class="QToolButton" name="btn_copy_phone">
               <property name="toolTip">
                <string>Copy phone to clipboard</string>
               </property>
-              <property name="flat">
+              <property name="autoRaise">
                <bool>true</bool>
               </property>
              </widget>
@@ -281,26 +211,17 @@
            <layout class="QHBoxLayout" name="email_layout">
             <item>
              <widget class="QLineEdit" name="email_edit">
-              <property name="maximumSize">
-               <size>
-                <width>16777215</width>
-                <height>40</height>
-               </size>
-              </property>
               <property name="toolTip">
                <string>Email address (optional)</string>
               </property>
              </widget>
             </item>
             <item>
-             <widget class="QPushButton" name="btn_copy_email">
-              <property name="class" stdset="0">
-               <string>PlayerManagementCopyButton</string>
-              </property>
+             <widget class="QToolButton" name="btn_copy_email">
               <property name="toolTip">
                <string>Copy email to clipboard</string>
               </property>
-              <property name="flat">
+              <property name="autoRaise">
                <bool>true</bool>
               </property>
              </widget>
@@ -318,26 +239,17 @@
            <layout class="QHBoxLayout" name="club_layout">
             <item>
              <widget class="QLineEdit" name="club_edit">
-              <property name="maximumSize">
-               <size>
-                <width>16777215</width>
-                <height>40</height>
-               </size>
-              </property>
               <property name="toolTip">
                <string>Chess club (optional)</string>
               </property>
              </widget>
             </item>
             <item>
-             <widget class="QPushButton" name="btn_copy_club">
-              <property name="class" stdset="0">
-               <string>PlayerManagementCopyButton</string>
-              </property>
+             <widget class="QToolButton" name="btn_copy_club">
               <property name="toolTip">
                <string>Copy club to clipboard</string>
               </property>
-              <property name="flat">
+              <property name="autoRaise">
                <bool>true</bool>
               </property>
              </widget>
@@ -355,26 +267,17 @@
            <layout class="QHBoxLayout" name="federation_layout">
             <item>
              <widget class="QLineEdit" name="federation_edit">
-              <property name="maximumSize">
-               <size>
-                <width>16777215</width>
-                <height>40</height>
-               </size>
-              </property>
               <property name="toolTip">
                <string>Federation/Country (optional)</string>
               </property>
              </widget>
             </item>
             <item>
-             <widget class="QPushButton" name="btn_copy_federation">
-              <property name="class" stdset="0">
-               <string>PlayerManagementCopyButton</string>
-              </property>
+             <widget class="QToolButton" name="btn_copy_federation">
               <property name="toolTip">
                <string>Copy federation to clipboard</string>
               </property>
-              <property name="flat">
+              <property name="autoRaise">
                <bool>true</bool>
               </property>
              </widget>
@@ -404,26 +307,17 @@
            <layout class="QHBoxLayout" name="fide_id_layout">
             <item>
              <widget class="QLineEdit" name="fide_id_edit">
-              <property name="maximumSize">
-               <size>
-                <width>16777215</width>
-                <height>40</height>
-               </size>
-              </property>
               <property name="toolTip">
                <string>FIDE ID (editable)</string>
               </property>
              </widget>
             </item>
             <item>
-             <widget class="QPushButton" name="btn_copy_fide_id">
-              <property name="class" stdset="0">
-               <string>PlayerManagementCopyButton</string>
-              </property>
+             <widget class="QToolButton" name="btn_copy_fide_id">
               <property name="toolTip">
                <string>Copy FIDE ID to clipboard</string>
               </property>
-              <property name="flat">
+              <property name="autoRaise">
                <bool>true</bool>
               </property>
              </widget>
@@ -441,26 +335,17 @@
            <layout class="QHBoxLayout" name="fide_title_layout">
             <item>
              <widget class="QLineEdit" name="fide_title_edit">
-              <property name="maximumSize">
-               <size>
-                <width>16777215</width>
-                <height>40</height>
-               </size>
-              </property>
               <property name="toolTip">
                <string>FIDE Title (editable)</string>
               </property>
              </widget>
             </item>
             <item>
-             <widget class="QPushButton" name="btn_copy_fide_title">
-              <property name="class" stdset="0">
-               <string>PlayerManagementCopyButton</string>
-              </property>
+             <widget class="QToolButton" name="btn_copy_fide_title">
               <property name="toolTip">
                <string>Copy title to clipboard</string>
               </property>
-              <property name="flat">
+              <property name="autoRaise">
                <bool>true</bool>
               </property>
              </widget>
@@ -478,26 +363,17 @@
            <layout class="QHBoxLayout" name="fide_std_layout">
             <item>
              <widget class="QLineEdit" name="fide_std_edit">
-              <property name="maximumSize">
-               <size>
-                <width>16777215</width>
-                <height>40</height>
-               </size>
-              </property>
               <property name="toolTip">
                <string>Standard rating (editable)</string>
               </property>
              </widget>
             </item>
             <item>
-             <widget class="QPushButton" name="btn_copy_fide_std">
-              <property name="class" stdset="0">
-               <string>PlayerManagementCopyButton</string>
-              </property>
+             <widget class="QToolButton" name="btn_copy_fide_std">
               <property name="toolTip">
                <string>Copy standard rating to clipboard</string>
               </property>
-              <property name="flat">
+              <property name="autoRaise">
                <bool>true</bool>
               </property>
              </widget>
@@ -515,26 +391,17 @@
            <layout class="QHBoxLayout" name="fide_rapid_layout">
             <item>
              <widget class="QLineEdit" name="fide_rapid_edit">
-              <property name="maximumSize">
-               <size>
-                <width>16777215</width>
-                <height>40</height>
-               </size>
-              </property>
               <property name="toolTip">
                <string>Rapid rating (editable)</string>
               </property>
              </widget>
             </item>
             <item>
-             <widget class="QPushButton" name="btn_copy_fide_rapid">
-              <property name="class" stdset="0">
-               <string>PlayerManagementCopyButton</string>
-              </property>
+             <widget class="QToolButton" name="btn_copy_fide_rapid">
               <property name="toolTip">
                <string>Copy rapid rating to clipboard</string>
               </property>
-              <property name="flat">
+              <property name="autoRaise">
                <bool>true</bool>
               </property>
              </widget>
@@ -552,26 +419,17 @@
            <layout class="QHBoxLayout" name="fide_blitz_layout">
             <item>
              <widget class="QLineEdit" name="fide_blitz_edit">
-              <property name="maximumSize">
-               <size>
-                <width>16777215</width>
-                <height>40</height>
-               </size>
-              </property>
               <property name="toolTip">
                <string>Blitz rating (editable)</string>
               </property>
              </widget>
             </item>
             <item>
-             <widget class="QPushButton" name="btn_copy_fide_blitz">
-              <property name="class" stdset="0">
-               <string>PlayerManagementCopyButton</string>
-              </property>
+             <widget class="QToolButton" name="btn_copy_fide_blitz">
               <property name="toolTip">
                <string>Copy blitz rating to clipboard</string>
               </property>
-              <property name="flat">
+              <property name="autoRaise">
                <bool>true</bool>
               </property>
              </widget>
@@ -586,10 +444,13 @@
          <property name="orientation">
           <enum>Qt::Vertical</enum>
          </property>
+         <property name="sizeType">
+          <enum>QSizePolicy::Expanding</enum>
+         </property>
          <property name="sizeHint" stdset="0">
           <size>
-           <width>20</width>
-           <height>40</height>
+           <width>0</width>
+           <height>0</height>
           </size>
          </property>
         </spacer>
@@ -659,9 +520,6 @@
           </item>
           <item>
            <widget class="QLabel" name="fide_instructions">
-            <property name="class" stdset="0">
-             <string>PlayerManagementInstructions</string>
-            </property>
             <property name="text">
              <string>&lt;b&gt;Search Tips:&lt;/b&gt;&lt;br&gt;- &lt;b&gt;Name search:&lt;/b&gt; Try 'Magnus Carlsen', 'Carlsen', or 'Magnus'&lt;br&gt;- &lt;b&gt;FIDE ID search:&lt;/b&gt; Enter exact ID like 1503014&lt;br&gt;- &lt;b&gt;Auto-detection:&lt;/b&gt; Numbers are treated as FIDE IDs, text as names&lt;br&gt;- &lt;b&gt;Right-click&lt;/b&gt; on results for copy options&lt;br&gt;- &lt;b&gt;Double-click&lt;/b&gt; any result to import that player</string>
             </property>
@@ -678,12 +536,6 @@
          <layout class="QVBoxLayout" name="fide_results_layout">
           <item>
            <widget class="QTableWidget" name="fide_table">
-            <property name="minimumSize">
-             <size>
-              <width>0</width>
-              <height>350</height>
-             </size>
-            </property>
             <property name="alternatingRowColors">
              <bool>true</bool>
             </property>
@@ -697,12 +549,6 @@
           </item>
           <item>
            <widget class="QLabel" name="results_info_label">
-            <property name="class" stdset="0">
-             <string>PlayerManagementSearchStatus</string>
-            </property>
-            <property name="state" stdset="0">
-             <string>idle</string>
-            </property>
             <property name="text">
              <string>Search for players above to see results here</string>
             </property>
@@ -725,10 +571,13 @@
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
            </property>
+           <property name="sizeType">
+            <enum>QSizePolicy::Expanding</enum>
+           </property>
            <property name="sizeHint" stdset="0">
             <size>
-             <width>40</width>
-             <height>20</height>
+             <width>0</width>
+             <height>0</height>
             </size>
            </property>
           </spacer>
@@ -781,12 +630,15 @@
              </widget>
             </item>
             <item>
-             <widget class="QPushButton" name="btn_cfc_search">
+            <widget class="QPushButton" name="btn_cfc_search">
               <property name="toolTip">
                <string>Search by name or CFC ID</string>
               </property>
               <property name="text">
                <string>Search</string>
+              </property>
+              <property name="shortcut">
+               <string>Ctrl+Return</string>
               </property>
              </widget>
             </item>
@@ -810,9 +662,6 @@
           </item>
           <item>
            <widget class="QLabel" name="cfc_instructions">
-            <property name="class" stdset="0">
-             <string>PlayerManagementInstructions</string>
-            </property>
             <property name="text">
              <string>&lt;b&gt;Search Tips:&lt;/b&gt;&lt;br&gt;- &lt;b&gt;Name search:&lt;/b&gt; Try 'Kevin Spraggett', 'Spraggett', or 'Kevin'&lt;br&gt;- &lt;b&gt;CFC ID search:&lt;/b&gt; Enter exact ID like 100123&lt;br&gt;- &lt;b&gt;Auto-detection:&lt;/b&gt; Numbers are treated as CFC IDs, text as names&lt;br&gt;- &lt;b&gt;Province filter:&lt;/b&gt; Narrow results by selecting a specific province&lt;br&gt;- &lt;b&gt;Right-click&lt;/b&gt; on results for copy options&lt;br&gt;- &lt;b&gt;Double-click&lt;/b&gt; any result to import that player</string>
             </property>
@@ -829,12 +678,6 @@
          <layout class="QVBoxLayout" name="cfc_results_layout">
           <item>
            <widget class="QTableWidget" name="cfc_table">
-            <property name="minimumSize">
-             <size>
-              <width>0</width>
-              <height>350</height>
-             </size>
-            </property>
             <property name="alternatingRowColors">
              <bool>true</bool>
             </property>
@@ -848,12 +691,6 @@
           </item>
           <item>
            <widget class="QLabel" name="cfc_results_info_label">
-            <property name="class" stdset="0">
-             <string>PlayerManagementSearchStatus</string>
-            </property>
-            <property name="state" stdset="0">
-             <string>idle</string>
-            </property>
             <property name="text">
              <string>Search for players above to see results here</string>
             </property>
@@ -876,10 +713,13 @@
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
            </property>
+           <property name="sizeType">
+            <enum>QSizePolicy::Expanding</enum>
+           </property>
            <property name="sizeHint" stdset="0">
             <size>
-             <width>40</width>
-             <height>20</height>
+             <width>0</width>
+             <height>0</height>
             </size>
            </property>
           </spacer>
@@ -915,19 +755,19 @@
              <property name="orientation">
               <enum>Qt::Vertical</enum>
              </property>
+             <property name="sizeType">
+              <enum>QSizePolicy::Expanding</enum>
+             </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>20</width>
-               <height>40</height>
+               <width>0</width>
+               <height>0</height>
               </size>
              </property>
             </spacer>
            </item>
            <item>
             <widget class="QLabel" name="no_players_icon_label">
-             <property name="class" stdset="0">
-              <string>PlayerManagementEmptyIcon</string>
-             </property>
              <property name="text">
               <string>Tournament</string>
              </property>
@@ -938,9 +778,6 @@
            </item>
            <item>
             <widget class="QLabel" name="no_players_title_label">
-             <property name="class" stdset="0">
-              <string>PlayerManagementEmptyTitle</string>
-             </property>
              <property name="text">
               <string>No Players in Tournament Yet</string>
              </property>
@@ -951,9 +788,6 @@
            </item>
            <item>
             <widget class="QLabel" name="no_players_subtitle_label">
-             <property name="class" stdset="0">
-              <string>PlayerManagementEmptySubtitle</string>
-             </property>
              <property name="text">
               <string>Start by adding players to your tournament</string>
              </property>
@@ -965,23 +799,23 @@
            <item>
             <layout class="QHBoxLayout" name="empty_buttons_layout">
              <item>
-              <spacer name="empty_buttons_left_stretch">
-               <property name="orientation">
-                <enum>Qt::Horizontal</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>40</width>
-                 <height>20</height>
+             <spacer name="empty_buttons_left_stretch">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeType">
+               <enum>QSizePolicy::Expanding</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>0</width>
+                <height>0</height>
                 </size>
                </property>
               </spacer>
              </item>
              <item>
               <widget class="QPushButton" name="btn_empty_go_fide">
-               <property name="class" stdset="0">
-                <string>PlayerManagementEmptyAction</string>
-               </property>
                <property name="text">
                 <string>Import from FIDE</string>
                </property>
@@ -989,23 +823,23 @@
              </item>
              <item>
               <widget class="QPushButton" name="btn_empty_go_details">
-               <property name="class" stdset="0">
-                <string>PlayerManagementEmptyAction</string>
-               </property>
                <property name="text">
                 <string>Add Player Manually</string>
                </property>
               </widget>
              </item>
              <item>
-              <spacer name="empty_buttons_right_stretch">
-               <property name="orientation">
-                <enum>Qt::Horizontal</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>40</width>
-                 <height>20</height>
+             <spacer name="empty_buttons_right_stretch">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeType">
+               <enum>QSizePolicy::Expanding</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>0</width>
+                <height>0</height>
                 </size>
                </property>
               </spacer>
@@ -1017,10 +851,13 @@
              <property name="orientation">
               <enum>Qt::Vertical</enum>
              </property>
+             <property name="sizeType">
+              <enum>QSizePolicy::Expanding</enum>
+             </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>20</width>
-               <height>40</height>
+               <width>0</width>
+               <height>0</height>
               </size>
              </property>
             </spacer>
@@ -1031,9 +868,6 @@
           <layout class="QVBoxLayout" name="tournament_table_page_layout">
            <item>
             <widget class="QLabel" name="tournament_instructions">
-             <property name="class" stdset="0">
-              <string>PlayerManagementSearchStatus</string>
-             </property>
              <property name="text">
               <string>Double-click a player to edit, or select and click the button below</string>
              </property>
@@ -1055,14 +889,17 @@
            <item>
             <layout class="QHBoxLayout" name="tournament_controls_layout">
              <item>
-              <spacer name="tournament_controls_stretch">
-               <property name="orientation">
-                <enum>Qt::Horizontal</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>40</width>
-                 <height>20</height>
+             <spacer name="tournament_controls_stretch">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeType">
+               <enum>QSizePolicy::Expanding</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>0</width>
+                <height>0</height>
                 </size>
                </property>
               </spacer>

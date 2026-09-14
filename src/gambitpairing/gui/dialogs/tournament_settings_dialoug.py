@@ -11,8 +11,9 @@ from gambitpairing.constants import (
     MODE_USCF,
     TIEBREAK_NAMES,
 )
+from gambitpairing.gui.gui_utils import get_native_icon
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
-from gambitpairing.utils import resize_list_to_show_all_items
+from gambitpairing.utils.utility_functions import resize_list_to_show_all_items
 
 
 class SettingsDialog(QtWidgets.QDialog):
@@ -29,9 +30,7 @@ class SettingsDialog(QtWidgets.QDialog):
 
         load_ui_into(self, "tournament_settings_dialog.ui")
 
-        self.rounds_group = required_child(
-            self, QtWidgets.QGroupBox, "rounds_group"
-        )
+        self.rounds_group = required_child(self, QtWidgets.QGroupBox, "rounds_group")
         self.rounds_label = required_child(self, QtWidgets.QLabel, "rounds_label")
         self.spin_num_rounds = required_child(
             self, QtWidgets.QSpinBox, "spin_num_rounds"
@@ -56,6 +55,14 @@ class SettingsDialog(QtWidgets.QDialog):
         self.btn_tiebreak_down = required_child(
             self, QtWidgets.QPushButton, "btn_tiebreak_down"
         )
+        self.btn_tiebreak_up.setIcon(
+            get_native_icon("go-up", QtWidgets.QStyle.StandardPixmap.SP_ArrowUp)
+        )
+        self.btn_tiebreak_down.setIcon(
+            get_native_icon("go-down", QtWidgets.QStyle.StandardPixmap.SP_ArrowDown)
+        )
+        self.btn_tiebreak_up.setToolTip("Move selected tiebreak up")
+        self.btn_tiebreak_down.setToolTip("Move selected tiebreak down")
         self.btn_tiebreak_up.clicked.connect(self.move_tiebreak_up)
         self.btn_tiebreak_down.clicked.connect(self.move_tiebreak_down)
 

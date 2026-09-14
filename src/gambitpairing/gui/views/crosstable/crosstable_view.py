@@ -15,13 +15,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from PyQt6 import QtGui, QtWidgets
+from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
 
 from gambitpairing.constants import DRAW_SCORE, LOSS_SCORE, WIN_SCORE
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
-from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 from gambitpairing.gui.widgets.header import TabHeader
+from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 
 
 class CrosstableView(QtWidgets.QWidget):
@@ -29,9 +29,7 @@ class CrosstableView(QtWidgets.QWidget):
         super().__init__(parent)
         self.tournament = None
         load_ui_into(self, "crosstable_view.ui")
-        self.main_layout = required_child(
-            self, QtWidgets.QVBoxLayout, "main_layout"
-        )
+        self.main_layout = required_child(self, QtWidgets.QVBoxLayout, "main_layout")
         header_layout = required_child(self, QtWidgets.QVBoxLayout, "header_layout")
         placeholder_layout = required_child(
             self, QtWidgets.QVBoxLayout, "placeholder_layout"
@@ -42,14 +40,16 @@ class CrosstableView(QtWidgets.QWidget):
         header_layout.addWidget(self.header)
 
         self.crosstable_group = required_child(
-            self, QtWidgets.QGroupBox, "crosstable_group"
+            self, QtWidgets.QWidget, "crosstable_group"
         )
 
         self.table_crosstable = required_child(
             self, QtWidgets.QTableWidget, "table_crosstable"
         )
-        font = QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.SystemFont.FixedFont)
-        self.table_crosstable.setFont(font)
+        self.table_crosstable.verticalHeader().setVisible(False)
+        self.table_crosstable.setSelectionBehavior(
+            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
+        )
 
         # Add no tournament placeholder
         self.tournament_placeholder = TournamentPlaceholder(self, "Crosstable")
@@ -101,11 +101,7 @@ class CrosstableView(QtWidgets.QWidget):
 
         headers = ["#", "Player", "Score"] + [str(i + 1) for i in range(n)]
         self.table_crosstable.setHorizontalHeaderLabels(headers)
-        v_headers = [
-            f"{i+1}. {p.name} ({p.rating or 'NR'})"
-            for i, p in enumerate(sorted_players)
-        ]
-        self.table_crosstable.setVerticalHeaderLabels(v_headers)
+        self.table_crosstable.setVerticalHeaderLabels([])
 
         for r_idx, p1 in enumerate(sorted_players):
             rank_item = QtWidgets.QTableWidgetItem(str(r_idx + 1))
@@ -133,19 +129,15 @@ class CrosstableView(QtWidgets.QWidget):
                     opp_display_rank = opp_rank_in_list + 1
                     if result_val == WIN_SCORE:
                         result_char = f"+{opp_display_rank}"
-                        color = QtGui.QColor("green")
                         tooltip = "Win"
                     elif result_val == DRAW_SCORE:
                         result_char = f"={opp_display_rank}"
-                        color = QtGui.QColor("#888888")
                         tooltip = "Draw"
                     elif result_val == LOSS_SCORE:
                         result_char = f"-{opp_display_rank}"
-                        color = QtGui.QColor("red")
                         tooltip = "Loss"
                     else:
                         result_char = f"?{opp_display_rank}"
-                        color = QtGui.QColor("black")
                         tooltip = "Unknown"
                     if color_played == "White":
                         result_char += "w"
@@ -155,22 +147,21 @@ class CrosstableView(QtWidgets.QWidget):
                         tooltip += " as Black"
                     item = QtWidgets.QTableWidgetItem(result_char)
                     item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                    if color:
-                        item.setForeground(color)
                     if tooltip:
                         item.setToolTip(tooltip)
                     self.table_crosstable.setItem(r_idx, col_idx_for_opp, item)
             # Diagonal: player vs self
             diag_item = QtWidgets.QTableWidgetItem("X")
-            diag_item.setBackground(QtGui.QColor(220, 220, 220))
             diag_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            font = diag_item.font()
-            font.setBold(True)
-            diag_item.setFont(font)
             diag_item.setToolTip("Player's own cell")
             self.table_crosstable.setItem(r_idx, r_idx + 3, diag_item)
 
-        self.table_crosstable.resizeColumnsToContents()
+        header = self.table_crosstable.horizontalHeader()
+        for column in range(self.table_crosstable.columnCount()):
+            header.setSectionResizeMode(
+                column, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
+            )
+        header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
         self.table_crosstable.resizeRowsToContents()
 
     def update_ui_state(self):

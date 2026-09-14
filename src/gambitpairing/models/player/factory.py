@@ -217,52 +217,6 @@ class PlayerFactory:
 
         return players
 
-
-def _update_player_from_data(self, player: Player, data: dict) -> None:
-    """Update a player object in-place from a data dictionary.
-
-    Applies core attributes to all player types and additionally
-    applies FIDE-specific attributes when the player is a
-    ``FidePlayer`` instance. Uses ``setattr`` to avoid hard-coding
-    individual field assignments.
-
-    Parameters
-    ----------
-    player : Player
-        The player object to update
-    data : dict
-        Dictionary containing updated player data
-    """
-    # Core attributes that all players have
-    core_attrs = [
-        "name",
-        "rating",
-        "phone",
-        "email",
-        "gender",
-        "dob",
-        "federation",
-    ]
-
-    # Update core attributes
-    for attr in core_attrs:
-        if attr in data:
-            setattr(player, attr, data[attr])
-
-    # Update FIDE-specific attributes if this is a FidePlayer
-    if isinstance(player, FidePlayer):
-        fide_attrs = [
-            "fide_id",
-            "fide_title",
-            "fide_standard",
-            "fide_rapid",
-            "fide_blitz",
-            "birth_year",
-        ]
-        for attr in fide_attrs:
-            if attr in data and data.get(attr) is not None:
-                setattr(player, attr, data[attr])
-
     def _validate_data(
         self,
         name: Optional[str],
@@ -322,47 +276,6 @@ def _update_player_from_data(self, player: Player, data: dict) -> None:
                 errors.append(fide_result.error_message or "Invalid FIDE ID")
 
         return errors
-
-
-def _validate_player_factory_data(
-    self,
-    name: Optional[str],
-    rating: Optional[int],
-    phone: Optional[str],
-    email: Optional[str],
-    fide_id: Optional[str],
-) -> list[str]:
-    """Validate player data and return list of errors."""
-    errors = []
-
-    name_result = validate_name(name, required=True)
-    if not name_result:
-        errors.append(name_result.error_message or "Invalid name")
-
-    if rating is not None:
-        rating_result = validate_rating(rating)
-        if not rating_result:
-            errors.append(rating_result.error_message or "Invalid rating")
-
-    if phone:
-        phone_result = validate_phone(phone)
-        if not phone_result:
-            errors.append(phone_result.error_message or "Invalid phone")
-
-    if email:
-        email_result = validate_email(email)
-        if not email_result:
-            errors.append(email_result.error_message or "Invalid email")
-
-    if fide_id:
-        fide_result = validate_fide_id(fide_id)
-        if not fide_result:
-            errors.append(fide_result.error_message or "Invalid FIDE ID")
-
-    return errors
-
-
-PlayerFactory._validate_data = _validate_player_factory_data
 
 
 # Global factory instance for convenience

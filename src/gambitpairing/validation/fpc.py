@@ -1247,15 +1247,12 @@ class FPCValidator:
                 criteria_results=[feasibility_result],
             )
 
-        player_map: Dict[str, Player] = {}
-        for player in players:
-            if isinstance(player, Player):
-                player_obj = Player.from_dict(player.to_dict())
-            elif isinstance(player, dict):
-                player_obj = Player.from_dict(player)
-            else:
-                continue
-            player_map[player_obj.id] = player_obj
+        from gambitpairing.controllers.tournament.replay import (
+            fresh_player,
+            replay_round,
+        )
+
+        player_map = {player.id: player for player in map(fresh_player, players)}
         total_criteria = 0
         compliant_count = 0
         violations: List[CriterionResult] = []
@@ -1279,6 +1276,16 @@ class FPCValidator:
                 if white_id in player_map and black_id in player_map
             ]
             bye_player = player_map.get(bye_id) if bye_id else None
+
+            historical_ids = round_data.get("active_player_ids")
+            assigned_ids = {key for pair in pairing_ids for key in pair}
+            if bye_id:
+                assigned_ids.add(bye_id)
+            for player in player_map.values():
+                if historical_ids is not None:
+                    player.is_active = player.id in historical_ids
+                elif player.id in assigned_ids:
+                    player.is_active = True
 
             round_players = [
                 player
@@ -1313,37 +1320,7 @@ class FPCValidator:
             if bye_player:
                 bye_history[bye_player.id] = bye_history.get(bye_player.id, 0) + 1
 
-            results = round_data.get("results", [])
-            for result in results:
-                if isinstance(result, dict):
-                    white_id = result.get("white_id")
-                    black_id = result.get("black_id")
-                    white_score = result.get("white_score")
-                else:
-                    white_id, black_id, white_score = result[:3]
-                if white_score is None:
-                    continue
-                white_score = float(white_score)
-                if white_id in player_map and black_id in player_map:
-                    white_player = player_map[white_id]
-                    black_player = player_map[black_id]
-                    white_player.add_round_result(black_player, white_score, WHITE)
-                    black_player.add_round_result(
-                        white_player, 1.0 - white_score, BLACK
-                    )
-
-            if bye_player and round_number > len(bye_player.results):
-                bye_player.add_round_result(None, BYE_SCORE, None)
-
-            for player_id in scheduled_byes.get("half_point", []):
-                player = player_map.get(player_id)
-                if player and round_number > len(player.results):
-                    player.add_round_result(None, DRAW_SCORE, None)
-
-            for player_id in scheduled_byes.get("zero_point", []):
-                player = player_map.get(player_id)
-                if player and round_number > len(player.results):
-                    player.add_round_result(None, LOSS_SCORE, None)
+            replay_round(player_map, round_data)
 
         overall_status = (
             CriterionStatus.VIOLATION if violations else CriterionStatus.COMPLIANT

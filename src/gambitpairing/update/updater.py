@@ -18,6 +18,8 @@
 import hashlib
 import os
 from pathlib import Path
+import platform
+import re
 import shutil
 import sys
 import tempfile
@@ -86,34 +88,64 @@ class Updater:
         if not self.latest_version_info:
             return None, None
         assets = self.latest_version_info.get("assets", [])
-        zip_url, checksum_url = None, None
+        system = {"win32": "windows", "darwin": "macos", "linux": "linux"}.get(
+            sys.platform
+        )
+        machine = platform.machine().lower()
+        arm = machine in {"aarch64", "arm64"}
+        candidates = []
         for asset in assets:
-            if asset.get("name", "").endswith(".zip"):
-                zip_url = asset.get("browser_download_url")
-            if asset.get("name", "").endswith(".sha256"):
-                checksum_url = asset.get("browser_download_url")
-        return zip_url, checksum_url
+            name = asset.get("name", "").lower()
+            matches_system = system in name if system else False
+            if system == "windows":
+                matches_system = (
+                    matches_system or "win64" in name or "win-arm64" in name
+                )
+            if not matches_system or not name.endswith(".zip"):
+                continue
+            is_arm_asset = "arm64" in name or "aarch64" in name
+            if is_arm_asset != arm:
+                continue
+            candidates.append(asset)
+        if len(candidates) != 1:
+            return None, None
+        asset = candidates[0]
+        checksum = next(
+            (item for item in assets if item.get("name") == asset["name"] + ".sha256"),
+            None,
+        )
+        return asset.get("browser_download_url"), (
+            checksum.get("browser_download_url") if checksum else None
+        )
 
     def download_update(self, progress_callback=None) -> Optional[str]:
+        self.expected_checksum = None
+        self.update_zip_path = None
         zip_url, checksum_url = self._get_asset_urls()
-        if not zip_url:
+        if not zip_url or not checksum_url:
+            logger.error("No unambiguous platform archive with a matching checksum")
             return None
 
         if checksum_url:
             try:
-                with httpx.Client(timeout=10.0) as client:
+                with httpx.Client(timeout=10.0, follow_redirects=True) as client:
                     checksum_response = client.get(checksum_url)
+                    checksum_response.raise_for_status()
                     self.expected_checksum = checksum_response.text.split()[0].strip()
+                    if not re.fullmatch(r"[0-9a-fA-F]{64}", self.expected_checksum):
+                        raise ValueError("Invalid SHA256 checksum")
                     logger.info(f"Expected checksum: {self.expected_checksum}")
             except Exception as e:
                 logger.warning(f"Could not download checksum: {e}")
+                self.expected_checksum = None
+                return None
 
         try:
-            with httpx.Client(timeout=60.0) as client:
+            with httpx.Client(timeout=60.0, follow_redirects=True) as client:
                 with client.stream("GET", zip_url) as response:
                     response.raise_for_status()
                     total_size = int(response.headers.get("content-length", 0))
-                    temp_dir = tempfile.gettempdir()
+                    temp_dir = tempfile.mkdtemp(prefix="gambit-update-")
                     self.update_zip_path = os.path.join(temp_dir, "gambit_update.zip")
                     bytes_downloaded = 0
                     with open(self.update_zip_path, "wb") as f:
@@ -125,13 +157,17 @@ class Updater:
                                     int((bytes_downloaded / total_size) * 100)
                                 )
             return self.update_zip_path
-        except httpx.RequestError as e:
+        except (httpx.HTTPError, OSError, ValueError) as e:
             logger.error(f"Failed to download update: {e}")
+            if self.update_zip_path:
+                Path(self.update_zip_path).unlink(missing_ok=True)
+                Path(self.update_zip_path).parent.rmdir()
+                self.update_zip_path = None
             return None
 
     def verify_checksum(self, file_path: str) -> bool:
         if not self.expected_checksum:
-            return True
+            return False
         sha256_hash = hashlib.sha256()
         with open(file_path, "rb") as f:
             for byte_block in iter(lambda: f.read(4096), b""):

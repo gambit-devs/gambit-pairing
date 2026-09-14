@@ -71,6 +71,7 @@ def build_player_data_from_fields(
     fields: PlayerFormFields,
     include_fide_fields: bool,
     selected_birth_year: Any = None,
+    cfc_id: Any = None,
 ) -> dict[str, Any]:
     data: dict[str, Any] = {
         "name": fields.name.strip(),
@@ -94,6 +95,8 @@ def build_player_data_from_fields(
         )
         if selected_birth_year is not None:
             data["birth_year"] = selected_birth_year
+    if cfc_id is not None:
+        data["cfc_id"] = int(cfc_id)
     return data
 
 

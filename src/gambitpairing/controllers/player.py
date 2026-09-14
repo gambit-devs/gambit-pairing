@@ -11,7 +11,9 @@ from typing import TYPE_CHECKING, List, Tuple
 from gambitpairing.models.player import Player, create_player
 
 if TYPE_CHECKING:
-    from gambitpairing.models.tournament import Tournament
+    from gambitpairing.controllers.tournament.session import (
+        TournamentSession as Tournament,
+    )
 
 
 @dataclass(frozen=True)

@@ -21,6 +21,11 @@ from __future__ import annotations
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import pyqtSignal
 
+from gambitpairing.gui.gui_utils import (
+    get_native_icon,
+    set_native_heading,
+    set_native_icon,
+)
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
 
 
@@ -51,12 +56,24 @@ class TournamentPlaceholder(QtWidgets.QWidget):
         if not self.tab_name:
             desc_text = "Create a tournament to begin managing your chess competition."
 
-        self.icon_label.setText("♟️")
+        set_native_icon(
+            self.icon_label,
+            "document-new",
+            QtWidgets.QStyle.StandardPixmap.SP_FileIcon,
+        )
         self.title_label.setText("No Tournament Loaded")
+        set_native_heading(self.title_label)
         self.desc_label.setText(desc_text)
         self.create_btn.setText("Create Tournament")
         self.import_btn.setText("Import Tournament")
-
+        self.create_btn.setIcon(
+            get_native_icon("document-new", QtWidgets.QStyle.StandardPixmap.SP_FileIcon)
+        )
+        self.import_btn.setIcon(
+            get_native_icon(
+                "document-open", QtWidgets.QStyle.StandardPixmap.SP_DialogOpenButton
+            )
+        )
         self.create_btn.clicked.connect(self.create_tournament_requested.emit)
         self.import_btn.clicked.connect(self.import_tournament_requested.emit)
 

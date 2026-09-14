@@ -30,6 +30,7 @@ from gambitpairing.constants import (
     RESULT_WHITE_WIN,
     WIN_SCORE,
 )
+from gambitpairing.gui.gui_utils import set_native_icon
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
 from gambitpairing.models.player import Player
 from gambitpairing.utils import setup_logger
@@ -89,8 +90,6 @@ class PairingsTable(QtWidgets.QWidget):
             self.table.setSelectionMode(
                 QtWidgets.QAbstractItemView.SelectionMode.SingleSelection
             )
-            self.table.verticalHeader().setDefaultSectionSize(32)
-            self.table.verticalHeader().setMinimumSectionSize(30)
             self.table.setSizeAdjustPolicy(
                 QtWidgets.QAbstractScrollArea.SizeAdjustPolicy.AdjustToContents
             )
@@ -98,25 +97,25 @@ class PairingsTable(QtWidgets.QWidget):
             self.table.setSelectionBehavior(
                 QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
             )
-            self.table.verticalHeader().setDefaultSectionSize(65)
 
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(
+            0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
+        )
         header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(
-            3,
-            QtWidgets.QHeaderView.ResizeMode.Fixed
-            if compact
-            else QtWidgets.QHeaderView.ResizeMode.ResizeToContents,
+            3, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
         )
-        self.table.setColumnWidth(0, 62 if compact else 70)
-        if compact:
-            self.table.setColumnWidth(3, 96)
 
         self.bye_container = required_child(self, QtWidgets.QWidget, "bye_container")
         self.bye_icon = required_child(self, QtWidgets.QLabel, "bye_icon")
         self.lbl_bye = required_child(self, QtWidgets.QLabel, "lbl_bye")
+        set_native_icon(
+            self.bye_icon,
+            "dialog-information",
+            QtWidgets.QStyle.StandardPixmap.SP_MessageBoxInformation,
+        )
         self.bye_container.hide()
 
     @property
@@ -130,15 +129,19 @@ class PairingsTable(QtWidgets.QWidget):
         current_round_index: int,
         results: Optional[Sequence[Any]] = None,
         editable: bool = True,
+        bye_type: str = "full",
     ):
         """Populate the table with pairings, results, and optional bye row."""
         self._editable = editable
+        self._bye_score = {"full": 1.0, "half": 0.5, "zero": 0.0}[bye_type]
         self._players_by_row.clear()
         self._row_metadata.clear()
         self._result_history.clear()
         self._suppress_result_events = True
 
         bye_player = bye_players[0] if bye_players else None
+        if editable and bye_player is not None and not bye_player.is_active:
+            self._bye_score = 0.0
         row_count = len(pairings) + (1 if self._compact and bye_player else 0)
         self.table.clearContents()
         self.table.setRowCount(row_count)
@@ -187,9 +190,7 @@ class PairingsTable(QtWidgets.QWidget):
                     row, new, previous
                 )
             )
-            selector.activated.connect(
-                lambda row=row: self._activate_result_cell(row)
-            )
+            selector.activated.connect(lambda row=row: self._activate_result_cell(row))
             selector.key_pressed.connect(
                 lambda key, text, modifiers, row=row: self._handle_selector_key(
                     row, key, text, modifiers
@@ -265,14 +266,14 @@ class PairingsTable(QtWidgets.QWidget):
 
         item = QtWidgets.QTableWidgetItem(text)
         item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-        item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        item.setTextAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        )
         item.setToolTip(
             f"ID: {player.id}\n"
             f"Color History: {' '.join(str(c or '_') for c in player.color_history)}"
             + (f"\n{color_info}" if color_info else "")
         )
-        if not player.is_active:
-            item.setForeground(QtGui.QColor("gray"))
         return item
 
     def _add_bye_row(
@@ -282,7 +283,7 @@ class PairingsTable(QtWidgets.QWidget):
         fallback_number: int,
     ) -> None:
         number = self._player_number(player, fallback_number)
-        score = BYE_SCORE if player.is_active else 0.0
+        score = self._bye_score
         score_text = f"{score:g} point" if score == 1 else f"{score:g} points"
         board = QtWidgets.QTableWidgetItem("—")
         white = QtWidgets.QTableWidgetItem(
@@ -292,11 +293,6 @@ class PairingsTable(QtWidgets.QWidget):
         result = QtWidgets.QTableWidgetItem(score_text)
         for item in (board, white, black, result):
             item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            item.setBackground(QtGui.QColor("#fff7df"))
-            item.setForeground(QtGui.QColor("#805b12"))
-            font = item.font()
-            font.setItalic(True)
-            item.setFont(font)
         board.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         result.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.table.setItem(row, 0, board)
@@ -308,7 +304,6 @@ class PairingsTable(QtWidgets.QWidget):
             "bye_player_id": player.id,
             "board": None,
         }
-        self.table.setRowHeight(row, 30)
 
     def _update_bye_bar(self, bye_players: List[Player]) -> None:
         if not bye_players:
@@ -317,7 +312,7 @@ class PairingsTable(QtWidgets.QWidget):
             return
         details = []
         for player in bye_players:
-            score = BYE_SCORE if player.is_active else 0.0
+            score = self._bye_score
             details.append(f"{player.name} ({player.rating}) — {score:g} point")
         self.lbl_bye.setText("; ".join(details))
         if self._compact:
@@ -338,7 +333,11 @@ class PairingsTable(QtWidgets.QWidget):
             if len(result) < 3:
                 continue
             white_id, black_id, white_score = result[:3]
-            outcome = result[3] if len(result) > 3 and isinstance(result[3], str) else OUTCOME_NORMAL_GAME
+            outcome = (
+                result[3]
+                if len(result) > 3 and isinstance(result[3], str)
+                else OUTCOME_NORMAL_GAME
+            )
             if len(result) > 4 and isinstance(result[4], str):
                 outcome = result[4]
             result_map[(white_id, black_id)] = self._result_constant_from_score(
@@ -349,7 +348,8 @@ class PairingsTable(QtWidgets.QWidget):
     @staticmethod
     def _result_constant_from_model(result: Any) -> str:
         return PairingsTable._result_constant_from_score(
-            float(result.white_score), getattr(result, "outcome_type", OUTCOME_NORMAL_GAME)
+            float(result.white_score),
+            getattr(result, "outcome_type", OUTCOME_NORMAL_GAME),
         )
 
     @staticmethod
@@ -369,9 +369,7 @@ class PairingsTable(QtWidgets.QWidget):
         return RESULT_DRAW
 
     @staticmethod
-    def _automatic_result_for_inactive_players(
-        white: Player, black: Player
-    ) -> str:
+    def _automatic_result_for_inactive_players(white: Player, black: Player) -> str:
         if not white.is_active and not black.is_active:
             return RESULT_DOUBLE_FORFEIT
         if not white.is_active:
@@ -416,13 +414,6 @@ class PairingsTable(QtWidgets.QWidget):
             selector = self.table.cellWidget(row, 3)
             if not isinstance(selector, ResultSelector):
                 continue
-            selected = row == self.table.currentRow() and self.table.currentColumn() == 3
-            selector.setProperty("selected", selected)
-            selector.menu_button.setProperty("selected", selected)
-            selector.menu_button.style().unpolish(selector.menu_button)
-            selector.menu_button.style().polish(selector.menu_button)
-            selector.style().unpolish(selector)
-            selector.style().polish(selector)
 
     def _handle_selector_key(
         self, row: int, key: int, text: str, modifiers: int
@@ -440,7 +431,10 @@ class PairingsTable(QtWidgets.QWidget):
 
         key_enum = Qt.Key(key)
         modifier_flags = Qt.KeyboardModifier(modifiers)
-        if modifier_flags & Qt.KeyboardModifier.ControlModifier and key_enum == Qt.Key.Key_Z:
+        if (
+            modifier_flags & Qt.KeyboardModifier.ControlModifier
+            and key_enum == Qt.Key.Key_Z
+        ):
             return self.undo_last_edit()
 
         if key_enum in {Qt.Key.Key_Up, Qt.Key.Key_Down}:
@@ -556,9 +550,11 @@ class PairingsTable(QtWidgets.QWidget):
                 item = self.table.item(row, column)
                 if item is None:
                     continue
-                fallback = getattr(player, "pairing_number", None) or getattr(
-                    player, "bsn", None
-                ) or row + 1
+                fallback = (
+                    getattr(player, "pairing_number", None)
+                    or getattr(player, "bsn", None)
+                    or row + 1
+                )
                 item.setText(self._player_item(player, int(fallback)).text())
 
     def progress(self) -> Tuple[int, int]:

@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
 
-from gambitpairing.models.tournament import Tournament
+from gambitpairing.controllers.tournament.session import TournamentSession as Tournament
+from gambitpairing.models.tournament import TournamentState
 
 
 @dataclass(frozen=True)
@@ -46,7 +47,8 @@ def build_main_window_ui_state(
     """Compute MainWindow UI state without touching Qt widgets."""
     tournament_exists = tournament is not None
     pairings_generated = len(tournament.rounds_pairings_ids) if tournament else 0
-    results_recorded = current_round_index
+    domain_state = TournamentState.compute(tournament, current_round_index)
+    results_recorded = domain_state.results_recorded
     total_rounds = tournament.num_rounds if tournament else 0
     player_count = len(tournament.players) if tournament else 0
     tournament_started = tournament_exists and pairings_generated > 0
@@ -54,24 +56,10 @@ def build_main_window_ui_state(
         tournament_exists and results_recorded >= total_rounds and total_rounds > 0
     )
 
-    can_start = tournament_exists and not tournament_started
-    can_prepare = (
-        tournament_exists
-        and tournament_started
-        and pairings_generated == results_recorded
-        and not tournament_finished
-    )
-    can_record = (
-        tournament_exists
-        and tournament_started
-        and pairings_generated > results_recorded
-        and not tournament_finished
-    )
-    can_undo = (
-        tournament_exists
-        and results_recorded > 0
-        and bool(last_recorded_results_data)
-    )
+    can_start = domain_state.can_start
+    can_prepare = domain_state.can_prepare
+    can_record = domain_state.can_record
+    can_undo = domain_state.can_undo
 
     window_title = _build_window_title(
         tournament=tournament,

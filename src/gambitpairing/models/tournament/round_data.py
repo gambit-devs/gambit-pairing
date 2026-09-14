@@ -51,6 +51,12 @@ class RoundData:
     # these separate from ``results`` means the UI can autosave data-entry
     # progress without changing standings or player histories prematurely.
     pending_results: List[MatchResult] = field(default_factory=list)
+    bye_type: str = "full"
+    active_player_ids: Optional[List[str]] = None
+
+    def __post_init__(self) -> None:
+        if self.bye_type not in {"full", "half", "zero"}:
+            raise ValueError("Bye type must be full, half, or zero")
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize round data to dictionary."""
@@ -58,6 +64,7 @@ class RoundData:
             "round_number": self.round_number,
             "pairings": self.pairings,
             "bye_player_id": self.bye_player_id,
+            "bye_type": self.bye_type,
             "results": [result.to_dict() for result in self.results],
             "is_completed": self.is_completed,
         }
@@ -65,6 +72,8 @@ class RoundData:
             data["pending_results"] = [
                 result.to_dict() for result in self.pending_results
             ]
+        if self.active_player_ids is not None:
+            data["active_player_ids"] = list(self.active_player_ids)
         return data
 
     @classmethod
@@ -74,7 +83,11 @@ class RoundData:
             round_number=data["round_number"],
             pairings=[tuple(pair) for pair in data.get("pairings", [])],
             bye_player_id=data.get("bye_player_id"),
-            results=[MatchResult.from_dict(result) for result in data.get("results", [])],
+            bye_type=data.get("bye_type", "full"),
+            active_player_ids=data.get("active_player_ids"),
+            results=[
+                MatchResult.from_dict(result) for result in data.get("results", [])
+            ],
             is_completed=data.get("is_completed", False),
             pending_results=[
                 MatchResult.from_dict(result)

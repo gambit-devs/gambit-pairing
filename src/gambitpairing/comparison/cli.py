@@ -20,16 +20,22 @@ This module provides CLI functionality for the standalone comparison tool.
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import argparse
-import json
-import sys
 from datetime import datetime
+import json
 from pathlib import Path
-from typing import Optional
+import sys
+from typing import Any, Optional
 
 from gambitpairing.comparison.analyzer import create_statistical_analyzer
 from gambitpairing.comparison.engine import PairingComparisonEngine
 from gambitpairing.comparison.reporter import generate_comprehensive_report
-from gambitpairing.constants import BYE_SCORE, DRAW_SCORE, LOSS_SCORE, WIN_SCORE
+from gambitpairing.constants import (
+    BYE_SCORE,
+    DRAW_SCORE,
+    LOSS_SCORE,
+    OUTCOME_DOUBLE_FORFEIT,
+    WIN_SCORE,
+)
 from gambitpairing.models.enums import Colour
 from gambitpairing.models.player import Player
 from gambitpairing.testing.rtg import (
@@ -38,8 +44,10 @@ from gambitpairing.testing.rtg import (
     ResultPattern,
     RTGConfig,
 )
-WHITE = Colour.WHITE
 from gambitpairing.utils import setup_logger
+
+WHITE = Colour.WHITE
+BLACK = Colour.BLACK
 
 logger = setup_logger(__name__)
 
@@ -350,7 +358,7 @@ def run_comparison(args: argparse.Namespace) -> int:
                         bbp_bye=bbp_bye,
                         players=active_players,
                         round_number=round_num,
-                        total_rounds=args.rounds,
+                        total_rounds=num_rounds,
                         gambit_time_ms=gambit_time,
                         bbp_time_ms=bbp_time,
                         previous_matches=previous_matches,
@@ -448,138 +456,66 @@ def _remap_pairings(
 
 
 def _create_fresh_player(source_player) -> Player:
-    """Create a fresh player with static attributes but empty history.
+    from gambitpairing.controllers.tournament.replay import fresh_player
 
-    Args:
-        source_player: Source player object or dict to copy attributes from
-
-    Returns:
-        New Player instance with empty history lists
-    """
-    if isinstance(source_player, Player):
-        data = source_player.to_dict()
-    else:
-        data = dict(source_player)
-
-    # Create player with only static attributes
-    fresh = Player(
-        name=data.get("name", "Unknown"),
-        rating=data.get("rating"),
-    )
-
-    # Copy static identification attributes
-    fresh.id = data.get("id", fresh.id)
-    fresh.pairing_number = data.get("pairing_number")
-    fresh.club = data.get("club")
-    fresh.federation = data.get("federation")
-    fresh.gender = data.get("gender")
-    fresh.title = data.get("title")
-    fresh.fide_id = data.get("fide_id")
-
-    # Reset all history to empty (critical for accurate round-by-round validation)
-    fresh.opponent_ids = []
-    fresh.results = []
-    fresh.color_history = []
-    fresh.running_scores = []
-    fresh.float_history = []
-    fresh.match_history = []
-    fresh.has_received_bye = False
-    fresh.num_black_games = 0
-    fresh.is_active = data.get("is_active", True)
-    fresh.points = 0.0
-
-    return fresh
+    return fresh_player(source_player)
 
 
-def _build_round_snapshot(
-    players: list,
-    rounds: list,
-    round_number: int,
-) -> tuple[list[Player], list[Player], set, dict]:
-    player_map: dict[str, Player] = {}
-    for player in players:
-        player_obj = _create_fresh_player(player)
-        player_map[player_obj.id] = player_obj
+def _build_round_snapshot(players: list, rounds: list, round_number: int):
+    from gambitpairing.controllers.tournament.replay import round_snapshot
 
-    previous_matches: set = set()
-    bye_history: dict[str, int] = {}
+    return round_snapshot(players, rounds, round_number)
 
-    rounds_sorted = sorted(rounds, key=lambda r: r.get("round_number", 0))
-    for round_data in rounds_sorted:
-        current_round = round_data.get("round_number", 0)
-        if current_round >= round_number:
-            break
 
-        pairing_ids = round_data.get("pairings", [])
-        results = round_data.get("results", [])
-        results_map: dict[tuple[str, str], tuple[float, float]] = {}
-        for result in results:
-            if isinstance(result, dict):
-                white_id = result.get("white_id")
-                black_id = result.get("black_id")
-                white_score = result.get("white_score")
-                black_score = result.get("black_score")
+def _parse_snapshot_result(
+    result: Any,
+) -> Optional[tuple[str, str, float, float]]:
+    """Normalize serialized and legacy result records for comparison state."""
+    if isinstance(result, dict):
+        white_id = result.get("white_id")
+        black_id = result.get("black_id")
+        white_score = result.get("white_score")
+        black_score = result.get("black_score")
+        outcome_type = result.get("outcome_type")
+    elif isinstance(result, (list, tuple)) and len(result) >= 3:
+        white_id, black_id, white_score = result[:3]
+        black_score = None
+        outcome_type = None
+        if len(result) >= 4:
+            fourth_value = result[3]
+            if isinstance(fourth_value, str):
+                outcome_type = fourth_value
             else:
-                white_id, black_id = result[0], result[1]
-                white_score = result[2] if len(result) > 2 else None
-                black_score = result[3] if len(result) > 3 else None
-                forfeit = result[4] if len(result) > 4 else False
-                if black_score is None and white_score is not None:
-                    if forfeit and float(white_score) == LOSS_SCORE:
-                        black_score = LOSS_SCORE
-                    else:
-                        black_score = WIN_SCORE - float(white_score)
+                black_score = fourth_value
+        if len(result) >= 5 and isinstance(result[4], str):
+            outcome_type = result[4]
+    else:
+        return None
 
-            if white_id and black_id and white_score is not None:
-                if black_score is None:
-                    black_score = WIN_SCORE - float(white_score)
-                results_map[(white_id, black_id)] = (
-                    float(white_score),
-                    float(black_score),
-                )
+    if not isinstance(white_id, str) or not isinstance(black_id, str):
+        return None
+    if not isinstance(white_score, (int, float)) or isinstance(white_score, bool):
+        return None
+    try:
+        white_score = float(white_score)
+        if black_score is None:
+            if outcome_type == OUTCOME_DOUBLE_FORFEIT:
+                black_score = LOSS_SCORE
+            else:
+                black_score = WIN_SCORE - white_score
+        else:
+            if not isinstance(black_score, (int, float)) or isinstance(
+                black_score, bool
+            ):
+                return None
+            black_score = float(black_score)
+    except (TypeError, ValueError, OverflowError):
+        return None
 
-        for white_id, black_id in pairing_ids:
-            if white_id not in player_map or black_id not in player_map:
-                continue
-            scores = results_map.get((white_id, black_id))
-            if scores is None:
-                continue
-            white_score, black_score = scores
-            white_player = player_map[white_id]
-            black_player = player_map[black_id]
-            white_player.add_round_result(black_player, white_score, WHITE)
-            black_player.add_round_result(white_player, black_score, BLACK)
-            previous_matches.add(frozenset({white_id, black_id}))
+    if outcome_type is None and white_score == LOSS_SCORE and black_score == LOSS_SCORE:
+        outcome_type = OUTCOME_DOUBLE_FORFEIT
 
-        bye_id = round_data.get("bye_player_id") or round_data.get("bye_player")
-        if bye_id and bye_id in player_map:
-            player_map[bye_id].add_round_result(None, BYE_SCORE, None)
-            bye_history[bye_id] = bye_history.get(bye_id, 0) + 1
-
-        scheduled_byes = round_data.get("scheduled_byes", {})
-        for half_id in scheduled_byes.get("half_point", []):
-            if half_id in player_map:
-                player_map[half_id].add_round_result(None, DRAW_SCORE, None)
-        for zero_id in scheduled_byes.get("zero_point", []):
-            if zero_id in player_map:
-                player_map[zero_id].add_round_result(None, LOSS_SCORE, None)
-
-    excluded_ids = set()
-    for round_data in rounds_sorted:
-        if round_data.get("round_number", 0) != round_number:
-            continue
-        scheduled_byes = round_data.get("scheduled_byes", {})
-        excluded_ids |= set(scheduled_byes.get("half_point", []))
-        excluded_ids |= set(scheduled_byes.get("zero_point", []))
-        break
-
-    active_players = [
-        player
-        for player_id, player in player_map.items()
-        if player_id not in excluded_ids
-    ]
-
-    return list(player_map.values()), active_players, previous_matches, bye_history
+    return white_id, black_id, white_score, black_score
 
 
 def print_summary(summary, report_path: Path) -> None:

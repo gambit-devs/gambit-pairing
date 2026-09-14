@@ -104,17 +104,27 @@ def cfc_api_to_player_dict(cfc_data: Dict[str, Any]) -> Dict[str, Any]:
         >>> player_dict = cfc_api_to_player_dict(cfc_data)
         >>> player = create_player_from_dict(player_dict)
     """
-    # Combine first and last name
-    first_name = cfc_data.get("name_first", "").strip()
-    last_name = cfc_data.get("name_last", "").strip()
-    name = f"{first_name} {last_name}".strip()
+    # Combine first and last name when the API does not provide a display name.
+    if cfc_data.get("name"):
+        name = str(cfc_data["name"]).strip()
+    else:
+        first_name = str(cfc_data.get("name_first") or "").strip()
+        last_name = str(cfc_data.get("name_last") or "").strip()
+        name = f"{first_name} {last_name}".strip()
 
     # Use regular rating as primary, fall back to quick rating
-    rating = cfc_data.get("regular_rating") or cfc_data.get("quick_rating") or 0
+    rating = (
+        cfc_data.get("rating")
+        or cfc_data.get("regular_rating")
+        or cfc_data.get("quick_rating")
+        or 0
+    )
 
     # Build location string from city and province
-    city = cfc_data.get("addr_city", "").strip()
-    province = cfc_data.get("addr_province", "").strip()
+    city = str(cfc_data.get("city") or cfc_data.get("addr_city") or "").strip()
+    province = str(
+        cfc_data.get("province") or cfc_data.get("addr_province") or ""
+    ).strip()
     location = f"{city}, {province}" if city and province else (city or province)
 
     # FIDE ID if available
@@ -130,6 +140,9 @@ def cfc_api_to_player_dict(cfc_data: Dict[str, Any]) -> Dict[str, Any]:
         "federation": "CAN",  # CFC is Canadian federation
     }
 
+    if cfc_data.get("cfc_id") is not None:
+        player_dict["cfc_id"] = cfc_data["cfc_id"]
+
     # Add FIDE ID if present
     if fide_id:
         player_dict["fide_id"] = fide_id
@@ -139,6 +152,36 @@ def cfc_api_to_player_dict(cfc_data: Dict[str, Any]) -> Dict[str, Any]:
         player_dict["club"] = location
 
     return player_dict
+
+
+def cfc_api_to_search_result(cfc_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Convert a CFC player response to the fields shown by the search view."""
+    if not isinstance(cfc_data, dict):
+        raise TypeError("CFC player data must be an object")
+
+    if "name" in cfc_data:
+        name = str(cfc_data.get("name") or "").strip()
+    else:
+        name = " ".join(
+            part
+            for part in (
+                str(cfc_data.get("name_first") or "").strip(),
+                str(cfc_data.get("name_last") or "").strip(),
+            )
+            if part
+        )
+    return {
+        "cfc_id": cfc_data.get("cfc_id", ""),
+        "name": name,
+        "rating": cfc_data.get("rating")
+        or cfc_data.get("regular_rating")
+        or cfc_data.get("quick_rating")
+        or "",
+        "province": cfc_data.get("province") or cfc_data.get("addr_province") or "",
+        "city": cfc_data.get("city") or cfc_data.get("addr_city") or "",
+        "expiry_date": cfc_data.get("expiry_date") or cfc_data.get("cfc_expiry") or "",
+        "status": cfc_data.get("status") or "",
+    }
 
 
 def fide_profile_to_player_dict(profile_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -250,6 +293,7 @@ def create_player_from_cfc_data(cfc_data: Dict[str, Any]) -> Optional[Any]:
 __all__ = [
     "fide_api_to_player_dict",
     "cfc_api_to_player_dict",
+    "cfc_api_to_search_result",
     "fide_profile_to_player_dict",
     "api_response_to_players",
     "create_player_from_fide_search",

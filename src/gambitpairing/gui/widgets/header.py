@@ -23,7 +23,11 @@ from collections.abc import Callable
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
 
-from gambitpairing.gui.gui_utils import get_colored_icon, set_svg_icon
+from gambitpairing.gui.gui_utils import (
+    get_native_icon,
+    set_native_heading,
+    set_native_icon,
+)
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
 
 
@@ -49,8 +53,9 @@ class TabHeader(QtWidgets.QWidget):
         )
 
         self.title_label.setText(title)
+        set_native_heading(self.title_label)
         if icon_name:
-            set_svg_icon(self.icon_label, icon_name, "#2d5a27", 24)
+            set_native_icon(self.icon_label, icon_name)
             self.icon_label.show()
 
     def set_title(self, title: str) -> None:
@@ -59,15 +64,17 @@ class TabHeader(QtWidgets.QWidget):
 
     def add_action_button(
         self, icon_name: str, tooltip: str, callback: Callable[[], object]
-    ) -> QtWidgets.QPushButton:
+    ) -> QtWidgets.QToolButton:
         """Add action button to the header."""
-        btn = QtWidgets.QPushButton()
-        icon = get_colored_icon(icon_name, "#2d5a27", 24)
-        btn.setIcon(icon)
-        btn.setProperty("class", "IconButton")
+        btn = QtWidgets.QToolButton()
+        btn.setIcon(
+            get_native_icon(icon_name, QtWidgets.QStyle.StandardPixmap.SP_FileIcon)
+        )
         btn.setToolTip(tooltip)
+        btn.setAccessibleName(tooltip)
+        btn.setAutoRaise(True)
+        btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
         btn.clicked.connect(callback)
-        btn.setCursor(Qt.CursorShape.PointingHandCursor)
 
         self.actions_layout.addWidget(btn)
         return btn

@@ -1,6 +1,6 @@
+from gambitpairing.controllers.tournament.session import TournamentSession as Tournament
 from gambitpairing.gui.main_window_state import build_main_window_ui_state
 from gambitpairing.models.player import Player
-from gambitpairing.models.tournament import Tournament
 
 
 def _tournament(player_count: int = 0, rounds: int = 3) -> Tournament:
@@ -75,6 +75,7 @@ def test_main_window_ui_state_for_record_and_prepare_phases():
         "Round 1 pairings ready for 'City Open'. Please enter results."
     )
 
+    assert tournament.record_results(0, [(players[0].id, players[1].id, 1.0)])
     prepare_state = build_main_window_ui_state(
         tournament=tournament,
         current_round_index=1,

@@ -31,7 +31,7 @@ from gambitpairing.controllers.tournament import (
     TournamentGuiState,
     TournamentPersistenceService,
 )
-from gambitpairing.models.tournament import Tournament
+from gambitpairing.controllers.tournament.session import TournamentSession as Tournament
 from gambitpairing.update import Updater
 from gambitpairing.utils import setup_logger
 
@@ -41,7 +41,7 @@ from .dialogs import (
     SettingsDialog,
     UnsavedChangesDialog,
 )
-from .gui_utils import get_colored_icon
+from .gui_utils import get_native_icon
 from .main_window_file_flow import (
     build_load_error_prompt,
     build_load_success_history,
@@ -109,10 +109,6 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
 
         logger.info("GambitPairingMainWindow __init__ done.")
 
-    def set_app_instance(self, app):
-        """Store a reference to the QApplication instance for stylesheet control."""
-        self._app_instance = app
-
     def mark_dirty(self, dirty=True):
         """Mark as dirty."""
         if self._dirty != dirty:
@@ -161,6 +157,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
                     num_rounds=projection.num_rounds,
                     tiebreak_order=projection.tiebreak_order,
                     pairing_system=projection.pairing_system,
+                    use_experimental_dutch=projection.use_experimental_dutch,
                     tournament_mode=projection.tournament_mode,
                 )
                 self.pairing_system = projection.pairing_system
@@ -188,25 +185,16 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
 
         if dialog.exec():
             new_rounds, new_tiebreaks, new_mode = dialog.get_settings()
-            if (
-                self.tournament.num_rounds != new_rounds
-                and not tournament_started
-                and getattr(self.tournament, "pairing_system", None) != "round_robin"
-            ):
-                self.tournament.num_rounds = new_rounds
-                self.update_history_log(f"Number of rounds set to {new_rounds}.")
-                self.mark_dirty()
-
-            if self.tournament.tiebreak_order != new_tiebreaks:
-                self.tournament.tiebreak_order = new_tiebreaks
-                self.update_history_log("Tiebreak order updated.")
-                self.mark_dirty()
-                self.standings_tab.update_standings_table_headers()
-                self.standings_tab.update_standings_table()
-
-            if self.tournament.config.tournament_mode != new_mode:
-                self.tournament.config.tournament_mode = new_mode
-                self.update_history_log(f"Chess federation changed to {new_mode}.")
+            try:
+                messages = self.tournament.update_settings(
+                    new_rounds, new_tiebreaks, new_mode
+                )
+            except ValueError as error:
+                QtWidgets.QMessageBox.warning(self, "Invalid settings", str(error))
+                return False
+            for message in messages:
+                self.update_history_log(message)
+            if messages:
                 self.mark_dirty()
                 self.standings_tab.update_standings_table_headers()
                 self.standings_tab.update_standings_table()
@@ -223,25 +211,28 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         return TournamentGuiState(
             current_round_index=self.current_round_index,
             last_recorded_results_data=list(self.last_recorded_results_data),
+            history_log=self.history_tab.history_entries(),
         )
 
     def _apply_gui_state(self, gui_state: TournamentGuiState) -> None:
         self.current_round_index = gui_state.current_round_index
         self.last_recorded_results_data = list(gui_state.last_recorded_results_data)
+        self.history_tab.set_history_entries(list(gui_state.history_log))
 
     def save_tournament(self, save_as=False):
         if not self.tournament:
             return False
+        filepath = self._current_filepath
         if should_request_save_path(self._current_filepath, save_as):
             filename, _ = QtWidgets.QFileDialog.getSaveFileName(
                 self, "Save Tournament", "", "JSON Files (*.json)"
             )
             if not filename:
                 return False
-            self._current_filepath = filename
+            filepath = filename
 
-        filepath = self._current_filepath
-        assert filepath is not None
+        if filepath is None:
+            return False
         try:
             # check to see if file exists, and confirm prior to overwrite
             if QtCore.QFileInfo(filepath).exists():
@@ -258,20 +249,17 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             self.persistence_service.save(
                 filepath, self.tournament, self._collect_gui_state()
             )
+            self._current_filepath = filepath
             self.mark_clean()
             self.statusBar().showMessage(build_save_status(filepath))
             self.update_history_log(build_save_history(filepath))
             return True
 
         except Exception as e:
-            message = (
-                "exception: '%s' excepted in an `except Exception`. This is bad practice."
-                % str(e)
-            )
             logging.exception("Error saving tournament:")
             prompt = build_save_error_prompt(e)
             QtWidgets.QMessageBox.critical(self, prompt.title, prompt.message)
-            raise RuntimeError(message)
+            return False
 
     def restart_application(self):
         """Restart the application cleanly."""
@@ -306,7 +294,6 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             )
         except Exception as e:
             logging.exception("Error loading tournament:")
-            self.reset_tournament_state()
             prompt = build_load_error_prompt(e)
             QtWidgets.QMessageBox.critical(self, prompt.title, prompt.message)
         finally:
@@ -525,7 +512,6 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         if tooltip:
             action.setToolTip(tooltip)
             action.setStatusTip(tooltip)
-        action.setIconVisibleInMenu(False)
         return action
 
     def _setup_menu(self):
@@ -615,7 +601,13 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
 
         # Help Menu
         help_menu = menu_bar.addMenu("&Help")
-        help_menu.addAction("About...", self.show_about_dialog)
+        self.about_action = self._create_action("&About...", self.show_about_dialog)
+        self.about_action.setIcon(
+            get_native_icon(
+                "help-about", QtWidgets.QStyle.StandardPixmap.SP_MessageBoxInformation
+            )
+        )
+        help_menu.addAction(self.about_action)
         self.update_action = self._create_action(
             "Check for &Updates...", self.check_for_updates_manual
         )
@@ -629,31 +621,81 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         Icons are loaded from the system theme for a native look and feel.
         """
         toolbar = required_child(self, QtWidgets.QToolBar, "main_toolbar")
-        toolbar.setObjectName("MainToolbar")
-        toolbar.setProperty("class", "MainToolbar")
-        # Prevent detaching / floating
+        # Keep the application toolbar fixed in its Designer-defined top area.
         toolbar.setMovable(False)
-
-        if hasattr(toolbar, "setFloatable"):
-            toolbar.setFloatable(False)
-
-        toolbar.setAllowedAreas(
-            Qt.ToolBarArea.TopToolBarArea | Qt.ToolBarArea.BottomToolBarArea
-        )
-        toolbar.setContextMenuPolicy(Qt.ContextMenuPolicy.PreventContextMenu)
-        toolbar.setIconSize(QtCore.QSize(18, 18))
-
-        QtGui.QIcon.setThemeName("Adwaita")
+        toolbar.setFloatable(False)
 
         # Set icons for file actions
-        self.new_action.setIcon(QtGui.QIcon.fromTheme("document-new"))
-        self.load_action.setIcon(QtGui.QIcon.fromTheme("document-open"))
-        self.save_action.setIcon(QtGui.QIcon.fromTheme("document-save"))
-        self.start_action.setIcon(QtGui.QIcon.fromTheme("media-playback-start"))
-        self.record_results_action.setIcon(
-            get_colored_icon("lock-arrow.svg", "#2d5a27", 18)
+        self.new_action.setIcon(
+            get_native_icon("document-new", QtWidgets.QStyle.StandardPixmap.SP_FileIcon)
         )
-        self.prepare_round_action.setIcon(QtGui.QIcon.fromTheme("go-next"))
+        self.load_action.setIcon(
+            get_native_icon(
+                "document-open", QtWidgets.QStyle.StandardPixmap.SP_DialogOpenButton
+            )
+        )
+        self.save_action.setIcon(
+            get_native_icon(
+                "document-save", QtWidgets.QStyle.StandardPixmap.SP_DialogSaveButton
+            )
+        )
+        self.start_action.setIcon(
+            get_native_icon(
+                "media-playback-start", QtWidgets.QStyle.StandardPixmap.SP_MediaPlay
+            )
+        )
+        self.record_results_action.setIcon(
+            get_native_icon(
+                "dialog-ok-apply", QtWidgets.QStyle.StandardPixmap.SP_DialogApplyButton
+            )
+        )
+        self.prepare_round_action.setIcon(
+            get_native_icon("go-next", QtWidgets.QStyle.StandardPixmap.SP_ArrowRight)
+        )
+        self.save_as_action.setIcon(
+            get_native_icon(
+                "document-save-as", QtWidgets.QStyle.StandardPixmap.SP_DialogSaveButton
+            )
+        )
+        self.export_standings_action.setIcon(
+            get_native_icon(
+                "document-export", QtWidgets.QStyle.StandardPixmap.SP_DialogSaveButton
+            )
+        )
+        self.settings_action.setIcon(
+            get_native_icon(
+                "configure", QtWidgets.QStyle.StandardPixmap.SP_FileDialogDetailedView
+            )
+        )
+        self.exit_action.setIcon(
+            get_native_icon(
+                "application-exit",
+                QtWidgets.QStyle.StandardPixmap.SP_TitleBarCloseButton,
+            )
+        )
+        self.undo_results_action.setIcon(
+            get_native_icon("edit-undo", QtWidgets.QStyle.StandardPixmap.SP_ArrowBack)
+        )
+        self.add_player_action.setIcon(
+            get_native_icon(
+                "list-add", QtWidgets.QStyle.StandardPixmap.SP_FileDialogNewFolder
+            )
+        )
+        self.import_players_action.setIcon(
+            get_native_icon(
+                "document-open", QtWidgets.QStyle.StandardPixmap.SP_DialogOpenButton
+            )
+        )
+        self.export_players_action.setIcon(
+            get_native_icon(
+                "document-save", QtWidgets.QStyle.StandardPixmap.SP_DialogSaveButton
+            )
+        )
+        self.update_action.setIcon(
+            get_native_icon(
+                "view-refresh", QtWidgets.QStyle.StandardPixmap.SP_BrowserReload
+            )
+        )
 
         # Add file-related toolbar actions
         toolbar.addActions([self.new_action, self.load_action, self.save_action])
@@ -666,8 +708,6 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self.tournament_separator = toolbar.addSeparator()
 
         self.toolbar_tournament_label = QtWidgets.QLabel("No Tournament Loaded")
-        self.toolbar_tournament_label.setProperty("class", "ToolbarTournamentLabel")
-        self.toolbar_tournament_label.setContentsMargins(8, 0, 8, 0)
         toolbar.addWidget(self.toolbar_tournament_label)
 
     def _update_ui_state(self):

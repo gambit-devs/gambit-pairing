@@ -9,7 +9,10 @@ permissions:
   contents: write
 
 jobs:
+  checks:
+    uses: ./.github/workflows/tests.yml
   build-windows:
+    needs: checks
     runs-on: windows-latest
 
     steps:
@@ -38,12 +41,12 @@ jobs:
       shell: pwsh
       run: |
         python -m pip install --upgrade pip
-        python ensure_all_dependencies.py
+        python scripts/ensure_all_dependencies.py
 
     - name: Build single-file executable
       shell: pwsh
       run: |
-        python make_executable.py --onefile --skip-deps
+        python scripts/make_executable.py --onefile --skip-deps
 
     - name: Clean for directory build
       shell: pwsh
@@ -69,9 +72,10 @@ jobs:
     - name: Build single-directory executable
       shell: pwsh
       run: |
-        python make_executable.py --onedir --skip-deps
+        python scripts/make_executable.py --onedir --skip-deps
 
     - name: Backup executables before MSI build
+      # Freeze checks cover resource loading and tournament round trips.
       shell: pwsh
       run: |
         # Create backups directory
@@ -93,7 +97,7 @@ jobs:
       shell: pwsh
       run: |
         # The make_msi.py script will clean and rebuild the onedir executable
-        python make_msi.py
+        python scripts/make_msi.py
 
     - name: Restore executables after MSI build
       shell: pwsh
@@ -167,11 +171,23 @@ jobs:
         # Create archive for single-directory executable
         $oneDirArchive = "gambit-pairing-$version-win64-directory.zip"
         Compress-Archive -Path "dist\gambit-pairing\*" -DestinationPath $oneDirArchive -Force
+        $checksum = (Get-FileHash $oneDirArchive -Algorithm SHA256).Hash.ToLower()
+        "$checksum  $oneDirArchive" | Set-Content "$oneDirArchive.sha256" -Encoding ascii
         echo "onedir_archive=$oneDirArchive" >> $env:GITHUB_ENV
 
         Write-Host "Created release assets:"
         Write-Host "- Portable EXE: $oneFileExe"
         Write-Host "- Directory ZIP: $oneDirArchive"
+
+    - name: Smoke-test frozen applications
+      shell: pwsh
+      env:
+        QT_QPA_PLATFORM: offscreen
+      run: |
+        foreach ($exe in @("dist\gambit-pairing.exe", "dist\gambit-pairing\gambit-pairing.exe")) {
+          $process = Start-Process -FilePath $exe -ArgumentList "--smoke-test" -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Smoke test failed: $exe" }
+        }
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
@@ -180,6 +196,7 @@ jobs:
         path: |
           ${{ env.onefile_exe }}
           ${{ env.onedir_archive }}
+          ${{ env.onedir_archive }}.sha256
           ${{ env.msi_path }}
         retention-days: 30
 
@@ -190,6 +207,7 @@ jobs:
         files: |
           ${{ env.onefile_exe }}
           ${{ env.onedir_archive }}
+          ${{ env.onedir_archive }}.sha256
           ${{ env.msi_path }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

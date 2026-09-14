@@ -29,6 +29,7 @@ class Player(PlayerABC):
         gender: Optional[str] = None,
         date_of_birth: Optional[date] = None,
         federation: Optional[str] = None,
+        cfc_id: Optional[int] = None,
         **_: Any,
     ) -> None:
         self._id: str = generate_id(self.__class__.__name__)
@@ -40,6 +41,7 @@ class Player(PlayerABC):
         self.gender: Optional[str] = gender
         self.dob: Optional[date] = date_of_birth
         self._federation: Optional[str] = federation
+        self.cfc_id = cfc_id
 
         self.is_active: bool = True
         self.score: float = 0.0
@@ -63,6 +65,10 @@ class Player(PlayerABC):
     def id(self) -> str:
         """Immutable player identifier."""
         return self._id
+
+    def _restore_id_from_storage(self, value: Any) -> None:
+        """Restore the identifier while deserializing persisted state."""
+        self._id = str(value)
 
     @property
     def name(self) -> str:
@@ -192,6 +198,8 @@ class Player(PlayerABC):
         result: float,
         color: Optional[Colour],
         outcome_type: str = "normal",
+        *,
+        opponent_score_before: Optional[float] = None,
     ) -> None:
         """Record one round from this player's perspective.
 
@@ -204,7 +212,8 @@ class Player(PlayerABC):
         self.outcome_types.append(outcome_type)
 
         player_score_before = self.score
-        opponent_score_before = opponent.score if opponent else 0.0
+        if opponent_score_before is None:
+            opponent_score_before = opponent.score if opponent else 0.0
         self.match_history.append(
             {
                 "opponent_id": opponent_id,
@@ -218,7 +227,7 @@ class Player(PlayerABC):
         self.color_history.append(color)
         if color == Colour.BLACK:
             self.num_black_games += 1
-        if opponent is None:
+        if opponent is None and result == 1.0:
             self.has_received_bye = True
         self._opponents_played_cache = []
 
@@ -269,7 +278,7 @@ class Player(PlayerABC):
 
         for key, value in player_data.items():
             if key == "id":
-                player._id = str(value)
+                player._restore_id_from_storage(value)
             elif hasattr(player, key) and not key.startswith("_"):
                 setattr(player, key, value)
 

@@ -5,30 +5,9 @@
   <property name="windowTitle">
    <string>Update Available</string>
   </property>
-  <property name="minimumWidth">
-   <number>500</number>
-  </property>
   <layout class="QVBoxLayout" name="main_layout">
-   <property name="spacing">
-    <number>15</number>
-   </property>
-   <property name="leftMargin">
-    <number>20</number>
-   </property>
-   <property name="topMargin">
-    <number>20</number>
-   </property>
-   <property name="rightMargin">
-    <number>20</number>
-   </property>
-   <property name="bottomMargin">
-    <number>20</number>
-   </property>
    <item>
     <widget class="QLabel" name="title_label">
-     <property name="class" stdset="0">
-      <string>UpdatePromptTitle</string>
-     </property>
      <property name="text">
       <string/>
      </property>
@@ -39,9 +18,6 @@
    </item>
    <item>
     <widget class="QLabel" name="version_info_label">
-     <property name="class" stdset="0">
-      <string>UpdatePromptVersionInfo</string>
-     </property>
      <property name="text">
       <string/>
      </property>
@@ -58,9 +34,6 @@
      <layout class="QVBoxLayout" name="notes_layout">
       <item>
        <widget class="QTextBrowser" name="release_notes_text">
-        <property name="class" stdset="0">
-         <string>ReleaseNotesText</string>
-        </property>
         <property name="openExternalLinks">
          <bool>true</bool>
         </property>

@@ -10,7 +10,7 @@ requests and BeautifulSoup parsing.
 # This program is free software.
 
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from bs4 import BeautifulSoup
 import httpx
@@ -22,11 +22,12 @@ logger = setup_logger(__name__)
 FLAG_RE = re.compile(r"/images/flags/([a-zA-Z]{2})\.svg(?:\?|$)", re.IGNORECASE)
 # URL stubs for API endpoints
 CFC_URL_STUB = "https://server.chess.ca/"
+CFC_SEARCH_URL = "https://www.chess.ca/en/ratings/p/sr/"
 FIDE_URL_STUB = "https://ratings.fide.com/"
 FIDE_PROFILE_URL = "https://ratings.fide.com/profile/"
 
 
-def get_cfc_player_info(cfc_id: str):
+def get_cfc_player_info(cfc_id: str) -> Dict[str, Any]:
     """Retrieve player information from CFC API.
 
     Gets player details including name, rating and membership status
@@ -81,22 +82,136 @@ def get_cfc_player_info(cfc_id: str):
     ValueError
         If the response is not valid JSON
     """
+    cfc_id = str(cfc_id).strip()
+    if not cfc_id:
+        raise ValueError("A CFC ID is required")
     api_path = f"/api/player/v1/{cfc_id}"
 
     try:
-        r = httpx.get(CFC_URL_STUB + api_path)
+        r = httpx.get(
+            f"{CFC_URL_STUB.rstrip('/')}{api_path}",
+            timeout=10.0,
+        )
         r.raise_for_status()
 
         api_info = r.json()
         logger.debug("CFC API response: %s", api_info)
 
-        if "name_last" not in api_info["player"]:
+        player = api_info.get("player") if isinstance(api_info, dict) else None
+        if not isinstance(player, dict) or not player.get("name_last"):
             raise ValueError(f"{api_path} did not return a player")
 
-        return api_info["player"]
+        return player
 
     except httpx.HTTPError as e:
-        raise httpx.HTTPError(f"HTTP error: {e}")
+        raise httpx.HTTPError(f"HTTP error: {e}") from e
+
+
+def search_cfc_players(search_term: str) -> List[Dict[str, Any]]:
+    """Search CFC player records by name.
+
+    The CFC player endpoint accepts a membership ID. Name searches use the
+    CFC ratings search page and return the same normalized record shape used
+    by the player endpoint adapter.
+    """
+    search_term = str(search_term).strip()
+    if not search_term:
+        raise ValueError("A CFC player name is required")
+
+    if "," in search_term:
+        last_name, first_name = (part.strip() for part in search_term.split(",", 1))
+        queries = [(first_name, last_name)]
+    else:
+        parts = search_term.split()
+        if len(parts) > 1:
+            queries = [(parts[0], " ".join(parts[1:]))]
+        else:
+            queries = [(search_term, ""), ("", search_term)]
+
+    records: Dict[str, Dict[str, Any]] = {}
+    for first_name, last_name in queries:
+        response = httpx.get(
+            CFC_SEARCH_URL,
+            params={"fn": first_name, "ln": last_name},
+            timeout=10.0,
+        )
+        response.raise_for_status()
+        for record in _parse_cfc_search_results(response.text):
+            record_id = str(record.get("cfc_id") or "")
+            if record_id:
+                records[record_id] = record
+
+    return list(records.values())
+
+
+def _parse_cfc_search_results(html: str) -> List[Dict[str, Any]]:
+    """Parse rows from the CFC ratings search table."""
+    soup = BeautifulSoup(html, "html.parser")
+    table = soup.find("table")
+    if table is None:
+        return []
+
+    header_row = table.find("tr")
+    if header_row is None:
+        return []
+    headers = [
+        _normalize_cfc_header(cell.get_text(" ", strip=True))
+        for cell in header_row.find_all(["th", "td"], recursive=False)
+    ]
+    header_indexes = {header: index for index, header in enumerate(headers) if header}
+
+    rows: List[Dict[str, Any]] = []
+    for row in table.find_all("tr")[1:]:
+        cells = row.find_all("td", recursive=False)
+        values = [cell.get_text(" ", strip=True) for cell in cells]
+        if not values or len(values) < len(headers):
+            continue
+
+        name = _cfc_cell(values, header_indexes, "name")
+        cfc_id = _first_integer(_cfc_cell(values, header_indexes, "cfc id"))
+        if not name or cfc_id is None:
+            continue
+
+        location = _cfc_cell(values, header_indexes, "city")
+        city, province = _split_cfc_location(location)
+        expiry_date = _cfc_cell(values, header_indexes, "cfc expiry")
+        rating_text = _cfc_cell(values, header_indexes, "regular rating")
+        fide_id = _first_integer(_cfc_cell(values, header_indexes, "fide id"))
+
+        record: Dict[str, Any] = {
+            "cfc_id": cfc_id,
+            "name": name,
+            "rating": _first_integer(rating_text) or 0,
+            "province": province,
+            "city": city,
+            "expiry_date": expiry_date,
+            "status": "",
+        }
+        if fide_id is not None:
+            record["fide_id"] = fide_id
+        rows.append(record)
+    return rows
+
+
+def _normalize_cfc_header(value: str) -> str:
+    return " ".join(value.lower().split())
+
+
+def _cfc_cell(values: List[str], indexes: Dict[str, int], header: str) -> str:
+    index = indexes.get(header)
+    return values[index] if index is not None and index < len(values) else ""
+
+
+def _first_integer(value: str) -> Optional[int]:
+    match = re.search(r"\d+", value)
+    return int(match.group()) if match else None
+
+
+def _split_cfc_location(value: str) -> tuple[str, str]:
+    if "," not in value:
+        return value, ""
+    city, province = value.rsplit(",", 1)
+    return city.strip(), province.strip()
 
 
 def get_uscf_player_info(uscf_id):

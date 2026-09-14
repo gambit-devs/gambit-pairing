@@ -223,3 +223,4 @@ marimo/_lsp/
 # Project-specific ignores
 bbp_pairings/
 bbpPairings-dutch-2025/
+src/gambitpairing/resources/bin/bbpPairings*

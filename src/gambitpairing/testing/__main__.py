@@ -21,9 +21,9 @@ for all testing functionality in Gambit Pairing.
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import argparse
+from pathlib import Path
 import sys
 import time
-from pathlib import Path
 from typing import Dict, List, Optional
 
 try:
@@ -495,6 +495,15 @@ def run_compare_command(args: argparse.Namespace) -> int:
 
 
 def run_validate_command(args: argparse.Namespace) -> int:
+    """Return 0 for compliance, 1 for violations, 2 for unavailable/invalid input."""
+    try:
+        return _run_validate_command(args)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        print(f"{Colors.FAIL}Validation could not run: {error}{Colors.ENDC}")
+        return 2
+
+
+def _run_validate_command(args: argparse.Namespace) -> int:
     """Run the validation command."""
     import json
 
@@ -502,12 +511,12 @@ def run_validate_command(args: argparse.Namespace) -> int:
 
     if not args.file:
         print(f"{Colors.FAIL}Error: --file required{Colors.ENDC}")
-        return 1
+        return 2
 
     file_path = Path(args.file)
     if not file_path.exists():
         print(f"{Colors.FAIL}Error: File not found: {file_path}{Colors.ENDC}")
-        return 1
+        return 2
 
     print(f"\n{Colors.BOLD}Validating tournament: {file_path}{Colors.ENDC}")
 
@@ -517,7 +526,32 @@ def run_validate_command(args: argparse.Namespace) -> int:
 
     # Validate
     validator = create_fpc_validator()
-    report = validator.validate_tournament_compliance(tournament_data)
+    selected_round = getattr(args, "round", None)
+    if selected_round is not None:
+        from gambitpairing.controllers.tournament.replay import round_snapshot
+
+        rounds = tournament_data.get("rounds", [])
+        selected = next(
+            (item for item in rounds if item["round_number"] == selected_round), None
+        )
+        if selected is None:
+            print("Requested round does not exist")
+            return 2
+        roster, active, previous, byes = round_snapshot(
+            tournament_data["players"], rounds, selected_round
+        )
+        by_id = {player.id: player for player in roster}
+        report = validator.validate_round_pairings(
+            [(by_id[w], by_id[b]) for w, b in selected["pairings"]],
+            by_id.get(selected.get("bye_player_id")),
+            selected_round,
+            tournament_data.get("config", {}).get("num_rounds", len(rounds)),
+            previous,
+            byes,
+            players=active,
+        )
+    else:
+        report = validator.validate_tournament_compliance(tournament_data)
 
     # Print results
     print(f"\n{Colors.BOLD}Validation Results:{Colors.ENDC}")
@@ -551,7 +585,7 @@ def run_validate_command(args: argparse.Namespace) -> int:
 
         print(f"\n{Colors.OKGREEN}Report exported to: {export_path}{Colors.ENDC}")
 
-    return 0
+    return 1 if report.violations else (0 if report.total_criteria else 2)
 
 
 def run_unit_command(args: argparse.Namespace) -> int:
@@ -560,13 +594,15 @@ def run_unit_command(args: argparse.Namespace) -> int:
 
     print(f"\n{Colors.BOLD}Running unit tests...{Colors.ENDC}")
 
-    pytest_args = ["pytest"]
+    pytest_args = [sys.executable, "-m", "pytest"]
 
     if args.module:
         if args.module == "dutch":
             pytest_args.append("tests/test_fide_dutch.py")
         elif args.module == "all":
             pytest_args.append("tests/")
+        elif args.module == "roundrobin":
+            pytest_args.append("tests/test_round_controller.py")
         else:
             pytest_args.append(f"tests/test_{args.module}.py")
     else:
@@ -598,7 +634,8 @@ def run_bbp_reference_command(args: argparse.Namespace) -> int:
         print("\nTo run BBP tests:")
         print("  cd bbpPairings-dutch-2025/test && make")
 
-    return 0
+    # Instructions are not a successful test execution.
+    return 2
 
 
 def run_benchmark_command(args: argparse.Namespace) -> int:
@@ -767,7 +804,7 @@ def run_standard_mode():
     args = parser.parse_args()
 
     if args.interactive:
-        return run_interactive_mode()
+        return int(run_interactive_mode() or 0)
 
     # Execute subcommand
     if hasattr(args, "func"):
@@ -1049,7 +1086,10 @@ Examples:
     unit_parser.set_defaults(func=run_unit_command)
 
     # BBP reference subcommand
-    bbp_parser = subparsers.add_parser("bbp-reference", help="Run BBP reference tests")
+    bbp_parser = subparsers.add_parser(
+        "bbp-reference",
+        help="Show BBP reference-test instructions (does not run tests)",
+    )
     bbp_parser.add_argument("--path")
     bbp_parser.add_argument("--test-case")
     bbp_parser.add_argument("--all", action="store_true")
@@ -1070,14 +1110,14 @@ def main() -> int:
     """Main entry point for gambit-test CLI."""
     # If no arguments, start interactive mode
     if len(sys.argv) == 1:
-        return run_interactive_mode()
+        return int(run_interactive_mode() or 0)
 
     # Check for interactive flag
     if "--interactive" in sys.argv or "-i" in sys.argv:
-        return run_interactive_mode()
+        return int(run_interactive_mode() or 0)
 
     # Otherwise run standard mode
-    return run_standard_mode()
+    return int(run_standard_mode() or 0)
 
 
 if __name__ == "__main__":

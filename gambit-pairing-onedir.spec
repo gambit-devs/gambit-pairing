@@ -11,6 +11,7 @@ if '__file__' in globals():
 else:
     _spec_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
 sys.path.insert(0, _spec_dir)
+sys.path.insert(0, os.path.join(_spec_dir, "scripts"))
 
 from pyinstaller_common import (
     PATHEX,

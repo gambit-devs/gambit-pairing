@@ -21,6 +21,7 @@ from PyQt6 import QtGui, QtWidgets
 from PyQt6.QtCore import QDateTime, Qt
 
 from gambitpairing.constants import CSV_FILTER
+from gambitpairing.gui.ui_loader import load_ui_into, required_child
 from gambitpairing.gui.views.standings.standings_presentation import (
     build_export_rows,
     build_print_standings_html,
@@ -28,9 +29,8 @@ from gambitpairing.gui.views.standings.standings_presentation import (
     build_standings_table_html,
     project_standings_rows,
 )
-from gambitpairing.gui.ui_loader import load_ui_into, required_child
-from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 from gambitpairing.gui.widgets.header import TabHeader
+from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 
 
 class StandingsView(QtWidgets.QWidget):
@@ -39,9 +39,7 @@ class StandingsView(QtWidgets.QWidget):
         self.tournament = None
         self.parent_window = parent  # Store reference to main window
         load_ui_into(self, "standings_view.ui")
-        self.main_layout = required_child(
-            self, QtWidgets.QVBoxLayout, "main_layout"
-        )
+        self.main_layout = required_child(self, QtWidgets.QVBoxLayout, "main_layout")
         header_layout = required_child(self, QtWidgets.QVBoxLayout, "header_layout")
         placeholder_layout = required_child(
             self, QtWidgets.QVBoxLayout, "placeholder_layout"
@@ -50,22 +48,17 @@ class StandingsView(QtWidgets.QWidget):
         # ===== STANDINGS HEADER =====
         self.header = TabHeader("Standings")
         self.btn_print_standings = self.header.add_action_button(
-            "print.svg", "Print Standings", self.open_print_dialog
+            "document-print", "Print Standings", self.open_print_dialog
         )
         header_layout.addWidget(self.header)
 
         # ===== STANDINGS TABLE =====
         self.standings_group = required_child(
-            self, QtWidgets.QGroupBox, "standings_group"
+            self, QtWidgets.QWidget, "standings_group"
         )
 
         # Add round info label
         self.lbl_round_info = required_child(self, QtWidgets.QLabel, "lbl_round_info")
-        font = self.lbl_round_info.font()
-        font.setPointSize(font.pointSize() + 1)
-        font.setBold(True)
-        self.lbl_round_info.setFont(font)
-
         self.table_standings = required_child(
             self, QtWidgets.QTableWidget, "table_standings"
         )
@@ -138,37 +131,6 @@ class StandingsView(QtWidgets.QWidget):
                 if header_item:  # Ensure the QTableWidgetItem for header exists
                     header_item.setToolTip(tip)
 
-    def _set_player_column_minimum_width(self):
-        """Set minimum width for player column based on longest player name."""
-        if not self.tournament or self.table_standings.rowCount() == 0:
-            return
-
-        # Get font metrics for accurate width calculation
-        font_metrics = self.table_standings.fontMetrics()
-
-        # Find the longest player name text
-        max_width = 0
-        header_text = "Player"  # Include header text in calculation
-        max_width = max(max_width, font_metrics.horizontalAdvance(header_text))
-
-        for row in range(self.table_standings.rowCount()):
-            item = self.table_standings.item(row, 1)  # Player column is index 1
-            if item:
-                text_width = font_metrics.horizontalAdvance(item.text())
-                max_width = max(max_width, text_width)
-
-        # Add padding for cell margins and some extra space
-        padding = 40  # Account for cell padding and some breathing room
-        minimum_width = max_width + padding
-
-        # Ensure a reasonable minimum (at least 150 pixels)
-        minimum_width = max(minimum_width, 150)
-
-        # Set the minimum width for the player column
-        header = self.table_standings.horizontalHeader()
-        header.setMinimumSectionSize(minimum_width)
-        self.table_standings.setColumnWidth(1, minimum_width)
-
     def update_standings_table(self) -> None:
         self._update_visibility()
 
@@ -196,9 +158,7 @@ class StandingsView(QtWidgets.QWidget):
             # )
             # standings = all_players_sorted # Use this if showing all players.
 
-            rows = project_standings_rows(
-                standings, self.tournament.tiebreak_order
-            )
+            rows = project_standings_rows(standings, self.tournament.tiebreak_order)
             self.table_standings.setRowCount(len(rows))
 
             for rank, row_projection in enumerate(rows):
@@ -210,15 +170,6 @@ class StandingsView(QtWidgets.QWidget):
                 item_rank.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 item_score.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
-                row_color = self.table_standings.palette().color(
-                    QtGui.QPalette.ColorRole.Text
-                )
-                # if not player.is_active: row_color = QtGui.QColor("gray") # If showing inactive
-
-                item_rank.setForeground(row_color)
-                item_player.setForeground(row_color)
-                item_score.setForeground(row_color)
-
                 self.table_standings.setItem(row, 0, item_rank)
                 self.table_standings.setItem(row, 1, item_player)
                 self.table_standings.setItem(row, 2, item_score)
@@ -227,14 +178,10 @@ class StandingsView(QtWidgets.QWidget):
                 for i, value in enumerate(row_projection.tiebreaks):
                     item_tb = QtWidgets.QTableWidgetItem(value)
                     item_tb.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                    item_tb.setForeground(row_color)
                     self.table_standings.setItem(row, col_offset + i, item_tb)
 
             self.table_standings.resizeColumnsToContents()
             self.table_standings.resizeRowsToContents()
-
-            # Set minimum width for player column based on longest name
-            self._set_player_column_minimum_width()
 
         except Exception as e:
             logging.exception("Error updating standings table:")
@@ -267,17 +214,13 @@ class StandingsView(QtWidgets.QWidget):
                 delimiter = "," if is_csv else "\t"
                 writer = csv.writer(f, delimiter=delimiter) if is_csv else None
 
-                header = build_standings_headers(
-                    self.tournament.tiebreak_order
-                ).headers
+                header = build_standings_headers(self.tournament.tiebreak_order).headers
                 if writer:
                     writer.writerow(header)
                 else:
                     f.write(delimiter.join(header) + "\n")
 
-                rows = project_standings_rows(
-                    standings, self.tournament.tiebreak_order
-                )
+                rows = project_standings_rows(standings, self.tournament.tiebreak_order)
                 for data_row in build_export_rows(rows):
                     if writer:
                         writer.writerow(data_row)
@@ -339,9 +282,7 @@ class StandingsView(QtWidgets.QWidget):
                 round_subtitle=round_subtitle,
                 rows=rows,
                 tiebreak_order=self.tournament.tiebreak_order,
-                printed_at=QDateTime.currentDateTime().toString(
-                    "yyyy-MM-dd hh:mm"
-                ),
+                printed_at=QDateTime.currentDateTime().toString("yyyy-MM-dd hh:mm"),
                 include_tournament_name=include_tournament_name,
             )
             doc.setHtml(html)

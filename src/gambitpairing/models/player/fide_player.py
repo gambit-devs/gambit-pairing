@@ -115,7 +115,9 @@ class FidePlayer(Player):
             fide_blitz=player_data.get("fide_blitz"),
         )
         for key, value in player_data.items():
-            if hasattr(player, key) and not key.startswith("_"):
+            if key == "id":
+                player._restore_id_from_storage(value)
+            elif hasattr(player, key) and not key.startswith("_"):
                 setattr(player, key, value)
         # Ensure essential lists exist if loading older format without them
         for list_attr in [
@@ -139,6 +141,9 @@ class FidePlayer(Player):
             )
         if not hasattr(player, "tiebreakers") or player.tiebreakers is None:
             player.tiebreakers = {}
+        player.color_history = [
+            cls._parse_colour(color) for color in player.color_history
+        ]
         player._opponents_played_cache = []
 
         return player

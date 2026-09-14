@@ -21,8 +21,6 @@
 from pathlib import Path
 import sys
 
-from gambitpairing.resources.style_manager import get_stylesheet
-
 # Use importlib.resources for Python 3.9+ or importlib_resources backport
 if sys.version_info >= (3, 9):
     from importlib import resources
@@ -138,38 +136,6 @@ def read_resource_binary(resource_name: str, subpackage: str = "") -> bytes:
         ) from e
 
 
-def get_style_sheet(theme: str | None = None) -> str:
-    """Assemble and return the complete application stylesheet.
-
-    Delegates to ``style_manager.get_stylesheet`` which loads the modular
-    QSS partial files from ``gambitpairing.resources.styles`` and substitutes
-    colour/typography tokens from the requested (or currently active) theme.
-
-    Parameters
-    ----------
-    theme : str or None, optional
-        Theme name to apply, e.g. ``"light"`` or ``"dark"``.
-        When ``None`` (default) the active theme controlled by
-        ``style_manager.set_active_theme()`` is used.
-
-    Returns
-    -------
-    str
-        Fully resolved QSS string ready for ``QApplication.setStyleSheet()``.
-
-    Raises
-    ------
-    ValueError
-        If *theme* is not a registered theme name.
-
-    See Also
-    --------
-    style_manager.set_active_theme : Change the application-wide active theme.
-    style_manager.list_themes : Enumerate available theme names.
-    """
-    return get_stylesheet(theme_name=theme)
-
-
 def get_icon_path(icon_type: str = "png"):
     """
     Get path to the application icon.
@@ -177,7 +143,7 @@ def get_icon_path(icon_type: str = "png"):
     Parameters
     ----------
     icon_type : str, optional
-        Icon file type ('png', 'ico', 'webp', 'svg'), by default "png"
+        Icon file type ('png', 'ico', 'webp'), by default "png"
 
     Returns
     -------
@@ -195,7 +161,7 @@ def get_icon_binary(icon_type: str = "png") -> bytes:
     Parameters
     ----------
     icon_type : str, optional
-        Icon file type ('png', 'ico', 'webp', 'svg'), by default "png"
+        Icon file type ('png', 'ico', 'webp'), by default "png"
 
     Returns
     -------
@@ -204,23 +170,6 @@ def get_icon_binary(icon_type: str = "png") -> bytes:
     """
     filename = f"icon.{icon_type}"
     return read_resource_binary(filename, "icons")
-
-
-def get_ui_icon_binary(icon_name: str) -> bytes:
-    """
-    Get a UI icon as binary data.
-
-    Parameters
-    ----------
-    icon_name : str
-        Name of the icon file (e.g., 'arrow-up.svg', 'checkmark-white.svg')
-
-    Returns
-    -------
-    bytes
-        Binary content of the icon file
-    """
-    return read_resource_binary(icon_name, "icons")
 
 
 #  LocalWords:  importlib

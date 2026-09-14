@@ -5,13 +5,7 @@
   <property name="windowTitle">
    <string>Tournament Settings</string>
   </property>
-  <property name="minimumWidth">
-   <number>350</number>
-  </property>
   <layout class="QVBoxLayout" name="main_layout">
-   <property name="spacing">
-    <number>15</number>
-   </property>
    <item>
     <widget class="QGroupBox" name="rounds_group">
      <property name="title">
@@ -76,14 +70,17 @@
       <item>
        <layout class="QVBoxLayout" name="move_button_layout">
         <item>
-         <spacer name="move_top_spacer">
-          <property name="orientation">
-           <enum>Qt::Vertical</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>20</width>
-            <height>40</height>
+        <spacer name="move_top_spacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeType">
+          <enum>QSizePolicy::Expanding</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>0</width>
+           <height>0</height>
            </size>
           </property>
          </spacer>
@@ -103,14 +100,17 @@
          </widget>
         </item>
         <item>
-         <spacer name="move_bottom_spacer">
-          <property name="orientation">
-           <enum>Qt::Vertical</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>20</width>
-            <height>40</height>
+        <spacer name="move_bottom_spacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeType">
+          <enum>QSizePolicy::Expanding</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>0</width>
+           <height>0</height>
            </size>
           </property>
          </spacer>
@@ -122,9 +122,6 @@
    </item>
    <item>
     <widget class="QDialogButtonBox" name="buttons">
-     <property name="minimumHeight">
-      <number>40</number>
-     </property>
      <property name="standardButtons">
       <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
      </property>

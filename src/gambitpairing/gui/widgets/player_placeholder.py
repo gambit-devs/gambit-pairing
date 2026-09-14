@@ -21,6 +21,11 @@ from __future__ import annotations
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import pyqtSignal
 
+from gambitpairing.gui.gui_utils import (
+    get_native_icon,
+    set_native_heading,
+    set_native_icon,
+)
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
 
 
@@ -36,7 +41,6 @@ class PlayerPlaceholder(QtWidgets.QWidget):
 
     def _setup_ui(self) -> None:
         """Set up the placeholder UI."""
-        self.setProperty("class", "PlayerPlaceholder")
         load_ui_into(self, "player_placeholder.ui")
 
         self.icon_label = required_child(self, QtWidgets.QLabel, "icon_label")
@@ -45,11 +49,25 @@ class PlayerPlaceholder(QtWidgets.QWidget):
         self.import_btn = required_child(self, QtWidgets.QPushButton, "import_btn")
         self.add_btn = required_child(self, QtWidgets.QPushButton, "add_btn")
 
-        self.icon_label.setText("👥")
+        set_native_icon(
+            self.icon_label,
+            "system-users",
+            QtWidgets.QStyle.StandardPixmap.SP_FileDialogListView,
+        )
         self.title_label.setText("No Players Added")
+        set_native_heading(self.title_label)
         self.desc_label.setText("Add players to your tournament to get started.")
         self.import_btn.setText("Import Players")
         self.add_btn.setText("Add Player")
-
+        self.import_btn.setIcon(
+            get_native_icon(
+                "document-open", QtWidgets.QStyle.StandardPixmap.SP_DialogOpenButton
+            )
+        )
+        self.add_btn.setIcon(
+            get_native_icon(
+                "list-add", QtWidgets.QStyle.StandardPixmap.SP_FileDialogNewFolder
+            )
+        )
         self.import_btn.clicked.connect(self.import_players_requested.emit)
         self.add_btn.clicked.connect(self.add_player_requested.emit)

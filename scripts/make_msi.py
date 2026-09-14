@@ -14,15 +14,15 @@ Requirements:
 """
 
 import os
+from pathlib import Path
 import shutil
 import subprocess
 import sys
 import tempfile
+from typing import Optional, Tuple
 import urllib.request
 import uuid
 import zipfile
-from pathlib import Path
-from typing import Optional, Tuple
 
 
 def run_command(cmd, description, check=True, cwd=None):
@@ -57,9 +57,14 @@ def run_command(cmd, description, check=True, cwd=None):
 
 
 def get_version():
-    """Get the version from __init__.py"""
+    """Get the version from _version.py"""
     try:
-        init_file = Path(__file__).parent / "src" / "gambitpairing" / "__init__.py"
+        init_file = (
+            Path(__file__).resolve().parent.parent
+            / "src"
+            / "gambitpairing"
+            / "_version.py"
+        )
         with open(init_file, "r", encoding="utf-8") as f:
             content = f.read()
 
@@ -72,7 +77,7 @@ def get_version():
 
         return "1.0.0"
     except Exception as e:
-        print(f"Warning: Could not read version from __init__.py: {e}")
+        print(f"Warning: Could not read version from _version.py: {e}")
         return "1.0.0"
 
 
@@ -117,11 +122,11 @@ def build_executable():
     """Build the executable using PyInstaller"""
     print("\n=== Building Executable with PyInstaller ===")
 
-    script_dir = Path(__file__).parent.absolute()
+    script_dir = Path(__file__).resolve().parent.parent
 
     # Run dependency script first
     print("Ensuring dependencies...")
-    dependency_script = script_dir / "ensure_all_dependencies.py"
+    dependency_script = script_dir / "scripts" / "ensure_all_dependencies.py"
     if dependency_script.exists():
         run_command([sys.executable, str(dependency_script)], "Installing dependencies")
     else:
@@ -145,7 +150,9 @@ def build_executable():
         sys.exit(1)
 
     run_command(
-        ["pyinstaller", "--clean", str(spec_file)], "Running PyInstaller (onedir)"
+        [sys.executable, "-m", "PyInstaller", "--clean", str(spec_file)],
+        "Running PyInstaller (onedir)",
+        cwd=script_dir,
     )
 
     # Verify executable was created
@@ -257,7 +264,13 @@ def download_wix_tools():
 
 def find_icon_file():
     """Locate a suitable icon file for the MSI"""
-    roots = [Path(__file__).parent / "src" / "gambitpairing" / "resources" / "icons"]
+    roots = [
+        Path(__file__).resolve().parent.parent
+        / "src"
+        / "gambitpairing"
+        / "resources"
+        / "icons"
+    ]
     for root in roots:
         if not root.exists():
             continue
@@ -290,7 +303,7 @@ def generate_branding_bitmaps(
         print("Warning: PIL not available, skipping branding bitmap generation")
         return (None, None)
 
-    root_dir = Path(__file__).parent
+    root_dir = Path(__file__).resolve().parent.parent
     icons_dir = root_dir / "src" / "gambitpairing" / "resources" / "icons"
     about_img = icons_dir / "about.webp"
     main_icon_path = find_icon_file()
@@ -789,12 +802,12 @@ def main():
     print("Gambit Pairing - Simplified MSI Creation Script")
     print("=" * 50)
 
-    # Get version from __init__.py
+    # Get version from _version.py
     version = get_version()
     print(f"Version: {version}")
 
     # Set output directory absolute path
-    script_dir = Path(__file__).parent.absolute()
+    script_dir = Path(__file__).resolve().parent.parent
     output_dir = script_dir / "build" / "gambit-pairing-msi"
     output_dir.mkdir(parents=True, exist_ok=True)
 

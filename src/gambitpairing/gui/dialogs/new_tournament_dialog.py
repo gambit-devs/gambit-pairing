@@ -29,8 +29,9 @@ from gambitpairing.constants import (
     MODE_USCF,
     TIEBREAK_NAMES,
 )
+from gambitpairing.gui.gui_utils import get_native_icon
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
-from gambitpairing.utils import resize_list_to_show_all_items
+from gambitpairing.utils.utility_functions import resize_list_to_show_all_items
 
 
 class NewTournamentDialog(QtWidgets.QDialog):
@@ -53,9 +54,12 @@ class NewTournamentDialog(QtWidgets.QDialog):
             self, QtWidgets.QListWidget, "tiebreak_list"
         )
         self.pairing_combo = required_child(self, QtWidgets.QComboBox, "pairing_combo")
-        self.pairing_combo.addItem("Dutch System (FIDE/USCF-style)", "dutch_swiss")
+        self.pairing_combo.addItem("Dutch System", "dutch_swiss")
         self.pairing_combo.addItem("Round Robin (All-Play-All)", "round_robin")
         self.pairing_combo.addItem("Manual Pairing", "manual")
+        self.experimental_dutch_check = required_child(
+            self, QtWidgets.QCheckBox, "experimental_dutch_check"
+        )
 
         self.btn_tiebreak_up = required_child(
             self, QtWidgets.QPushButton, "btn_tiebreak_up"
@@ -63,8 +67,21 @@ class NewTournamentDialog(QtWidgets.QDialog):
         self.btn_tiebreak_down = required_child(
             self, QtWidgets.QPushButton, "btn_tiebreak_down"
         )
+        self.btn_tiebreak_up.setIcon(
+            get_native_icon("go-up", QtWidgets.QStyle.StandardPixmap.SP_ArrowUp)
+        )
+        self.btn_tiebreak_down.setIcon(
+            get_native_icon("go-down", QtWidgets.QStyle.StandardPixmap.SP_ArrowDown)
+        )
+        self.btn_tiebreak_up.setToolTip("Move selected tiebreak up")
+        self.btn_tiebreak_down.setToolTip("Move selected tiebreak down")
         self.btn_pairing_info = required_child(
             self, QtWidgets.QPushButton, "btn_pairing_info"
+        )
+        self.btn_pairing_info.setIcon(
+            get_native_icon(
+                "help-about", QtWidgets.QStyle.StandardPixmap.SP_MessageBoxInformation
+            )
         )
         self.buttons = required_child(self, QtWidgets.QDialogButtonBox, "buttons")
 
@@ -115,14 +132,28 @@ class NewTournamentDialog(QtWidgets.QDialog):
 
     def show_pairing_info(self) -> None:
         """show pairing system information"""
-        info = {
-            "dutch_swiss": {
-                "title": "Dutch System",
-                "desc": "The most widely used Swiss system: players are grouped by score, then paired top-half vs bottom-half within each group, avoiding repeats and balancing colors. Used in FIDE and USCF events. <b>Note:</b> This system is still being developed in Gambit Pairing.",
+        use_experimental_dutch = (
+            self.pairing_combo.currentData() == "dutch_swiss"
+            and self.experimental_dutch_check.isChecked()
+        )
+        if use_experimental_dutch:
+            dutch_info = {
+                "title": "Dutch System (Gambit - Experimental)",
+                "desc": "Uses Gambit Pairing's native Dutch Swiss implementation. It is available for testing and comparison while it continues to improve.",
                 "fide": True,
                 "uscf": True,
-                "details": "<ul><li><b>Pairing Logic:</b> Players are sorted by score, then paired top vs bottom within each score group, avoiding previous opponents and balancing colors.</li><li><b>Best For:</b> Most open tournaments, FIDE/USCF events.</li><li><b>Notes:</b> This is the standard Swiss system for rated events. <b>Note:</b> This system is still being developed in Gambit Pairing.</li></ul>",
-            },
+                "details": "<ul><li><b>Pairing Logic:</b> Uses Gambit's native Dutch Swiss implementation for score groups, rematch avoidance, colour allocation, and bye selection.</li><li><b>Status:</b> Experimental; the standard Dutch System uses BBP Pairings by default.</li><li><b>Best For:</b> Testing, comparison, and development.</li></ul>",
+            }
+        else:
+            dutch_info = {
+                "title": "Dutch System (BBP/FIDE)",
+                "desc": "The standard FIDE Dutch Swiss system, powered by the upstream BBP Pairings engine with Gambit's native implementation as a fallback.",
+                "fide": True,
+                "uscf": True,
+                "details": "<ul><li><b>Pairing Logic:</b> Uses the upstream BBP Pairings Dutch engine for FIDE-compliant score groups, rematch avoidance, colour allocation, and bye selection.</li><li><b>Fallback:</b> Gambit's experimental Dutch engine is used automatically if BBP is unavailable or cannot represent a tournament state.</li><li><b>Best For:</b> Most open tournaments and FIDE events.</li></ul>",
+            }
+        info = {
+            "dutch_swiss": dutch_info,
             "round_robin": {
                 "title": "Round Robin",
                 "desc": "Every player plays every other player. Used for small events and FIDE title norm tournaments.",
@@ -144,6 +175,7 @@ class NewTournamentDialog(QtWidgets.QDialog):
         title_label = required_child(dialog, QtWidgets.QLabel, "title_label")
         desc_label = required_child(dialog, QtWidgets.QLabel, "desc_label")
         html_details = required_child(dialog, QtWidgets.QTextBrowser, "html_details")
+        button_box = required_child(dialog, QtWidgets.QDialogButtonBox, "button_box")
 
         keys = list(info.keys())
         for k in keys:
@@ -159,6 +191,8 @@ class NewTournamentDialog(QtWidgets.QDialog):
             html_details.setHtml(d.get("details", ""))
 
         toc.currentRowChanged.connect(update_details)
+        button_box.accepted.connect(dialog.accept)
+        button_box.rejected.connect(dialog.reject)
         # Select the current pairing system by default
         current_key = self.pairing_combo.currentData()
         default_idx = keys.index(current_key) if current_key in keys else 0
@@ -180,7 +214,7 @@ class NewTournamentDialog(QtWidgets.QDialog):
         self.populate_tiebreak_list()
         resize_list_to_show_all_items(self.tiebreak_list)
 
-    def get_data(self) -> Optional[Tuple[str, int, List[str], str]]:
+    def get_data(self) -> Optional[Tuple[str, int, List[str], str, bool]]:
         name = self.name_edit.text().strip()
         if not name:
             QtWidgets.QMessageBox.warning(
@@ -193,10 +227,15 @@ class NewTournamentDialog(QtWidgets.QDialog):
             self.rounds_spin.value(),
             self.current_tiebreak_order,
             pairing_system,
+            pairing_system == "dutch_swiss"
+            and self.experimental_dutch_check.isChecked(),
         )
 
     def on_pairing_system_changed(self):
         key = self.pairing_combo.currentData()
+        is_dutch = key == "dutch_swiss"
+        self.experimental_dutch_check.setVisible(is_dutch)
+        self.experimental_dutch_check.setEnabled(is_dutch)
 
         if key == "round_robin":
             # For round robin, rounds = players - 1, hide the input

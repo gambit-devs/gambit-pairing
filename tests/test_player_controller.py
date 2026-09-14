@@ -1,6 +1,6 @@
 from gambitpairing.controllers.player import get_player_import_availability
+from gambitpairing.controllers.tournament.session import TournamentSession as Tournament
 from gambitpairing.models.player import Player
-from gambitpairing.models.tournament import Tournament
 
 
 def test_api_player_import_requires_a_tournament():

@@ -6,60 +6,15 @@
    <string>Crosstable</string>
   </property>
   <layout class="QVBoxLayout" name="main_layout">
-   <property name="spacing">
-    <number>12</number>
-   </property>
-   <property name="leftMargin">
-    <number>12</number>
-   </property>
-   <property name="topMargin">
-    <number>12</number>
-   </property>
-   <property name="rightMargin">
-    <number>12</number>
-   </property>
-   <property name="bottomMargin">
-    <number>12</number>
-   </property>
    <item>
     <widget class="QWidget" name="header_container">
      <layout class="QVBoxLayout" name="header_layout">
-      <property name="leftMargin">
-       <number>0</number>
-      </property>
-      <property name="topMargin">
-       <number>0</number>
-      </property>
-      <property name="rightMargin">
-       <number>0</number>
-      </property>
-      <property name="bottomMargin">
-       <number>0</number>
-      </property>
      </layout>
     </widget>
    </item>
    <item>
-    <widget class="QGroupBox" name="crosstable_group">
-     <property name="class" stdset="0">
-      <string>FlatContentGroup</string>
-     </property>
-     <property name="title">
-      <string/>
-     </property>
+    <widget class="QWidget" name="crosstable_group">
      <layout class="QVBoxLayout" name="crosstable_layout">
-      <property name="leftMargin">
-       <number>0</number>
-      </property>
-      <property name="topMargin">
-       <number>0</number>
-      </property>
-      <property name="rightMargin">
-       <number>0</number>
-      </property>
-      <property name="bottomMargin">
-       <number>0</number>
-      </property>
       <item>
        <widget class="QTableWidget" name="table_crosstable">
         <property name="toolTip">
@@ -78,20 +33,7 @@
    </item>
    <item>
     <widget class="QWidget" name="placeholder_container">
-     <layout class="QVBoxLayout" name="placeholder_layout">
-      <property name="leftMargin">
-       <number>0</number>
-      </property>
-      <property name="topMargin">
-       <number>0</number>
-      </property>
-      <property name="rightMargin">
-       <number>0</number>
-      </property>
-      <property name="bottomMargin">
-       <number>0</number>
-      </property>
-     </layout>
+     <layout class="QVBoxLayout" name="placeholder_layout"/>
     </widget>
    </item>
   </layout>

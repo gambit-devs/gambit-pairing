@@ -20,13 +20,22 @@ enabling data exchange and validation between Gambit-Pairing and BBP reference i
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import json
-import re
 from dataclasses import dataclass, field
 from enum import Enum
+import json
+import re
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
-from gambitpairing.constants import BYE_SCORE, DRAW_SCORE, LOSS_SCORE, WIN_SCORE
+from gambitpairing.constants import (
+    BYE_SCORE,
+    DRAW_SCORE,
+    LOSS_SCORE,
+    OUTCOME_BYE,
+    OUTCOME_DOUBLE_FORFEIT,
+    OUTCOME_FORFEIT_LOSS,
+    OUTCOME_FORFEIT_WIN,
+    WIN_SCORE,
+)
 from gambitpairing.models.enums import Colour
 from gambitpairing.models.player import Player
 from gambitpairing.models.tournament import TournamentConfig
@@ -336,8 +345,8 @@ class TRFExporter:
         lines.extend(
             [
                 f"012 {config.name}",
-                f"013 {','.join(config.tiebreak_order)}",
-                "014 20250101"  # Date (placeholder)
+                f"013 {','.join(config.tiebreak_order or [])}",
+                "014 20250101",  # Date (placeholder)
                 "015",  # City (placeholder)
                 "016",  # Federation (placeholder)
                 "017",  # Chief Arbiter (placeholder)
@@ -501,6 +510,7 @@ def import_bbp_trf(file_path: str) -> Tuple[List[Player], Optional[TournamentCon
             name=importer.current_tournament_name or "Imported Tournament",
             num_rounds=0,  # Would need to infer from data
             pairing_system="dutch_swiss",
+            use_experimental_dutch=False,
             tiebreak_order=(
                 bbp_config.fide_title_number.split(",")
                 if bbp_config.fide_title_number
@@ -557,31 +567,52 @@ def build_bbp_pairing_trf(
     total_rounds: int,
     current_round: int,
     initial_color: str = "white1",
+    inactive_players: Optional[Iterable[Player]] = None,
 ) -> str:
-    """Build a BBP-compatible TRF string for pairing the next round."""
+    """Build a TRF(bx) request for BBP's next-round pairing operation.
+
+    ``players`` is the complete tournament roster. Players in
+    ``inactive_players`` remain in the file so their historical results can
+    still contribute to tiebreak calculations, but receive a future-round
+    bye record and cannot be paired in the requested round.
+    """
     if current_round < 1:
         raise ValueError("current_round must be >= 1")
-    rounds_to_include = max(0, current_round - 1)
+    if total_rounds < current_round:
+        raise ValueError("total_rounds must be >= current_round")
+    if current_round > 999 or total_rounds > 999:
+        raise ValueError("BBP supports at most 999 rounds in a TRF request")
     if initial_color not in {"white1", "black1"}:
         raise ValueError("initial_color must be 'white1' or 'black1'")
 
-    id_to_number = {
-        player.id: int(player.pairing_number or idx)
-        for idx, player in enumerate(players, 1)
-    }
-    scores = {
-        player.id: _compute_score(player, rounds_to_include) for player in players
-    }
-    ranks = _compute_ranks(players, scores)
+    roster = list(players)
+    if not roster:
+        raise ValueError("At least one player is required")
+    id_to_number = ensure_bbp_pairing_numbers(roster)
+    inactive_ids = {player.id for player in (inactive_players or ())}
+    unknown_inactive_ids = inactive_ids - set(id_to_number)
+    if unknown_inactive_ids:
+        raise ValueError(
+            "Inactive players must be included in the BBP roster: "
+            + ", ".join(sorted(unknown_inactive_ids))
+        )
+
+    rounds_to_include = current_round - 1
+    scores = {player.id: _compute_score(player, rounds_to_include) for player in roster}
+    ranks = _compute_ranks(roster, scores)
 
     lines = [f"XXC {initial_color}"]
-    if total_rounds:
-        lines.append(f"XXR {total_rounds}")
+    lines.append(f"XXR {total_rounds}")
 
-    for idx, player in enumerate(
-        sorted(players, key=lambda p: p.pairing_number or 0), 1
-    ):
-        player_number = int(player.pairing_number or idx)
+    if inactive_ids:
+        inactive_numbers = sorted(id_to_number[player_id] for player_id in inactive_ids)
+        lines.append(
+            f"240   {current_round:03d}"
+            + "".join(f" {player_number:04d}" for player_number in inactive_numbers)
+        )
+
+    for player in sorted(roster, key=lambda item: id_to_number[item.id]):
+        player_number = id_to_number[player.id]
         rating = min(max(player.rating or 0, 0), 9999)
         score = scores.get(player.id, 0.0)
         rank = int(ranks.get(player.id, player_number))
@@ -591,37 +622,93 @@ def build_bbp_pairing_trf(
     return "\n".join(lines) + "\n"
 
 
+def ensure_bbp_pairing_numbers(players: Iterable[Player]) -> Dict[str, int]:
+    """Ensure a roster has unique, TRF-compatible pairing numbers.
+
+    Valid existing numbers are preserved. Missing, duplicated, or out-of-range
+    values receive the next available number in roster order and are written
+    back to the player objects, matching the native engine's behavior.
+    """
+    assigned: Dict[str, int] = {}
+    used: set[int] = set()
+    next_candidate = 1
+
+    for player in players:
+        if player.id in assigned:
+            raise ValueError(f"BBP roster contains duplicate player ID {player.id!r}")
+        candidate = player.pairing_number
+        if (
+            not isinstance(candidate, int)
+            or isinstance(candidate, bool)
+            or not 1 <= candidate <= 9999
+            or candidate in used
+        ):
+            while next_candidate in used:
+                next_candidate += 1
+            if next_candidate > 9999:
+                raise ValueError("BBP supports at most 9999 players")
+            candidate = next_candidate
+
+        used.add(candidate)
+        assigned[player.id] = candidate
+        player.pairing_number = candidate
+        if candidate == next_candidate:
+            next_candidate += 1
+
+    return assigned
+
+
 def parse_bbp_pairing_output(
     output_text: str, players: Iterable[Player]
 ) -> Tuple[List[Tuple[Player, Player]], Optional[Player]]:
-    """Parse BBP pairings output into Gambit players."""
+    """Parse BBP's count-and-pairs output into Gambit players."""
     player_map = {player.pairing_number: player for player in players}
     lines = [line.strip() for line in output_text.splitlines() if line.strip()]
     if not lines:
         raise ValueError("BBP output was empty")
 
+    try:
+        expected_count = int(lines[0])
+    except ValueError as error:
+        raise ValueError("BBP output did not start with a pairing count") from error
+    if expected_count < 0:
+        raise ValueError("BBP output contained a negative pairing count")
+    if len(lines) - 1 != expected_count:
+        raise ValueError(
+            f"BBP reported {expected_count} pairings but returned {len(lines) - 1}"
+        )
+
     pairings: List[Tuple[Player, Player]] = []
     bye_player = None
+    assigned_ids: set[str] = set()
     for line in lines[1:]:
         parts = line.split()
-        if len(parts) < 2:
-            continue
+        if len(parts) != 2:
+            raise ValueError(f"Invalid BBP pairing line: {line!r}")
         try:
             white_num = int(parts[0])
             black_num = int(parts[1])
-        except ValueError:
-            continue
+        except ValueError as error:
+            raise ValueError(f"Invalid BBP pairing line: {line!r}") from error
 
         white_player = player_map.get(white_num)
         if not white_player:
-            continue
-        if black_num == 0 or black_num == white_num:
+            raise ValueError(f"BBP returned unknown player number {white_num}")
+        if black_num == 0:
+            if bye_player is not None or white_player.id in assigned_ids:
+                raise ValueError("BBP returned more than one bye or a duplicate player")
             bye_player = white_player
+            assigned_ids.add(white_player.id)
             continue
         black_player = player_map.get(black_num)
         if not black_player:
-            continue
+            raise ValueError(f"BBP returned unknown player number {black_num}")
+        if white_player.id == black_player.id:
+            raise ValueError("BBP returned a self-pairing")
+        if white_player.id in assigned_ids or black_player.id in assigned_ids:
+            raise ValueError("BBP returned a player more than once")
         pairings.append((white_player, black_player))
+        assigned_ids.update((white_player.id, black_player.id))
 
     return pairings, bye_player
 
@@ -670,6 +757,7 @@ def _format_match_history(
     opponent_ids = getattr(player, "opponent_ids", [])
     results = getattr(player, "results", [])
     colors = getattr(player, "color_history", [])
+    outcome_types = getattr(player, "outcome_types", [])
     segments = []
     for round_index in range(rounds_to_include):
         opponent_id = (
@@ -677,7 +765,18 @@ def _format_match_history(
         )
         result = results[round_index] if round_index < len(results) else None
         color = colors[round_index] if round_index < len(colors) else None
-        segments.append(_format_match(opponent_id, result, color, id_to_number))
+        outcome_type = (
+            outcome_types[round_index] if round_index < len(outcome_types) else None
+        )
+        segments.append(
+            _format_match(
+                opponent_id,
+                result,
+                color,
+                id_to_number,
+                outcome_type,
+            )
+        )
     return "".join(segments)
 
 
@@ -686,7 +785,12 @@ def _format_match(
     result: Optional[float],
     color: Optional[str],
     id_to_number: Dict[str, int],
+    outcome_type: Optional[str] = None,
 ) -> str:
+    # A missing historical entry is a skipped round, not a zero-point result.
+    if opponent_id is None and result is None:
+        return " " * 10
+
     if opponent_id is None:
         if result == BYE_SCORE:
             result_code = "U"
@@ -698,10 +802,24 @@ def _format_match(
             result_code = "Z"
         return f"  0000 - {result_code}"
 
-    opponent_number = id_to_number.get(opponent_id, 0)
-    color_code = "w" if color == WHITE else "b" if color == BLACK else "-"
-    if result is None:
-        result_code = "0"
+    opponent_number = id_to_number.get(opponent_id)
+    if opponent_number is None:
+        raise ValueError(
+            f"Historical opponent {opponent_id!r} is missing from the BBP roster"
+        )
+    color_code = (
+        "w"
+        if color == WHITE or str(color).lower() in {"white", "w"}
+        else "b" if color == BLACK or str(color).lower() in {"black", "b"} else "-"
+    )
+    if outcome_type in {
+        OUTCOME_FORFEIT_WIN,
+        OUTCOME_FORFEIT_LOSS,
+        OUTCOME_DOUBLE_FORFEIT,
+    }:
+        result_code = "+" if result == WIN_SCORE else "-"
+    elif result is None:
+        return " " * 10
     elif result >= WIN_SCORE:
         result_code = "1"
     elif result == DRAW_SCORE:

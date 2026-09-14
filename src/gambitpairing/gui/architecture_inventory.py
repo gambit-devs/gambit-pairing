@@ -5,7 +5,8 @@ from __future__ import annotations
 UI_REFACTOR_BOUNDARY_RULES: tuple[str, ...] = (
     "Static layout belongs in Designer .ui files.",
     "Behavior, signal wiring, and runtime state belong in Python.",
-    "Styling belongs in QSS resources.",
+    "Styling follows the native Qt/KDE platform style and system palette, "
+    "with Qt's platform-selected style authoritative.",
     "Models hold data only.",
     "Representation and persistence own serialization and save/load.",
     "Qt-free domain logic must not live in GUI modules.",

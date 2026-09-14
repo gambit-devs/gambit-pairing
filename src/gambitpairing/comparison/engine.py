@@ -20,8 +20,8 @@ pairing engines across multiple tournaments and rounds.
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import time
 from dataclasses import dataclass, field
+import time
 from typing import Dict, List, Optional, Set, Tuple
 
 from gambitpairing.comparison.metrics import (
@@ -327,7 +327,7 @@ class PairingComparisonEngine:
 
         # Convert to sets of player ID pairs (order-independent)
         def to_set(pairings: List[Tuple[Player, Player]]) -> Set[Tuple[str, str]]:
-            return {tuple(sorted([w.id, b.id])) for w, b in pairings}
+            return {(min(w.id, b.id), max(w.id, b.id)) for w, b in pairings}
 
         gambit_set = to_set(gambit_pairings)
         bbp_set = to_set(bbp_pairings)

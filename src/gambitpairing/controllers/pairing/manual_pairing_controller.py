@@ -201,6 +201,7 @@ class ManualPairingController:
         max_history: int = 10,
     ) -> None:
         self.players = players
+        self._initial_active = {player.id: player.is_active for player in players}
         self.round_number = round_number
         self.tournament = tournament
         self.max_history = max_history
@@ -333,6 +334,11 @@ class ManualPairingController:
         player.is_active = not player.is_active
         if not player.is_active:
             self.remove_player_from_all_positions(player.id)
+
+    def discard(self) -> None:
+        """Restore withdrawal flags when a manual draft is cancelled."""
+        for player in self.players:
+            player.is_active = self._initial_active[player.id]
 
     def withdraw_players(self, players: Iterable[Player]) -> None:
         """Withdraw unresolved players selected during finalization."""

@@ -1,11 +1,11 @@
 """Integrated Player Management Dialog with tabs for manual editing, FIDE import, and tournament players."""
 
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from collections.abc import Mapping
+from typing import Any, Callable, Dict, List, Optional, Sequence, TypeAlias
 
-from PyQt6 import QtCore, QtGui, QtWidgets
+from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtCore import QObject, Qt, QThread, pyqtSignal
 
-from gambitpairing.gui.gui_utils import get_colored_icon, update_widget_style
 from gambitpairing.gui.dialogs.player_management_data import (
     PlayerFormFields,
     build_player_data_from_fields,
@@ -13,65 +13,61 @@ from gambitpairing.gui.dialogs.player_management_data import (
     project_tournament_player_row,
     search_result_count_text,
 )
+from gambitpairing.gui.gui_utils import get_native_icon
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
 from gambitpairing.models.player import Player
 from gambitpairing.utils.api import (
     get_cfc_player_info,
     get_fide_player_info,
+    search_cfc_players,
     search_fide_players,
 )
+from gambitpairing.utils.api_adapters import cfc_api_to_search_result
 
-# FIDE columns with better minimum widths
-FIDE_COLUMNS: List[Tuple[str, int]] = [
-    ("", 5),  # checkbox - smaller to reduce wasted space
-    ("Name", 300),
-    ("FIDE ID", 100),
-    ("Fed", 80),
-    ("Title", 80),
-    ("Std", 80),
-    ("Rapid", 100),  # Increased for better fit
-    ("Blitz", 80),
-    ("B-Year", 80),
-    ("Gender", 110),  # Increased for better fit
-]
+FIDE_COLUMNS: tuple[str, ...] = (
+    "Name",
+    "FIDE ID",
+    "Fed",
+    "Title",
+    "Std",
+    "Rapid",
+    "Blitz",
+    "B-Year",
+    "Gender",
+)
 
-# Define CFC columns - adjust these based on actual CFC database structure
-CFC_COLUMNS: List[Tuple[str, int]] = [
-    ("", 5),  # Checkbox column
-    ("CFC ID", 80),  # CFC membership ID
-    ("Name", 200),  # Player name
-    ("Rating", 80),  # CFC rating
-    ("Province", 80),  # Province/Territory
-    ("City", 120),  # City
-    ("Expiry", 80),  # Membership expiry
-    ("Status", 80),  # Active/Inactive status
-]
+CFC_COLUMNS: tuple[str, ...] = (
+    "CFC ID",
+    "Name",
+    "Rating",
+    "Province",
+    "City",
+    "Expiry",
+    "Status",
+)
 
-# Tournament players columns
-TOURNAMENT_COLUMNS: List[Tuple[str, int]] = [
-    ("Name", 200),
-    ("Rating", 80),
-    ("Age", 60),
-    ("Gender", 80),
-]
+TOURNAMENT_COLUMNS: tuple[str, ...] = ("Name", "Rating", "Age", "Gender")
+
+SearchFinishedCallback: TypeAlias = Callable[[Any, Optional[Exception]], None]
+BusyCallback: TypeAlias = Callable[[bool, str], None]
 
 
-class _FideWorker(QObject):
-    finished = pyqtSignal(object, object)  # (result, error)
+class _SearchWorker(QObject):
+    finished = pyqtSignal(object, object, object)  # (worker, result, error)
 
-    def __init__(self, fn: Callable, *args, **kwargs):
+    def __init__(self, fn: Callable[..., Any], *args: Any, **kwargs: Any) -> None:
         super().__init__()
         self._fn = fn
         self._args = args
         self._kwargs = kwargs
         self._interrupted = False
 
-    def interrupt(self):
+    def interrupt(self) -> None:
         """Mark this worker as interrupted."""
         self._interrupted = True
 
     @QtCore.pyqtSlot()
-    def run(self):
+    def run(self) -> None:
         try:
             # Check if we've been interrupted before starting
             if self._interrupted:
@@ -81,11 +77,11 @@ class _FideWorker(QObject):
 
             # Check if we've been interrupted before emitting
             if not self._interrupted:
-                self.finished.emit(result, None)
+                self.finished.emit(self, result, None)
         except Exception as e:
             # Only emit error if we weren't interrupted
             if not self._interrupted:
-                self.finished.emit(None, e)
+                self.finished.emit(self, None, e)
 
 
 class PlayerManagementDialog(QtWidgets.QDialog):
@@ -97,8 +93,10 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         super().__init__(parent)
         self.player_data = player_data or {}
         self.tournament = tournament
-        self._thread = None
-        self._worker = None
+        self._thread: Optional[QThread] = None
+        self._worker: Optional[_SearchWorker] = None
+        self._finished_callback: Optional[SearchFinishedCallback] = None
+        self._busy_callback: Optional[BusyCallback] = None
         self._selected_player_data = None
         self._player_data_changed = False  # Track if data has been changed/imported
         self._cleaning_up = False  # Track if we're in cleanup mode
@@ -109,7 +107,6 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         self.resize(900, 600)
 
         load_ui_into(self, "player_management_dialog.ui")
-        self.setProperty("class", "PlayerManagementDialog")
         self._bind_ui_controls()
         self._configure_details_tab()
         self._configure_fide_tab()
@@ -185,9 +182,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         self.cfc_results_info_label = required_child(
             self, QtWidgets.QLabel, "cfc_results_info_label"
         )
-        self.cfc_progress = required_child(
-            self, QtWidgets.QProgressBar, "cfc_progress"
-        )
+        self.cfc_progress = required_child(self, QtWidgets.QProgressBar, "cfc_progress")
         self.btn_use_selected_cfc = required_child(
             self, QtWidgets.QPushButton, "btn_use_selected_cfc"
         )
@@ -214,6 +209,53 @@ class PlayerManagementDialog(QtWidgets.QDialog):
             self, QtWidgets.QPushButton, "btn_edit_tournament_player"
         )
 
+        self.btn_search.setIcon(
+            get_native_icon(
+                "system-search",
+                QtWidgets.QStyle.StandardPixmap.SP_FileDialogContentsView,
+            )
+        )
+        self.btn_clear.setIcon(
+            get_native_icon(
+                "edit-clear", QtWidgets.QStyle.StandardPixmap.SP_DialogResetButton
+            )
+        )
+        self.btn_cfc_search.setIcon(
+            get_native_icon(
+                "system-search",
+                QtWidgets.QStyle.StandardPixmap.SP_FileDialogContentsView,
+            )
+        )
+        self.btn_cfc_clear.setIcon(
+            get_native_icon(
+                "edit-clear", QtWidgets.QStyle.StandardPixmap.SP_DialogResetButton
+            )
+        )
+        self.btn_use_selected.setIcon(
+            get_native_icon(
+                "dialog-ok-apply", QtWidgets.QStyle.StandardPixmap.SP_DialogApplyButton
+            )
+        )
+        self.btn_use_selected_cfc.setIcon(
+            get_native_icon(
+                "dialog-ok-apply", QtWidgets.QStyle.StandardPixmap.SP_DialogApplyButton
+            )
+        )
+        self.btn_empty_go_fide.setIcon(
+            get_native_icon("go-next", QtWidgets.QStyle.StandardPixmap.SP_ArrowRight)
+        )
+        self.btn_empty_go_details.setIcon(
+            get_native_icon(
+                "list-add", QtWidgets.QStyle.StandardPixmap.SP_FileDialogNewFolder
+            )
+        )
+        self.btn_edit_tournament_player.setIcon(
+            get_native_icon(
+                "document-edit",
+                QtWidgets.QStyle.StandardPixmap.SP_FileDialogDetailedView,
+            )
+        )
+
     def _configure_details_tab(self) -> None:
         self.name_edit.textChanged.connect(
             lambda: setattr(self, "_player_data_changed", True)
@@ -228,8 +270,12 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         self._configure_copy_button(
             "btn_copy_federation", self.federation_edit.text, "Federation"
         )
-        self._configure_copy_button("btn_copy_fide_id", self.fide_id_edit.text, "FIDE ID")
-        self._configure_copy_button("btn_copy_fide_title", self.fide_title_edit.text, "Title")
+        self._configure_copy_button(
+            "btn_copy_fide_id", self.fide_id_edit.text, "FIDE ID"
+        )
+        self._configure_copy_button(
+            "btn_copy_fide_title", self.fide_title_edit.text, "Title"
+        )
         self._configure_copy_button(
             "btn_copy_fide_std", self.fide_std_edit.text, "Standard Rating"
         )
@@ -243,15 +289,16 @@ class PlayerManagementDialog(QtWidgets.QDialog):
     def _configure_copy_button(
         self, name: str, text_getter: Callable[[], str], field_name: str
     ) -> None:
-        button = required_child(self, QtWidgets.QPushButton, name)
-        button.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        button = required_child(self, QtWidgets.QToolButton, name)
         button.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
-        button.setFixedSize(32, 32)
-        icon = QtGui.QIcon.fromTheme("edit-copy")
-        if not icon or icon.isNull():
-            icon = get_colored_icon("copy.svg", "#444", 16)
-        button.setIcon(icon)
-        button.setIconSize(QtCore.QSize(18, 18))
+        button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+        button.setAutoRaise(True)
+        button.setAccessibleName(f"Copy {field_name}")
+        button.setIcon(
+            get_native_icon(
+                "edit-copy", QtWidgets.QStyle.StandardPixmap.SP_FileDialogContentsView
+            )
+        )
         button.clicked.connect(
             lambda: self._copy_to_clipboard(text_getter(), field_name)
         )
@@ -279,23 +326,31 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         self.btn_use_selected_cfc.clicked.connect(self._use_selected_cfc_player)
 
     def _configure_results_table(
-        self, table: QtWidgets.QTableWidget, columns: List[Tuple[str, int]]
+        self, table: QtWidgets.QTableWidget, columns: Sequence[str]
     ) -> None:
         table.setColumnCount(len(columns))
         table.verticalHeader().setVisible(False)
+        table.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.SingleSelection
+        )
         header = table.horizontalHeader()
-        for index, (title, width) in enumerate(columns):
+        name_index = next(
+            (index for index, title in enumerate(columns) if title == "Name"),
+            None,
+        )
+        for index, title in enumerate(columns):
             table.setHorizontalHeaderItem(index, QtWidgets.QTableWidgetItem(title))
-            table.setColumnWidth(index, width)
-            header.setMinimumSectionSize(width)
-        header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+            header.setSectionResizeMode(
+                index,
+                (
+                    QtWidgets.QHeaderView.ResizeMode.Stretch
+                    if index == name_index
+                    else QtWidgets.QHeaderView.ResizeMode.ResizeToContents
+                ),
+            )
 
-    def _set_search_status(
-        self, label: QtWidgets.QLabel, text: str, state: str = "idle"
-    ) -> None:
+    def _set_search_status(self, label: QtWidgets.QLabel, text: str) -> None:
         label.setText(text)
-        label.setProperty("state", state)
-        update_widget_style(label)
 
     def _configure_tournament_tab(self) -> None:
         if not self.tournament:
@@ -306,7 +361,9 @@ class PlayerManagementDialog(QtWidgets.QDialog):
             self.tab_widget.indexOf(self.tournament_tab),
             f"Tournament Players ({len(self.tournament.players)})",
         )
-        self.btn_empty_go_fide.clicked.connect(lambda: self.tab_widget.setCurrentIndex(1))
+        self.btn_empty_go_fide.clicked.connect(
+            lambda: self.tab_widget.setCurrentIndex(1)
+        )
         self.btn_empty_go_details.clicked.connect(
             lambda: self.tab_widget.setCurrentIndex(0)
         )
@@ -317,10 +374,6 @@ class PlayerManagementDialog(QtWidgets.QDialog):
 
         self.tournament_stack.setCurrentWidget(self.tournament_table_page)
         self._configure_results_table(self.tournament_table, TOURNAMENT_COLUMNS)
-        header = self.tournament_table.horizontalHeader()
-        header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Stretch)
-        for index in range(1, len(TOURNAMENT_COLUMNS)):
-            header.setSectionResizeMode(index, QtWidgets.QHeaderView.ResizeMode.Fixed)
         self.tournament_table.itemSelectionChanged.connect(
             self._on_tournament_selection_changed
         )
@@ -341,7 +394,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         clipboard.setText(text.strip())
 
     # Supporting methods for CFC functionality
-    def _on_cfc_search(self):
+    def _on_cfc_search(self) -> None:
         """Handle CFC search button click."""
         search_term = self.cfc_search_edit.text().strip()
         if not search_term:
@@ -354,40 +407,53 @@ class PlayerManagementDialog(QtWidgets.QDialog):
 
         self._search_cfc_players(search_term)
 
-    def _search_cfc_players(self, search_term):
+    def _search_cfc_players(self, search_term: str) -> None:
         """Search for CFC players."""
-        self.cfc_progress.setVisible(True)
-        self.cfc_progress.setRange(0, 0)  # Indeterminate progress
-        self.btn_cfc_search.setEnabled(False)
-        self._set_search_status(
-            self.cfc_results_info_label, "Searching CFC database...", "busy"
+        self._run_async(
+            lambda: self._query_cfc_database(search_term, search_term.isdigit()),
+            status_text="Searching CFC database...",
+            finished_callback=lambda result, error: self._on_cfc_finished(
+                result, error, search_term
+            ),
+            busy_callback=self._set_cfc_busy,
         )
 
-        try:
-            results = get_cfc_player_info(search_term)
+    def _on_cfc_finished(
+        self, result: Any, error: Optional[Exception], search_term: str
+    ) -> None:
+        """Handle completion of a CFC operation."""
+        if not self._thread or not self._worker or self._cleaning_up:
+            return
 
-            self._populate_cfc_results(results, search_term)
-
-        except Exception as e:
-            QtWidgets.QMessageBox.warning(
-                self, "Search Error", f"Failed to search CFC database:\n{str(e)}"
+        if error:
+            self._set_search_status(
+                self.cfc_results_info_label, f"Search failed: {error}"
             )
-            self._set_search_status(self.cfc_results_info_label, "Search failed", "error")
+            QtWidgets.QMessageBox.warning(self, "CFC Search Error", f"Error: {error}")
+        else:
+            self._populate_cfc_results(result, search_term)
 
-        finally:
-            self.cfc_progress.setVisible(False)
-            self.btn_cfc_search.setEnabled(True)
-            self.btn_cfc_clear.setEnabled(True)
+        self._set_cfc_busy(False)
+        self._finalize_thread()
 
-    def _populate_cfc_results(self, results, search_term):
+    def _populate_cfc_results(self, results: Any, search_term: str) -> None:
         """Populate the CFC results table."""
-        self.cfc_table.setRowCount(len(results))
+        if isinstance(results, Mapping):
+            raw_results = [dict(results)]
+        elif results is None:
+            raw_results = []
+        else:
+            raw_results = [
+                dict(result) for result in results if isinstance(result, Mapping)
+            ]
 
-        for row, player in enumerate(results):
-            # Checkbox
-            checkbox = QtWidgets.QCheckBox()
-            self.cfc_table.setCellWidget(row, 0, checkbox)
+        display_results = [
+            (raw_result, cfc_api_to_search_result(raw_result))
+            for raw_result in raw_results
+        ]
+        self.cfc_table.setRowCount(len(display_results))
 
+        for row, (raw_player, player) in enumerate(display_results):
             # Player data
             items = [
                 player.get("cfc_id", ""),
@@ -399,23 +465,21 @@ class PlayerManagementDialog(QtWidgets.QDialog):
                 player.get("status", ""),
             ]
 
-            for col, text in enumerate(items, 1):
+            for col, text in enumerate(items):
                 item = QtWidgets.QTableWidgetItem(str(text))
-                item.setData(Qt.ItemDataRole.UserRole, player)  # Store full player data
+                item.setData(Qt.ItemDataRole.UserRole, raw_player)
                 self.cfc_table.setItem(row, col, item)
 
         # Update results info
-        if results:
+        if display_results:
             self._set_search_status(
                 self.cfc_results_info_label,
-                f"Found {len(results)} player(s) for '{search_term}'",
-                "success",
+                f"Found {len(display_results)} player(s) for '{search_term}'",
             )
         else:
             self._set_search_status(
                 self.cfc_results_info_label,
                 f"No players found for '{search_term}'. Try a different search term.",
-                "warning",
             )
 
     def _clear_cfc_results(self):
@@ -425,7 +489,6 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         self._set_search_status(
             self.cfc_results_info_label,
             "Search for players above to see results here",
-            "idle",
         )
         self.btn_cfc_clear.setEnabled(False)
         self.btn_use_selected_cfc.setEnabled(False)
@@ -445,12 +508,12 @@ class PlayerManagementDialog(QtWidgets.QDialog):
             return
 
         # Get player data from the selected row
-        item = self.cfc_table.item(current_row, 1)  # CFC ID column
+        item = self.cfc_table.item(current_row, 0)  # CFC ID column
         if item:
             player_data = item.data(Qt.ItemDataRole.UserRole)
             self._import_cfc_player_data(player_data)
 
-    def _import_cfc_player_data(self, player_data):
+    def _import_cfc_player_data(self, player_data: Any) -> None:
         """Import CFC player data to the Player Details tab."""
         if not player_data:
             return
@@ -530,42 +593,27 @@ class PlayerManagementDialog(QtWidgets.QDialog):
             clipboard = QtWidgets.QApplication.clipboard()
 
             if action == copy_name_action:
-                clipboard.setText(self.cfc_table.item(row, 2).text())  # Name column
+                clipboard.setText(self.cfc_table.item(row, 1).text())  # Name column
             elif action == copy_cfc_id_action:
-                clipboard.setText(self.cfc_table.item(row, 1).text())  # CFC ID column
+                clipboard.setText(self.cfc_table.item(row, 0).text())  # CFC ID column
             elif action == copy_rating_action:
-                clipboard.setText(self.cfc_table.item(row, 3).text())  # Rating column
+                clipboard.setText(self.cfc_table.item(row, 2).text())  # Rating column
             elif action == copy_all_action:
                 # Copy all visible data for the row
                 data_parts = []
-                for col in range(
-                    1, self.cfc_table.columnCount()
-                ):  # Skip checkbox column
+                for col in range(self.cfc_table.columnCount()):
                     header = self.cfc_table.horizontalHeaderItem(col).text()
                     value = self.cfc_table.item(row, col).text()
                     data_parts.append(f"{header}: {value}")
                 clipboard.setText(" | ".join(data_parts))
 
-    def _query_cfc_database(self, search_term, is_id_search):
-        """
-        Query the CFC database API.
-
-        This is a placeholder method that should be implemented with actual CFC API calls.
-        The CFC may have a different API structure than FIDE.
-
-        Parameters
-        ----------
-            search_term: The search term (name or CFC ID)
-            is_id_search: True if searching by CFC ID, False if by name
-
-        Returns
-        -------
-            List of player dictionaries with CFC data
-        """
-        # Placeholder - replace with actual CFC API implementation
-        # You'll need to research the CFC's available APIs or web scraping methods
-        # for now, this is not implemented
-        raise NotImplementedError
+    def _query_cfc_database(
+        self, search_term: str, is_id_search: bool
+    ) -> List[Dict[str, Any]]:
+        """Return CFC player records for the supplied lookup value."""
+        if is_id_search:
+            return [get_cfc_player_info(search_term)]
+        return search_cfc_players(search_term)
 
     def _populate_details_form(self):
         """Populate the details form with player data."""
@@ -670,6 +718,9 @@ class PlayerManagementDialog(QtWidgets.QDialog):
                 if obj == self.search_edit:
                     self._on_search()
                     return True
+                if obj == self.cfc_search_edit:
+                    self._on_cfc_search()
+                    return True
         return super().eventFilter(obj, event)
 
     def _set_fide_busy(self, busy: bool, status_text: str = "") -> None:
@@ -687,9 +738,25 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         if busy:
             self.fide_progress.setRange(0, 0)  # Indeterminate
             if status_text:
-                self._set_search_status(self.results_info_label, status_text, "busy")
+                self._set_search_status(self.results_info_label, status_text)
         else:
             self.fide_progress.setVisible(False)
+
+    def _set_cfc_busy(self, busy: bool, status_text: str = "") -> None:
+        """Set the UI state for CFC operations with status update."""
+        for control in (
+            self.cfc_search_edit,
+            self.btn_cfc_search,
+            self.btn_use_selected_cfc,
+        ):
+            control.setEnabled(not busy)
+        self.btn_cfc_clear.setEnabled(not busy)
+
+        self.cfc_progress.setVisible(busy)
+        if busy:
+            self.cfc_progress.setRange(0, 0)
+            if status_text:
+                self._set_search_status(self.cfc_results_info_label, status_text)
 
     def _on_search(self) -> None:
         """Unified search for players by name or FIDE ID with auto-detection."""
@@ -761,43 +828,59 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         self._set_search_status(
             self.results_info_label,
             "Search for players above to see results here",
-            "idle",
         )
 
         # Clear search field
         self.search_edit.clear()
 
-    def _run_async(self, fn: Callable, status_text: str = "Processing...") -> None:
+    def _run_async(
+        self,
+        fn: Callable[..., Any],
+        status_text: str = "Processing...",
+        finished_callback: Optional[SearchFinishedCallback] = None,
+        busy_callback: Optional[BusyCallback] = None,
+    ) -> None:
         """Run function in background thread with proper cleanup of previous jobs."""
         # Always abort any existing job before starting a new one
         self._abort_current_job()
 
-        # Set busy state with status
-        self._set_fide_busy(True, status_text)
+        self._finished_callback = finished_callback or self._on_fide_finished
+        self._busy_callback = busy_callback or self._set_fide_busy
+        self._busy_callback(True, status_text)
 
         # Create new worker and thread
-        self._worker = _FideWorker(fn)
+        self._worker = _SearchWorker(fn)
         self._thread = QThread()
         self._worker.moveToThread(self._thread)
 
         # Connect signals with unique connection to prevent multiple connections
-        self._worker.finished.connect(self._on_fide_finished)
+        self._worker.finished.connect(
+            self._dispatch_search_finished,
+        )
         self._thread.started.connect(self._worker.run)
         self._thread.setParent(self)  # ensure dialog owns lifetime
 
         # Start the thread
         self._thread.start()
 
-    def _on_fide_finished(self, result, error) -> None:
+    @QtCore.pyqtSlot(object, object, object)
+    def _dispatch_search_finished(
+        self, worker: _SearchWorker, result: Any, error: Optional[Exception]
+    ) -> None:
+        """Dispatch worker completion to the dialog's thread."""
+        if worker is not self._worker or self._cleaning_up:
+            return
+        if self._finished_callback:
+            self._finished_callback(result, error)
+
+    def _on_fide_finished(self, result: Any, error: Optional[Exception]) -> None:
         """Handle completion of FIDE operation."""
         # Check if we've already cleaned up (aborted) - ignore late signals
         if not self._thread or not self._worker or self._cleaning_up:
             return
 
         if error:
-            self._set_search_status(
-                self.results_info_label, f"Search failed: {error}", "error"
-            )
+            self._set_search_status(self.results_info_label, f"Search failed: {error}")
             QtWidgets.QMessageBox.warning(self, "FIDE Search Error", f"Error: {error}")
         elif result:
             self._display_fide_results(result)
@@ -805,22 +888,22 @@ class PlayerManagementDialog(QtWidgets.QDialog):
             self._set_search_status(
                 self.results_info_label,
                 "No players found. Try a different search term.",
-                "warning",
             )
             QtWidgets.QMessageBox.information(self, "No Results", "No players found.")
 
-        self._set_fide_busy(False)
+        if self._busy_callback:
+            self._busy_callback(False, "")
         # Gracefully finalize thread post-finish
         self._finalize_thread()
 
-    def _finalize_thread(self):
+    def _finalize_thread(self) -> None:
         thread = self._thread
         worker = self._worker
         if not thread:
             return
         if worker:
             try:
-                worker.finished.disconnect(self._on_fide_finished)
+                worker.finished.disconnect(self._dispatch_search_finished)
             except (RuntimeError, TypeError):
                 pass
         if thread.isRunning():
@@ -832,6 +915,8 @@ class PlayerManagementDialog(QtWidgets.QDialog):
             worker.deleteLater()
         self._thread = None
         self._worker = None
+        self._finished_callback = None
+        self._busy_callback = None
 
     def _display_fide_results(self, players: List[Dict[str, Any]]) -> None:
         self.fide_table.setRowCount(0)
@@ -842,7 +927,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         # Update info label and enable clear button
         player_count = len(players)
         self._set_search_status(
-            self.results_info_label, search_result_count_text(player_count), "success"
+            self.results_info_label, search_result_count_text(player_count)
         )
         self.btn_clear.setEnabled(player_count > 0)
 
@@ -850,46 +935,36 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         row = self.fide_table.rowCount()
         self.fide_table.insertRow(row)
 
-        # Checkbox
-        chk = QtWidgets.QTableWidgetItem()
-        chk.setFlags(
-            Qt.ItemFlag.ItemIsUserCheckable
-            | Qt.ItemFlag.ItemIsEnabled
-            | Qt.ItemFlag.ItemIsSelectable
-        )
-        chk.setCheckState(Qt.CheckState.Unchecked)
-        self.fide_table.setItem(row, 0, chk)
-
         # Name
         name_item = QtWidgets.QTableWidgetItem(str(p.get("name") or ""))
         name_item.setData(Qt.ItemDataRole.UserRole, p)  # Store full player data
-        self.fide_table.setItem(row, 1, name_item)
+        self.fide_table.setItem(row, 0, name_item)
 
         # Other columns
         self.fide_table.setItem(
-            row, 2, QtWidgets.QTableWidgetItem(str(p.get("fide_id") or ""))
+            row, 1, QtWidgets.QTableWidgetItem(str(p.get("fide_id") or ""))
         )
         self.fide_table.setItem(
-            row, 3, QtWidgets.QTableWidgetItem(str(p.get("federation") or ""))
+            row, 2, QtWidgets.QTableWidgetItem(str(p.get("federation") or ""))
         )
         self.fide_table.setItem(
-            row, 4, QtWidgets.QTableWidgetItem(str(p.get("title") or ""))
+            row, 3, QtWidgets.QTableWidgetItem(str(p.get("title") or ""))
         )
 
         def fmt_rating(val):
             return "" if val in (None, 0) else str(val)
 
         self.fide_table.setItem(
-            row, 5, QtWidgets.QTableWidgetItem(fmt_rating(p.get("standard_rating")))
+            row, 4, QtWidgets.QTableWidgetItem(fmt_rating(p.get("standard_rating")))
         )
         self.fide_table.setItem(
-            row, 6, QtWidgets.QTableWidgetItem(fmt_rating(p.get("rapid_rating")))
+            row, 5, QtWidgets.QTableWidgetItem(fmt_rating(p.get("rapid_rating")))
         )
         self.fide_table.setItem(
-            row, 7, QtWidgets.QTableWidgetItem(fmt_rating(p.get("blitz_rating")))
+            row, 6, QtWidgets.QTableWidgetItem(fmt_rating(p.get("blitz_rating")))
         )
         self.fide_table.setItem(
-            row, 8, QtWidgets.QTableWidgetItem(str(p.get("birth_year") or ""))
+            row, 7, QtWidgets.QTableWidgetItem(str(p.get("birth_year") or ""))
         )
 
         # Convert gender for display
@@ -901,9 +976,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
             gender_display = "Male"
         elif gender == "F":
             gender_display = "Female"
-        self.fide_table.setItem(row, 9, QtWidgets.QTableWidgetItem(gender_display))
-
-        self.fide_table.setRowHeight(row, 22)
+        self.fide_table.setItem(row, 8, QtWidgets.QTableWidgetItem(gender_display))
 
     def _show_fide_context_menu(self, position):
         """Show context menu for FIDE search results."""
@@ -922,14 +995,14 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         menu.addSeparator()
 
         row = item.row()
-        name_item = self.fide_table.item(row, 1)
+        name_item = self.fide_table.item(row, 0)
         if name_item and name_item.text().strip():
             copy_name_action = menu.addAction(f"Copy Name: {name_item.text()}")
             copy_name_action.triggered.connect(
                 lambda: self._copy_to_clipboard(name_item.text(), "Name")
             )
 
-        fide_id_item = self.fide_table.item(row, 2)
+        fide_id_item = self.fide_table.item(row, 1)
         if fide_id_item and fide_id_item.text().strip():
             copy_id_action = menu.addAction(f"Copy FIDE ID: {fide_id_item.text()}")
             copy_id_action.triggered.connect(
@@ -958,7 +1031,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
 
         # Get the first selected player
         row = selected_rows[0].row()
-        name_item = self.fide_table.item(row, 1)
+        name_item = self.fide_table.item(row, 0)
         if not name_item:
             return
 
@@ -1209,6 +1282,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
             include_fide_fields=bool(self._selected_player_data)
             or has_fide_fields(fields),
             selected_birth_year=selected_birth_year,
+            cfc_id=(self._selected_player_data or self.player_data or {}).get("cfc_id"),
         )
 
     def get_editing_player_id(self) -> Optional[str]:
@@ -1250,10 +1324,13 @@ class PlayerManagementDialog(QtWidgets.QDialog):
                 self._worker.deleteLater()
 
             # Clear busy UI
-            self._set_fide_busy(False)
+            if self._busy_callback:
+                self._busy_callback(False, "")
         finally:
             self._thread = None
             self._worker = None
+            self._finished_callback = None
+            self._busy_callback = None
             self._cleaning_up = False
             if hasattr(self, "_current_search_cancel_flag"):
                 del self._current_search_cancel_flag

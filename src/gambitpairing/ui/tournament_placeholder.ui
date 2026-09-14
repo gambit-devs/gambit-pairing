@@ -2,43 +2,25 @@
 <ui version="4.0">
  <class>TournamentPlaceholder</class>
  <widget class="QWidget" name="TournamentPlaceholder">
-  <property name="class" stdset="0">
-   <string>TournamentPlaceholder</string>
-  </property>
   <layout class="QVBoxLayout" name="main_layout">
-   <property name="spacing">
-    <number>0</number>
-   </property>
-   <property name="leftMargin">
-    <number>48</number>
-   </property>
-   <property name="topMargin">
-    <number>48</number>
-   </property>
-   <property name="rightMargin">
-    <number>48</number>
-   </property>
-   <property name="bottomMargin">
-    <number>48</number>
-   </property>
    <item>
     <spacer name="top_spacer">
      <property name="orientation">
       <enum>Qt::Vertical</enum>
      </property>
+     <property name="sizeType">
+      <enum>QSizePolicy::Expanding</enum>
+     </property>
      <property name="sizeHint" stdset="0">
       <size>
-       <width>20</width>
-       <height>40</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
     </spacer>
    </item>
    <item>
     <widget class="QLabel" name="icon_label">
-     <property name="class" stdset="0">
-      <string>NoTournamentIcon</string>
-     </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
      </property>
@@ -46,9 +28,6 @@
    </item>
    <item>
     <widget class="QLabel" name="title_label">
-     <property name="class" stdset="0">
-      <string>NoTournamentMainMessage</string>
-     </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
      </property>
@@ -56,9 +35,6 @@
    </item>
    <item>
     <widget class="QLabel" name="desc_label">
-     <property name="class" stdset="0">
-      <string>NoTournamentDescription</string>
-     </property>
      <property name="wordWrap">
       <bool>true</bool>
      </property>
@@ -69,34 +45,31 @@
    </item>
    <item>
     <layout class="QHBoxLayout" name="button_layout">
-     <property name="spacing">
-      <number>18</number>
+     <property name="alignment">
+      <set>Qt::AlignHCenter</set>
      </property>
      <item>
       <spacer name="button_left_spacer">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
+       <property name="sizeType">
+        <enum>QSizePolicy::Expanding</enum>
+       </property>
        <property name="sizeHint" stdset="0">
         <size>
-         <width>40</width>
-         <height>20</height>
+         <width>0</width>
+         <height>0</height>
         </size>
        </property>
       </spacer>
      </item>
      <item>
       <widget class="QPushButton" name="create_btn">
-       <property name="class" stdset="0">
-        <string>NoTournamentCreateTournament</string>
-       </property>
       </widget>
      </item>
      <item>
       <widget class="QPushButton" name="import_btn">
-       <property name="class" stdset="0">
-        <string>NoTournamentImportTournament</string>
-       </property>
       </widget>
      </item>
      <item>
@@ -104,10 +77,13 @@
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
+       <property name="sizeType">
+        <enum>QSizePolicy::Expanding</enum>
+       </property>
        <property name="sizeHint" stdset="0">
         <size>
-         <width>40</width>
-         <height>20</height>
+         <width>0</width>
+         <height>0</height>
         </size>
        </property>
       </spacer>
@@ -119,10 +95,13 @@
      <property name="orientation">
       <enum>Qt::Vertical</enum>
      </property>
+     <property name="sizeType">
+      <enum>QSizePolicy::Expanding</enum>
+     </property>
      <property name="sizeHint" stdset="0">
       <size>
-       <width>20</width>
-       <height>40</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
     </spacer>

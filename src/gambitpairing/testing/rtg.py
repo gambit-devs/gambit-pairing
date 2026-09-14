@@ -21,13 +21,13 @@ It models BBP Pairings behavior and FIDE handbook requirements.
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import argparse
-import math
-import random
-import tempfile
 from dataclasses import dataclass, field
 from datetime import date
 from enum import Enum
+import math
 from pathlib import Path
+import random
+import tempfile
 from typing import Dict, List, Optional, Tuple
 
 from gambitpairing.compatibility.bbp import (
@@ -595,8 +595,21 @@ class RandomTournamentGenerator:
                     forfeit,
                 )
             )
-            white_player.add_round_result(black_player, white_score, WHITE)
-            black_player.add_round_result(white_player, black_score, BLACK)
+            from gambitpairing.controllers.tournament.result import ResultRecorder
+            from gambitpairing.models.tournament import MatchResult, RoundData
+
+            outcome = (
+                ("double_forfeit" if white_score == black_score == 0 else "forfeit_win")
+                if forfeit
+                else "normal"
+            )
+            ResultRecorder()._record_game_result(
+                MatchResult(
+                    white_player.id, black_player.id, white_score, black_score, outcome
+                ),
+                RoundData(round_number),
+                {white_player.id: white_player, black_player.id: black_player},
+            )
             self.pairing_history.add_pairing(white_player.id, black_player.id)
 
         if bye_player is not None:

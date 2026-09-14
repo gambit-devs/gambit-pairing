@@ -5,6 +5,7 @@ from .manual_pairing import (
     parse_pairings_import_data,
 )
 from .tournament import (
+    TournamentDocumentError,
     load_tournament_document,
     save_tournament_document,
     tournament_from_dict,
@@ -14,6 +15,7 @@ from .tournament import (
 __all__ = [
     "load_tournament_document",
     "save_tournament_document",
+    "TournamentDocumentError",
     "tournament_from_dict",
     "tournament_to_dict",
     "build_pairings_export_data",

@@ -20,9 +20,9 @@ engines across many tournaments to determine overall performance and patterns.
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import statistics
 from collections import defaultdict
 from dataclasses import dataclass, field
+import statistics
 from typing import Dict, List, Optional, Tuple
 
 from gambitpairing.comparison.engine import ComparisonResult
@@ -416,7 +416,7 @@ class StatisticalAnalyzer:
     def _analyze_violation_patterns(
         self,
         results: List[ComparisonResult],
-    ) -> Dict[str, Dict]:
+    ) -> Dict[str, Dict | int]:
         """Analyze common violation patterns.
 
         Args:

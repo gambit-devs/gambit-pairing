@@ -39,6 +39,8 @@ class TournamentConfig:
         Number of rounds in the tournament.
     pairing_system : str
         Pairing system used for generating pairings.
+    use_experimental_dutch : bool
+        Use Gambit's native Dutch engine instead of the primary BBP engine.
     tiebreak_order : list of str
         Ordered list of tiebreak criteria in priority order.
     tournament_over : bool
@@ -53,9 +55,18 @@ class TournamentConfig:
     tiebreak_order: Optional[List[str]] = None
     # Is the tournament complete?
     tournament_over: bool = False
+    use_experimental_dutch: bool = False
 
     def __post_init__(self) -> None:
         """Choose federation defaults without sharing mutable lists."""
+        # ``bbp_dutch`` was briefly exposed as a separate pairing-system ID.
+        # Normalize it at the model boundary so the rest of the application
+        # has one Dutch format and one explicit engine-selection flag.
+        if self.pairing_system == "bbp_dutch":
+            self.pairing_system = "dutch_swiss"
+            self.use_experimental_dutch = False
+        self.use_experimental_dutch = bool(self.use_experimental_dutch)
+
         if self.tiebreak_order is None:
             defaults = (
                 DEFAULT_FIDE_TIEBREAK_ORDER
@@ -64,7 +75,7 @@ class TournamentConfig:
             )
             self.tiebreak_order = list(defaults)
         else:
-            self.tiebreak_order = list(self.tiebreak_order)
+            self.tiebreak_order = list(self.tiebreak_order or [])
 
     @property
     def fide_strict_mode(self) -> bool:
@@ -81,10 +92,11 @@ class TournamentConfig:
             "name": self.name,
             "num_rounds": self.num_rounds,
             "pairing_system": self.pairing_system,
+            "use_experimental_dutch": self.use_experimental_dutch,
             "tournament_mode": self.tournament_mode,
             "fide_strict": self.fide_strict,
             "fide_strict_mode": self.fide_strict,
-            "tiebreak_order": list(self.tiebreak_order),
+            "tiebreak_order": list(self.tiebreak_order or []),
             "tournament_over": self.tournament_over,
         }
 
@@ -92,16 +104,28 @@ class TournamentConfig:
     def from_dict(cls, data: Dict[str, Any]) -> "TournamentConfig":
         """Deserialize configuration from dictionary."""
         fide_strict = data.get("fide_strict", data.get("fide_strict_mode", False))
+        pairing_system = data.get("pairing_system", "dutch_swiss")
+        if pairing_system == "bbp_dutch":
+            # Documents written by the first BBP integration used a separate
+            # pairing-system ID. Preserve their primary-BBP behavior.
+            pairing_system = "dutch_swiss"
+            use_experimental_dutch = False
+        else:
+            # Before the engine choice was persisted, ``dutch_swiss`` meant
+            # Gambit's native implementation. Preserve that behavior for
+            # older documents while new documents always include the flag.
+            use_experimental_dutch = data.get(
+                "use_experimental_dutch", pairing_system == "dutch_swiss"
+            )
         return cls(
             name=data.get("name", "Untitled Tournament"),
             num_rounds=data["num_rounds"],
-            pairing_system=data.get("pairing_system", "dutch_swiss"),
+            pairing_system=pairing_system,
+            use_experimental_dutch=use_experimental_dutch,
             tournament_mode=data.get("tournament_mode", DEFAULT_MODE),
             fide_strict=fide_strict,
             tiebreak_order=(
-                list(data["tiebreak_order"])
-                if "tiebreak_order" in data
-                else None
+                list(data["tiebreak_order"]) if "tiebreak_order" in data else None
             ),
             tournament_over=data.get("tournament_over", False),
         )

@@ -27,6 +27,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Any, Optional
+
 from gambitpairing.models.enums import TournamentPhase
 
 
@@ -122,7 +123,12 @@ class TournamentState:
             )
 
         pairings_generated = len(tournament.rounds_pairings_ids)
-        results_recorded = current_round_index
+        results_recorded = (
+            tournament.get_completed_rounds()
+            if hasattr(tournament, "get_completed_rounds")
+            else current_round_index
+        )
+        current_round_index = results_recorded
         total_rounds = tournament.num_rounds
         num_players = len(tournament.players)
         tournament_started = pairings_generated > 0
@@ -145,7 +151,11 @@ class TournamentState:
             and pairings_generated == results_recorded
             and pairings_generated < total_rounds
         )
-        can_record = tournament_started and pairings_generated > results_recorded
+        can_record = (
+            tournament_started
+            and pairings_generated > results_recorded
+            and not tournament_finished
+        )
         can_undo = results_recorded > 0
 
         # Check if current round has pairings
@@ -263,19 +273,6 @@ class TournamentState:
         elif self.phase == TournamentPhase.AWAITING_NEXT_ROUND:
             return "Prepare Next Round"
         return "No Action Available"
-
-    @property
-    def primary_button_icon_name(self) -> str:
-        """Get the icon name for the primary action button."""
-        if self.phase == TournamentPhase.FINISHED:
-            return ""
-        elif self.phase == TournamentPhase.NOT_STARTED:
-            return "play.svg"
-        elif self.phase == TournamentPhase.AWAITING_RESULTS:
-            return "arrow-right.svg"
-        elif self.phase == TournamentPhase.AWAITING_NEXT_ROUND:
-            return "refresh.svg"
-        return ""
 
     @property
     def primary_button_enabled(self) -> bool:

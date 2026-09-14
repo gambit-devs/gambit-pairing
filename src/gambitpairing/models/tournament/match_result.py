@@ -19,7 +19,11 @@
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
-from gambitpairing.constants import OUTCOME_NORMAL_GAME
+from gambitpairing.constants import (
+    LOSS_SCORE,
+    OUTCOME_DOUBLE_FORFEIT,
+    OUTCOME_NORMAL_GAME,
+)
 
 
 @dataclass
@@ -51,9 +55,20 @@ class MatchResult:
                 self.outcome_type = self.black_score_override
             self.black_score_override = None
 
+        # Older documents represented a double forfeit with two zero scores
+        # and no explicit outcome field.
+        if (
+            self.outcome_type == OUTCOME_NORMAL_GAME
+            and self.black_score_override == LOSS_SCORE
+            and self.white_score == LOSS_SCORE
+        ):
+            self.outcome_type = OUTCOME_DOUBLE_FORFEIT
+
     @property
     def black_score(self) -> float:
         """Calculate black's score based on white's score."""
+        if self.outcome_type == OUTCOME_DOUBLE_FORFEIT:
+            return 0.0
         if self.black_score_override is not None:
             return self.black_score_override
         return 1.0 - self.white_score

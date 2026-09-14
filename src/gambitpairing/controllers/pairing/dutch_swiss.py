@@ -18,17 +18,54 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+from contextvars import ContextVar
 from enum import Enum
+import functools
 from functools import lru_cache
 from itertools import combinations, permutations
-from collections.abc import Sequence
+import math
+import time
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from gambitpairing.models.player import Player
 from gambitpairing.models.enums import Colour
+from gambitpairing.models.player import Player
+from gambitpairing.utils import setup_logger
 
 WHITE = Colour.WHITE
 BLACK = Colour.BLACK
+logger = setup_logger(__name__)
+
+
+class _PairingDeadlineExceeded(Exception):
+    """Signal that a pairing search has exhausted its computation budget."""
+
+
+_pairing_deadline: ContextVar[Optional[float]] = ContextVar(
+    "pairing_deadline", default=None
+)
+
+
+def _check_pairing_deadline() -> None:
+    deadline = _pairing_deadline.get()
+    if deadline is not None and time.monotonic() >= deadline:
+        raise _PairingDeadlineExceeded
+
+
+def _restore_pairing_state(
+    players: List[Player],
+    pairing_state: Dict[str, Tuple[Optional[int], Optional[int], bool, List[int]]],
+) -> None:
+    """Restore player fields that pairing search uses as working state."""
+    for player in players:
+        state = pairing_state.get(player.id)
+        if state is None:
+            continue
+        pairing_number, bsn, is_moved_down, float_history = state
+        player.pairing_number = pairing_number
+        player.bsn = bsn
+        player.is_moved_down = is_moved_down
+        player.float_history = list(float_history)
 
 
 def _pairing_number(player: Player) -> int:
@@ -514,6 +551,7 @@ def create_dutch_swiss_pairings(
     total_rounds: int = 0,
     initial_color: str = WHITE,
     fide_strict: bool = False,
+    max_computation_time: Optional[float] = None,
 ) -> Tuple[
     List[Tuple[Player, Player]], Optional[Player], List[Tuple[str, str]], Optional[str]
 ]:
@@ -528,82 +566,121 @@ def create_dutch_swiss_pairings(
     - allow_repeat_pairing_callback: function(player1, player2) -> bool, called if a repeat pairing is needed
     Returns: (pairings, bye_player, round_pairings_ids, bye_player_id)
     """
-    import time
-
-    start_time = time.time()
     # Strict FIDE mode gets a larger search budget and avoids heuristic
-    # shortcuts.  The normal mode keeps the historical adaptive limits for
-    # responsive UI pairing.
+    # shortcuts. The normal mode retains the adaptive limits used by the
+    # pairing algorithm.
     player_count = len([p for p in players if p.is_active])
     time_cap = 120.0 if fide_strict else 60.0
     min_time = 20.0 if fide_strict else 15.0
     multiplier = 1.0 if fide_strict else 0.5
-    MAX_COMPUTATION_TIME = min(time_cap, max(min_time, player_count * multiplier))
+    default_time_budget = min(time_cap, max(min_time, player_count * multiplier))
+    if max_computation_time is None:
+        time_budget = default_time_budget
+    else:
+        try:
+            time_budget = float(max_computation_time)
+        except (TypeError, ValueError) as error:
+            raise ValueError("max_computation_time must be numeric") from error
+        if not math.isfinite(time_budget) or time_budget <= 0:
+            raise ValueError("max_computation_time must be finite and positive")
 
-    # Filter out inactive players and ensure pairing numbers are set
     active_players = [p for p in players if p.is_active]
-    for idx, p in enumerate(active_players):
-        if not hasattr(p, "pairing_number") or p.pairing_number is None:
-            p.pairing_number = idx + 1
-        # This flag describes the previous round's float and must not leak
-        # into MDP detection for the current round.
-        if hasattr(p, "is_moved_down"):
-            p.is_moved_down = False
-
-    sorted_players = _sort_players_for_pairing(active_players)
-
-    bye_player = None
-    bye_player_id = None
-
-    # Handle bye assignment for odd number of players
-    if len(sorted_players) % 2 == 1:
-        bye_player = _select_safe_bye_candidate(
-            sorted_players, get_eligible_bye_player
+    pairing_state = {
+        player.id: (
+            player.pairing_number,
+            player.bsn,
+            player.is_moved_down,
+            list(player.float_history),
         )
-        if bye_player:
-            bye_player_id = bye_player.id
-            sorted_players.remove(bye_player)
+        for player in active_players
+    }
+    deadline_token = _pairing_deadline.set(time.monotonic() + time_budget)
+    try:
+        _check_pairing_deadline()
 
-    # Keep the large-event shortcut out of strict FIDE mode and preserve any
-    # bye selected above when it is used.
-    if not fide_strict and len(sorted_players) > 200 and current_round > 5:
-        return _create_simplified_dutch_pairings(
-            sorted_players,
+        # Filter out inactive players and ensure pairing numbers are set
+        for idx, p in enumerate(active_players):
+            if not hasattr(p, "pairing_number") or p.pairing_number is None:
+                p.pairing_number = idx + 1
+            # This flag describes the previous round's float and must not leak
+            # into MDP detection for the current round.
+            if hasattr(p, "is_moved_down"):
+                p.is_moved_down = False
+
+        sorted_players = _sort_players_for_pairing(active_players)
+
+        bye_player = None
+        bye_player_id = None
+
+        # Handle bye assignment for odd number of players
+        if len(sorted_players) % 2 == 1:
+            bye_player = _select_safe_bye_candidate(
+                sorted_players, get_eligible_bye_player
+            )
+            if bye_player:
+                bye_player_id = bye_player.id
+                sorted_players.remove(bye_player)
+
+        # Keep the large-event shortcut out of strict FIDE mode and preserve any
+        # bye selected above when it is used.
+        if not fide_strict and len(sorted_players) > 200 and current_round > 5:
+            generated = _create_simplified_dutch_pairings(
+                sorted_players,
+                current_round,
+                previous_matches,
+                initial_color,
+                bye_player,
+                bye_player_id,
+            )
+        # Round 1 special case: top half vs bottom half
+        elif current_round == 1:
+            generated = _pair_round_one(
+                sorted_players, bye_player, bye_player_id, initial_color
+            )
+        else:
+            generated = _compute_dutch_pairings(
+                sorted_players,
+                current_round,
+                previous_matches,
+                bye_player,
+                bye_player_id,
+                total_rounds=total_rounds,
+                initial_color=initial_color,
+                fide_strict=fide_strict,
+            )
+
+        return _repair_incomplete_pairings(
+            active_players,
+            generated,
+            previous_matches,
             current_round,
-            previous_matches,
+            total_rounds,
             initial_color,
-            bye_player,
-            bye_player_id,
+            get_eligible_bye_player,
+            allow_repeat_pairing_callback,
         )
-
-    # Round 1 special case: top half vs bottom half
-    if current_round == 1:
-        return _pair_round_one(
-            sorted_players, bye_player, bye_player_id, initial_color
+    except _PairingDeadlineExceeded:
+        _restore_pairing_state(active_players, pairing_state)
+        logger.warning(
+            "Dutch Swiss pairing deadline reached for round %s; "
+            "using deterministic fallback",
+            current_round,
         )
-
-    # Check computation time limit
-    if time.time() - start_time > MAX_COMPUTATION_TIME:
-        # Fallback to simple greedy pairing
-        return _create_fallback_pairings(
-            sorted_players,
+        fallback_bye = bye_player if "bye_player" in locals() else None
+        fallback_bye_id = fallback_bye.id if fallback_bye else None
+        return _create_deadline_fallback_pairings(
+            active_players,
+            fallback_bye,
+            fallback_bye_id,
             previous_matches,
-            bye_player,
-            bye_player_id,
+            current_round,
             initial_color,
         )
-
-    # Main pairing algorithm for rounds 2+
-    return _compute_dutch_pairings(
-        sorted_players,
-        current_round,
-        previous_matches,
-        bye_player,
-        bye_player_id,
-        total_rounds=total_rounds,
-        initial_color=initial_color,
-        fide_strict=fide_strict,
-    )
+    except Exception:
+        _restore_pairing_state(active_players, pairing_state)
+        raise
+    finally:
+        _pairing_deadline.reset(deadline_token)
 
 
 def _pair_round_one(
@@ -627,15 +704,14 @@ def _pair_round_one(
 
     # FIDE Rule: Pair rank 1 vs rank (n/2+1), rank 2 vs rank (n/2+2), etc.
     for i in range(n // 2):
+        _check_pairing_deadline()
         higher_rated = s1[i]  # Rank i+1
         lower_rated = s2[i]  # Rank (n/2+i+1)
 
         # FIDE Article 5.2.5: use the higher-rated player's pairing number
         # for deterministic initial-colour allocation.
         if _pairing_number(higher_rated) % 2 == 1:
-            white_player = (
-                higher_rated if initial_color == WHITE else lower_rated
-            )
+            white_player = higher_rated if initial_color == WHITE else lower_rated
             black_player = lower_rated if initial_color == WHITE else higher_rated
         else:
             white_player = lower_rated if initial_color == WHITE else higher_rated
@@ -660,6 +736,8 @@ def _compute_dutch_pairings(
     List[Tuple[Player, Player]], Optional[Player], List[Tuple[str, str]], Optional[str]
 ]:
     """Main Dutch system pairing computation for rounds 2+ - FIDE compliant"""
+
+    _check_pairing_deadline()
 
     # Sort players by score (descending), then pairing number (ascending) - FIDE Article 1.2
     sorted_players = _sort_players_for_pairing(players)
@@ -707,6 +785,7 @@ def _compute_dutch_pairings(
 
     # Process each score group (bracket) from highest to lowest
     for score_idx, score in enumerate(sorted_scores):
+        _check_pairing_deadline()
         # Create the bracket: resident players + moved down players
         resident_players = score_groups[score]
         bracket_players = moved_down_players + resident_players
@@ -772,6 +851,7 @@ def _compute_dutch_pairings(
 
         # Mark remaining players as moved down for next bracket and record float history
         for player in remaining:
+            _check_pairing_deadline()
             player.is_moved_down = True
             # record float-down round for repeat-float minimization
             if not hasattr(player, "float_history"):
@@ -781,6 +861,7 @@ def _compute_dutch_pairings(
 
     # After all brackets, pair any remaining moved-down players (final downfloaters)
     if moved_down_players:
+        _check_pairing_deadline()
         remaining_pairings = _pair_remaining_players(
             moved_down_players, previous_matches, initial_color
         )
@@ -810,10 +891,12 @@ def _try_fide_round3_pattern(
     - 4 players: highest vs lowest pairing
     - 8 players: specific observed pattern
     """
+    _check_pairing_deadline()
     pairings = []
     round_pairings_ids = []
 
     for score in sorted_scores:
+        _check_pairing_deadline()
         players_in_bracket = score_groups[score]
         if len(players_in_bracket) % 2 != 0:
             continue  # Can't pair odd number of players in bracket
@@ -830,6 +913,7 @@ def _try_fide_round3_pattern(
             right = len(sorted_by_rating) - 1
 
             while left < right:
+                _check_pairing_deadline()
                 p1, p2 = sorted_by_rating[left], sorted_by_rating[right]
 
                 if frozenset({p1.id, p2.id}) not in previous_matches:
@@ -887,6 +971,7 @@ def _try_fide_round3_pattern(
             right = len(sorted_by_rating) - 1
 
             while left < right:
+                _check_pairing_deadline()
                 p1, p2 = sorted_by_rating[left], sorted_by_rating[right]
 
                 if frozenset({p1.id, p2.id}) not in previous_matches:
@@ -932,6 +1017,7 @@ def _try_fide_cross_bracket_pattern(
     - High scorers: 0-5, 4-1, 2-7, 6-3 (by rating order)
     - Low scorers: 5-0, 1-4, 7-2, 3-6 (by rating order)
     """
+    _check_pairing_deadline()
     if len(high_scorers) != len(low_scorers) or len(high_scorers) != 8:
         return None  # Pattern only works for 8v8
 
@@ -948,25 +1034,23 @@ def _try_fide_cross_bracket_pattern(
 
     # Process high scorers with their specific pattern
     for idx1, idx2 in high_score_pairs:
+        _check_pairing_deadline()
         if idx1 < len(high_by_rating) and idx2 < len(high_by_rating):
             p1, p2 = high_by_rating[idx1], high_by_rating[idx2]
 
             if frozenset({p1.id, p2.id}) not in previous_matches:
-                white, black = _assign_colors_fide(
-                    p1, p2, current_round, initial_color
-                )
+                white, black = _assign_colors_fide(p1, p2, current_round, initial_color)
                 pairings.append((white, black))
                 round_pairings_ids.append((white.id, black.id))
 
     # Process low scorers with their specific pattern
     for idx1, idx2 in low_score_pairs:
+        _check_pairing_deadline()
         if idx1 < len(low_by_rating) and idx2 < len(low_by_rating):
             p1, p2 = low_by_rating[idx1], low_by_rating[idx2]
 
             if frozenset({p1.id, p2.id}) not in previous_matches:
-                white, black = _assign_colors_fide(
-                    p1, p2, current_round, initial_color
-                )
+                white, black = _assign_colors_fide(p1, p2, current_round, initial_color)
                 pairings.append((white, black))
                 round_pairings_ids.append((white.id, black.id))
 
@@ -1045,6 +1129,7 @@ def _process_homogeneous_bracket(
     Process homogeneous bracket (all same score) with enhanced performance optimization
     and strict FIDE compliance for sequence generation.
     """
+    _check_pairing_deadline()
     # If too few players, no pairing possible
     if len(bracket) <= 1:
         return [], bracket
@@ -1059,6 +1144,7 @@ def _process_homogeneous_bracket(
 
     if fide_strict:
         configurations: List[Dict] = []
+        _check_pairing_deadline()
         transpositions = _generate_s2_transpositions(
             S2,
             len(S1),
@@ -1066,6 +1152,7 @@ def _process_homogeneous_bracket(
             strict_mode=True,
         )
         for index, s2_variant in enumerate(transpositions):
+            _check_pairing_deadline()
             config = _evaluate_fide_configuration(
                 S1,
                 s2_variant,
@@ -1109,6 +1196,7 @@ def _process_homogeneous_bracket(
     # Only continue if we don't have a perfect standard configuration
     if configs_tried < max_configs_to_try and best_score < MaxPairs:
         # Configuration 2+: S2 transpositions (FIDE Article 4.2)
+        _check_pairing_deadline()
         s2_transpositions = _generate_s2_transpositions(
             S2,
             len(S1),
@@ -1122,6 +1210,7 @@ def _process_homogeneous_bracket(
         )
 
         for i, s2_variant in enumerate(s2_transpositions[:max_transpositions]):
+            _check_pairing_deadline()
             if perfect_solution_found:
                 break
 
@@ -1157,12 +1246,14 @@ def _process_homogeneous_bracket(
         and not perfect_solution_found
     ):
 
+        _check_pairing_deadline()
         resident_exchanges = _generate_resident_exchanges(S1, S2)
         max_exchanges = min(len(resident_exchanges), max_configs_to_try - configs_tried)
 
         for i, (s1_variant, s2_variant) in enumerate(
             resident_exchanges[:max_exchanges]
         ):
+            _check_pairing_deadline()
             config = _try_bracket_configuration(
                 s1_variant,
                 s2_variant,
@@ -1221,6 +1312,7 @@ def _try_bracket_configuration(
     initial_color: str = WHITE,
 ) -> Optional[Dict]:
     """Try a specific S1 vs S2 configuration and evaluate it"""
+    _check_pairing_deadline()
     pairings = []
     unpaired = []
     color_violations = 0
@@ -1229,6 +1321,7 @@ def _try_bracket_configuration(
 
     # Try to pair S1[i] with S2[i]
     for i in range(min_pairs):
+        _check_pairing_deadline()
         p1, p2 = s1[i], s2[i]
 
         # Check if they can be paired (absolute criteria)
@@ -1272,6 +1365,8 @@ def _process_heterogeneous_bracket(
 ) -> Tuple[List[Tuple[Player, Player]], List[Player]]:
     """Process heterogeneous bracket (mixed scores) with performance optimization"""
 
+    _check_pairing_deadline()
+
     # Ensure BSN assignments
     _ensure_bsn_assignments(bracket + resident_players)
 
@@ -1286,9 +1381,8 @@ def _process_heterogeneous_bracket(
     # Performance limit: restrict number of configurations for large brackets
     max_configs = _get_optimal_config_limit(len(bracket), fide_strict)
 
-    for mdp_set_index, mdp_set in enumerate(
-        _generate_pairable_mdp_sets(mdps, M1)
-    ):
+    for mdp_set_index, mdp_set in enumerate(_generate_pairable_mdp_sets(mdps, M1)):
+        _check_pairing_deadline()
         if len(configurations) >= max_configs:
             break
 
@@ -1302,6 +1396,7 @@ def _process_heterogeneous_bracket(
             strict_mode=fide_strict,
         )
         for transposition_index, s2_variant in enumerate(s2_transpositions):
+            _check_pairing_deadline()
             if len(configurations) >= max_configs:
                 break
             config = _evaluate_heterogeneous_configuration(
@@ -1341,6 +1436,7 @@ def _evaluate_fide_configuration(
     initial_color: str = WHITE,
 ) -> Optional[Dict]:
     """Evaluate configuration according to FIDE criteria"""
+    _check_pairing_deadline()
     pairings = []
     unpaired = []
 
@@ -1349,6 +1445,7 @@ def _evaluate_fide_configuration(
     paired_count = 0
 
     for i in range(min_pairs):
+        _check_pairing_deadline()
         p1, p2 = S1[i], S2[i]
 
         # Check absolute criteria [C1-C3]
@@ -1415,11 +1512,14 @@ def _evaluate_heterogeneous_configuration(
 ) -> Optional[Dict]:
     """Evaluate heterogeneous bracket configuration with MDP-Pairing and remainder"""
 
+    _check_pairing_deadline()
+
     # Create MDP-Pairing (S1 MDPs with S2 residents)
     mdp_pairings = []
     M1 = len(S1)
 
     for i in range(min(M1, len(S2))):
+        _check_pairing_deadline()
         p1, p2 = S1[i], S2[i]
 
         if not _meets_absolute_criteria(
@@ -1481,6 +1581,7 @@ def _generate_s2_transpositions(
     Uses intelligent heuristics and early termination to maintain FIDE compliance
     while preventing exponential explosion for large brackets.
     """
+    _check_pairing_deadline()
     if not S2:
         return []
 
@@ -1505,15 +1606,14 @@ def _generate_s2_transpositions(
 
     # For large brackets, use heuristic-based approach with FIDE priorities
     else:
-        return _generate_heuristic_transpositions(
-            S2, N1, max_configs=configured_limit
-        )
+        return _generate_heuristic_transpositions(S2, N1, max_configs=configured_limit)
 
 
 def _generate_complete_fide_transpositions(
     S2: List[Player], N1: int
 ) -> List[List[Player]]:
     """Complete FIDE-compliant transposition generation for small brackets"""
+    _check_pairing_deadline()
     all_permutations = list(permutations(S2))
 
     # FIDE 4.2.2: Sort by lexicographic value of first N1 BSN positions
@@ -1539,6 +1639,7 @@ def _generate_intelligent_transpositions(
     S2: List[Player], N1: int, max_configs: int
 ) -> List[List[Player]]:
     """Intelligent transposition generation for medium-sized brackets"""
+    _check_pairing_deadline()
     transpositions = [S2.copy()]  # Start with original
 
     # Priority-based transposition strategies
@@ -1550,11 +1651,13 @@ def _generate_intelligent_transpositions(
     ]
 
     for strategy in strategies:
+        _check_pairing_deadline()
         if len(transpositions) >= max_configs:
             break
 
         new_transpositions = strategy(S2, N1, max_configs - len(transpositions))
         for trans in new_transpositions:
+            _check_pairing_deadline()
             if trans not in transpositions:
                 transpositions.append(trans)
 
@@ -1765,6 +1868,7 @@ def _generate_resident_exchanges(
     FIDE Article 4.3: Generate resident exchanges with performance optimization.
     Limited to prevent exponential explosion for large brackets.
     """
+    _check_pairing_deadline()
     if not S1 or not S2:
         return []
 
@@ -1776,7 +1880,9 @@ def _generate_resident_exchanges(
 
     # Single-player exchanges (smallest number first - FIDE 4.3.3.1)
     for i in range(max_s1_exchanges):
+        _check_pairing_deadline()
         for j in range(max_s2_exchanges):
+            _check_pairing_deadline()
             new_s1 = S1.copy()
             new_s2 = S2.copy()
 
@@ -1807,9 +1913,13 @@ def _generate_resident_exchanges(
     # Only do two-player exchanges for very small brackets to avoid combinatorial explosion
     if len(S1) <= 4 and len(S2) <= 4:
         for i1 in range(len(S1)):
+            _check_pairing_deadline()
             for i2 in range(i1 + 1, len(S1)):
+                _check_pairing_deadline()
                 for j1 in range(len(S2)):
+                    _check_pairing_deadline()
                     for j2 in range(j1 + 1, len(S2)):
+                        _check_pairing_deadline()
                         new_s1 = S1.copy()
                         new_s2 = S2.copy()
 
@@ -1856,6 +1966,7 @@ def _ensure_bsn_assignments(players: List[Player]) -> None:
     Players should be sorted by score (desc) then pairing number (asc) before calling.
     """
     for i, player in enumerate(players):
+        _check_pairing_deadline()
         if not hasattr(player, "bsn") or player.bsn is None:
             player.bsn = i + 1
         # Ensure BSN is always a positive integer
@@ -1887,7 +1998,7 @@ def _generate_mdp_exchanges(
 
 
 def _generate_pairable_mdp_sets(
-    mdps: List[Player], M1: int
+    mdps: List[Player], M1: int, max_candidates: int = 1000
 ) -> List[List[Player]]:
     """Generate legal MDP subsets ordered by their BSN sequence."""
     if M1 <= 0:
@@ -1904,10 +2015,12 @@ def _generate_pairable_mdp_sets(
     must_include = [p for p in mdps_sorted if p.score > cutoff_score]
     tied = [p for p in mdps_sorted if p.score == cutoff_score]
     slots = M1 - len(must_include)
-    candidate_sets = [
-        must_include + list(selection)
-        for selection in combinations(tied, max(0, slots))
-    ]
+    candidate_sets = []
+    for selection in combinations(tied, max(0, slots)):
+        _check_pairing_deadline()
+        candidate_sets.append(must_include + list(selection))
+        if len(candidate_sets) >= max_candidates:
+            break
     candidate_sets.sort(key=lambda group: [_bsn(player) for player in group])
     return candidate_sets
 
@@ -2328,6 +2441,7 @@ def _pair_dutch_bracket_improved(
     Dutch system bracket pairing with configuration selection.
     Uses more sophisticated scoring and FIDE-compliant optimization.
     """
+    _check_pairing_deadline()
     if len(bracket) <= 1:
         return [], bracket
 
@@ -2368,6 +2482,7 @@ def _generate_comprehensive_configurations(
     current_round: int,
 ) -> List[Dict]:
     """Generate comprehensive pairing configurations with better scoring"""
+    _check_pairing_deadline()
     configurations = []
 
     # Standard configuration: S1[i] vs S2[i]
@@ -2386,6 +2501,7 @@ def _generate_comprehensive_configurations(
 
     # Adjacent exchanges in S1 (try all possible adjacent swaps)
     for i in range(len(s1) - 1):
+        _check_pairing_deadline()
         s1_variant = s1.copy()
         s1_variant[i], s1_variant[i + 1] = s1_variant[i + 1], s1_variant[i]
         config = _evaluate_configuration(
@@ -2396,6 +2512,7 @@ def _generate_comprehensive_configurations(
 
     # Adjacent exchanges in S2 (try all possible adjacent swaps)
     for i in range(len(s2) - 1):
+        _check_pairing_deadline()
         s2_variant = s2.copy()
         s2_variant[i], s2_variant[i + 1] = s2_variant[i + 1], s2_variant[i]
         config = _evaluate_configuration(
@@ -2407,7 +2524,9 @@ def _generate_comprehensive_configurations(
     # Try combinations of exchanges if we don't have enough good configurations
     if len(configurations) < 3:
         for i in range(min(2, len(s1) - 1)):
+            _check_pairing_deadline()
             for j in range(min(2, len(s2) - 1)):
+                _check_pairing_deadline()
                 s1_variant = s1.copy()
                 s2_variant = s2.copy()
                 s1_variant[i], s1_variant[i + 1] = s1_variant[i + 1], s1_variant[i]
@@ -2433,6 +2552,7 @@ def _evaluate_configuration(
     config_name: str,
 ) -> Optional[Dict]:
     """Evaluate a specific pairing configuration with comprehensive scoring"""
+    _check_pairing_deadline()
     pairings = []
     unpaired = []
 
@@ -2449,6 +2569,7 @@ def _evaluate_configuration(
 
     # Try to pair players from list1 and list2
     for i in range(min_pairs):
+        _check_pairing_deadline()
         p1, p2 = list1[i], list2[i]
 
         if p1.id in paired_ids or p2.id in paired_ids:
@@ -2594,6 +2715,7 @@ def _enhanced_fallback_pairing(
     bracket: List[Player], previous_matches: Set[frozenset], current_round: int
 ) -> Tuple[List[Tuple[Player, Player]], List[Player]]:
     """Enhanced fallback pairing with better compatibility checking"""
+    _check_pairing_deadline()
     pairings = []
     remaining = bracket.copy()
 
@@ -2607,11 +2729,13 @@ def _enhanced_fallback_pairing(
     )
 
     while len(remaining) >= 2:
+        _check_pairing_deadline()
         player1 = remaining.pop(0)
         best_opponent_idx = None
         best_score = float("inf")
 
         for i, player2 in enumerate(remaining):
+            _check_pairing_deadline()
             # Basic compatibility checks
             compatible = True
 
@@ -2654,6 +2778,7 @@ def _enhanced_fallback_pairing(
             # If no compatible opponent found, try one more relaxed pass
             # allowing some color preferences to be violated if necessary
             for i, player2 in enumerate(remaining):
+                _check_pairing_deadline()
                 if frozenset({player1.id, player2.id}) not in previous_matches:
                     player2 = remaining.pop(i)
                     white, black = _assign_colors_dutch_improved(
@@ -2692,6 +2817,7 @@ def _group_players_by_score(players: List[Player]) -> Dict[float, List[Player]]:
     """Group players by their current score"""
     score_groups = {}
     for player in players:
+        _check_pairing_deadline()
         score_groups.setdefault(player.score, []).append(player)
     return score_groups
 
@@ -2703,6 +2829,7 @@ def _generate_dutch_configurations(
     current_round: int,
 ) -> List[Dict]:
     """Generate all valid pairing configurations using Dutch system rules"""
+    _check_pairing_deadline()
     configurations = []
 
     # Configuration 1: Standard pairing (S1[i] vs S2[i])
@@ -2721,6 +2848,7 @@ def _generate_dutch_configurations(
 
     # Configuration 3+: Adjacent exchanges in S1
     for i in range(len(s1) - 1):
+        _check_pairing_deadline()
         s1_variant = s1.copy()
         s1_variant[i], s1_variant[i + 1] = s1_variant[i + 1], s1_variant[i]
         config = _try_dutch_configuration(
@@ -2731,6 +2859,7 @@ def _generate_dutch_configurations(
 
     # Configuration N+: Adjacent exchanges in S2
     for i in range(len(s2) - 1):
+        _check_pairing_deadline()
         s2_variant = s2.copy()
         s2_variant[i], s2_variant[i + 1] = s2_variant[i + 1], s2_variant[i]
         config = _try_dutch_configuration(
@@ -2750,6 +2879,7 @@ def _try_dutch_configuration(
     config_name: str,
 ) -> Optional[Dict]:
     """Try a specific Dutch system pairing configuration"""
+    _check_pairing_deadline()
     pairings = []
     unpaired = []
     score_diff_total = 0
@@ -2760,6 +2890,7 @@ def _try_dutch_configuration(
 
     # Try to pair players from list1 and list2
     for i in range(min_pairs):
+        _check_pairing_deadline()
         p1, p2 = list1[i], list2[i]
 
         if p1.id in paired_ids or p2.id in paired_ids:
@@ -2944,10 +3075,12 @@ def _pair_remaining_players(
     initial_color: str = WHITE,
 ) -> List[Tuple[Player, Player]]:
     """Pair remaining players with minimal constraints"""
+    _check_pairing_deadline()
     pairings = []
     remaining = players.copy()
 
     while len(remaining) >= 2:
+        _check_pairing_deadline()
         player1 = remaining.pop(0)
 
         # Find best available opponent
@@ -2955,6 +3088,7 @@ def _pair_remaining_players(
         best_score_diff = float("inf")
 
         for i, player2 in enumerate(remaining):
+            _check_pairing_deadline()
             # Allow repeat pairings as last resort for remaining players
             score_diff = abs(player1.score - player2.score)
             if score_diff < best_score_diff:
@@ -3009,14 +3143,17 @@ def _greedy_pair_bracket(
     initial_color: str = WHITE,
 ) -> Tuple[List[Tuple[Player, Player]], List[Player]]:
     """Fallback greedy pairing when optimal pairing fails"""
+    _check_pairing_deadline()
     pairings = []
     remaining = bracket.copy()
 
     while len(remaining) >= 2:
+        _check_pairing_deadline()
         player1 = remaining.pop(0)
         paired = False
 
         for i, player2 in enumerate(remaining):
+            _check_pairing_deadline()
             if _are_players_compatible(player1, player2, previous_matches):
                 white_player, black_player = _assign_colors_fide(
                     player1, player2, 99, initial_color
@@ -3211,6 +3348,7 @@ def _select_safe_bye_candidate(
     players: List[Player], get_eligible_bye_player
 ) -> Optional[Player]:
     """Select a bye candidate while avoiding prior unplayed full-point games."""
+    _check_pairing_deadline()
     if not players:
         return None
 
@@ -3247,6 +3385,275 @@ def _select_safe_bye_candidate(
         ],
         key=lambda p: _pairing_number(p),
     )[0]
+
+
+def _final_colour_pair_allowed(
+    player1: Player, player2: Player, current_round: int, total_rounds: int
+) -> bool:
+    """Apply the final-round absolute colour-preference constraint."""
+    if current_round != total_rounds or total_rounds <= 0:
+        return True
+    if _is_topscorer(player1, current_round, total_rounds) or _is_topscorer(
+        player2, current_round, total_rounds
+    ):
+        return True
+    if _has_absolute_color_preference(player1) and _has_absolute_color_preference(
+        player2
+    ):
+        return _get_color_preference(player1) != _get_color_preference(player2)
+    return True
+
+
+def _find_complete_matching(
+    players: List[Player],
+    previous_matches: Set[frozenset],
+    current_round: int,
+    total_rounds: int,
+    *,
+    allow_repeats: bool = False,
+    initial_color: str = WHITE,
+) -> Optional[List[Tuple[Player, Player]]]:
+    """Find a complete matching while preserving absolute constraints.
+
+    The main Dutch implementation intentionally explores many FIDE-specific
+    configurations. This bounded exact fallback is used only when that search
+    returns an incomplete round, preventing a heuristic partial result from
+    entering tournament state.
+    """
+    _check_pairing_deadline()
+    ordered = sorted(
+        players,
+        key=lambda player: (
+            -player.score,
+            _pairing_number(player),
+            -player.rating,
+            player.id,
+        ),
+    )
+    if len(ordered) % 2:
+        return None
+
+    candidate_map: Dict[int, List[int]] = {}
+    for index, player in enumerate(ordered):
+        _check_pairing_deadline()
+        candidates: list[int] = []
+        for opponent_index in range(index + 1, len(ordered)):
+            _check_pairing_deadline()
+            opponent = ordered[opponent_index]
+            pair = frozenset({player.id, opponent.id})
+            repeated = pair in previous_matches
+            if repeated and not allow_repeats:
+                continue
+            if not _are_colors_compatible(player, opponent):
+                continue
+            if not _final_colour_pair_allowed(
+                player, opponent, current_round, total_rounds
+            ):
+                continue
+            candidates.append(opponent_index)
+        candidate_map[index] = candidates
+
+    # The candidate graph is undirected even though the map above is built in
+    # one direction for deterministic ordering.
+    for index in range(len(ordered)):
+        _check_pairing_deadline()
+        for opponent_index in range(index):
+            _check_pairing_deadline()
+            if index in candidate_map[opponent_index]:
+                candidate_map[index].append(opponent_index)
+
+    for index in candidate_map:
+        _check_pairing_deadline()
+        candidate_map[index].sort(
+            key=lambda opponent_index: (
+                frozenset({ordered[index].id, ordered[opponent_index].id})
+                in previous_matches,
+                abs(ordered[index].score - ordered[opponent_index].score),
+                abs(ordered[index].rating - ordered[opponent_index].rating),
+                _pairing_number(ordered[opponent_index]),
+                ordered[opponent_index].id,
+            )
+        )
+
+    deadline = time.monotonic() + min(3.0, max(0.5, len(ordered) * 0.03))
+    nodes = 0
+
+    @lru_cache(maxsize=None)
+    def search(remaining_mask: int) -> Optional[tuple[tuple[int, int], ...]]:
+        nonlocal nodes
+        _check_pairing_deadline()
+        nodes += 1
+        if remaining_mask == 0:
+            return ()
+        if nodes > 100_000 or time.monotonic() > deadline:
+            return None
+
+        remaining_indices = [
+            index for index in range(len(ordered)) if remaining_mask & (1 << index)
+        ]
+        best_index = None
+        best_options: list[int] = []
+        for index in remaining_indices:
+            _check_pairing_deadline()
+            options = [
+                opponent_index
+                for opponent_index in candidate_map[index]
+                if remaining_mask & (1 << opponent_index)
+            ]
+            if not options:
+                return None
+            if best_index is None or len(options) < len(best_options):
+                best_index = index
+                best_options = options
+
+        assert best_index is not None
+        for opponent_index in best_options:
+            _check_pairing_deadline()
+            next_mask = remaining_mask ^ (1 << best_index) ^ (1 << opponent_index)
+            tail = search(next_mask)
+            if tail is not None:
+                return ((best_index, opponent_index),) + tail
+        return None
+
+    mask = (1 << len(ordered)) - 1
+    matching = search(mask)
+    if matching is None:
+        return None
+    return [
+        _assign_colors_fide(
+            ordered[index], ordered[opponent_index], current_round, initial_color
+        )
+        for index, opponent_index in matching
+    ]
+
+
+def _pairings_are_complete(
+    pairings: List[Tuple[Player, Player]],
+    active_players: List[Player],
+    bye_player: Optional[Player],
+    previous_matches: Set[frozenset],
+) -> bool:
+    """Check coverage, duplicates, self-pairings, and repeats."""
+    _check_pairing_deadline()
+    active_ids = {player.id for player in active_players}
+    assigned_ids: set[str] = set()
+    for white, black in pairings:
+        _check_pairing_deadline()
+        pair = frozenset({white.id, black.id})
+        if (
+            white.id == black.id
+            or white.id not in active_ids
+            or black.id not in active_ids
+            or white.id in assigned_ids
+            or black.id in assigned_ids
+            or pair in previous_matches
+        ):
+            return False
+        assigned_ids.update((white.id, black.id))
+
+    if bye_player is not None:
+        if bye_player.id not in active_ids or bye_player.id in assigned_ids:
+            return False
+        assigned_ids.add(bye_player.id)
+    return assigned_ids == active_ids
+
+
+def _repair_incomplete_pairings(
+    active_players: List[Player],
+    generated: Tuple[
+        List[Tuple[Player, Player]],
+        Optional[Player],
+        List[Tuple[str, str]],
+        Optional[str],
+    ],
+    previous_matches: Set[frozenset],
+    current_round: int,
+    total_rounds: int,
+    initial_color: str,
+    get_eligible_bye_player,
+    allow_repeat_pairing_callback,
+) -> Tuple[
+    List[Tuple[Player, Player]],
+    Optional[Player],
+    List[Tuple[str, str]],
+    Optional[str],
+]:
+    """Repair an incomplete heuristic result or fail explicitly."""
+    _check_pairing_deadline()
+    pairings, generated_bye, _pairing_ids, _bye_id = generated
+    if _pairings_are_complete(
+        pairings, active_players, generated_bye, previous_matches
+    ):
+        return generated
+
+    bye_candidates: list[Optional[Player]]
+    if len(active_players) % 2:
+        bye_candidates = []
+        for candidate in [
+            generated_bye,
+            _select_safe_bye_candidate(active_players, get_eligible_bye_player),
+        ]:
+            if candidate is not None and candidate not in bye_candidates:
+                bye_candidates.append(candidate)
+        bye_candidates.extend(
+            player
+            for player in sorted(
+                active_players,
+                key=lambda item: (
+                    -item.score,
+                    item.rating,
+                    _pairing_number(item),
+                    item.id,
+                ),
+            )
+            if player not in bye_candidates
+        )
+    else:
+        bye_candidates = [None]
+
+    for bye_player in bye_candidates:
+        _check_pairing_deadline()
+        pool = [player for player in active_players if player is not bye_player]
+        repaired = _find_complete_matching(
+            pool,
+            previous_matches,
+            current_round,
+            total_rounds,
+            initial_color=initial_color,
+        )
+        if repaired is not None:
+            ids = [(white.id, black.id) for white, black in repaired]
+            return repaired, bye_player, ids, bye_player.id if bye_player else None
+
+    if allow_repeat_pairing_callback is not None:
+        for bye_player in bye_candidates:
+            _check_pairing_deadline()
+            pool = [player for player in active_players if player is not bye_player]
+            repaired = _find_complete_matching(
+                pool,
+                previous_matches,
+                current_round,
+                total_rounds,
+                allow_repeats=True,
+                initial_color=initial_color,
+            )
+            if repaired is None:
+                continue
+            repeated = [
+                (white, black)
+                for white, black in repaired
+                if frozenset({white.id, black.id}) in previous_matches
+            ]
+            if all(
+                allow_repeat_pairing_callback(white, black) for white, black in repeated
+            ):
+                ids = [(white.id, black.id) for white, black in repaired]
+                return repaired, bye_player, ids, bye_player.id if bye_player else None
+
+    raise ValueError(
+        f"No complete legal pairing exists for round {current_round} with "
+        f"{len(active_players)} active players"
+    )
 
 
 def _validate_downfloater_status(player: Player, original_bracket_score: float) -> bool:
@@ -3349,6 +3756,7 @@ def _create_simplified_dutch_pairings(
 
     # Process each score group with simplified approach
     for score in sorted_scores:
+        _check_pairing_deadline()
         group_players = score_groups[score] + unpaired
         unpaired = []
 
@@ -3362,13 +3770,12 @@ def _create_simplified_dutch_pairings(
         # Pair players greedily
         i = 0
         while i + 1 < len(group_players):
+            _check_pairing_deadline()
             p1, p2 = group_players[i], group_players[i + 1]
 
             # Check if they can be paired
             if frozenset({p1.id, p2.id}) not in previous_matches:
-                white, black = _assign_colors_fide(
-                    p1, p2, current_round, initial_color
-                )
+                white, black = _assign_colors_fide(p1, p2, current_round, initial_color)
                 pairings.append((white, black))
                 round_pairings_ids.append((white.id, black.id))
                 i += 2
@@ -3376,6 +3783,7 @@ def _create_simplified_dutch_pairings(
                 # Try to find another opponent for p1
                 paired = False
                 for j in range(i + 2, len(group_players)):
+                    _check_pairing_deadline()
                     p3 = group_players[j]
                     if frozenset({p1.id, p3.id}) not in previous_matches:
                         white, black = _assign_colors_fide(
@@ -3398,9 +3806,7 @@ def _create_simplified_dutch_pairings(
             unpaired.append(group_players[i])
 
     # Handle any remaining unpaired players with minimal constraints
-    final_pairings = _pair_remaining_players(
-        unpaired, previous_matches, initial_color
-    )
+    final_pairings = _pair_remaining_players(unpaired, previous_matches, initial_color)
     pairings.extend(final_pairings)
     round_pairings_ids.extend([(p[0].id, p[1].id) for p in final_pairings])
 
@@ -3433,12 +3839,14 @@ def _create_fallback_pairings(
 
     # Greedy pairing with minimal constraints
     while len(remaining) >= 2:
+        _check_pairing_deadline()
         player1 = remaining.pop(0)
         best_opponent = None
         best_idx = -1
 
         # Find the best available opponent (prefer same score, avoid repeats if possible)
         for i, player2 in enumerate(remaining):
+            _check_pairing_deadline()
             # Prefer players with same score
             if player2.score == player1.score:
                 # Check if they haven't played before
@@ -3450,6 +3858,7 @@ def _create_fallback_pairings(
         # If no same-score opponent available, find any opponent
         if best_opponent is None:
             for i, player2 in enumerate(remaining):
+                _check_pairing_deadline()
                 if frozenset({player1.id, player2.id}) not in previous_matches:
                     best_opponent = player2
                     best_idx = i
@@ -3471,11 +3880,58 @@ def _create_fallback_pairings(
     return pairings, bye_player, round_pairings_ids, bye_player_id
 
 
+def _create_deadline_fallback_pairings(
+    active_players: List[Player],
+    bye_player: Optional[Player],
+    bye_player_id: Optional[str],
+    previous_matches: Set[frozenset],
+    current_round: int,
+    initial_color: str,
+) -> Tuple[
+    List[Tuple[Player, Player]], Optional[Player], List[Tuple[str, str]], Optional[str]
+]:
+    """Create a complete linear pairing when the search budget is exhausted."""
+    for index, player in enumerate(active_players, start=1):
+        if player.pairing_number is None:
+            player.pairing_number = index
+
+    if len(active_players) % 2 and bye_player is None:
+        bye_player = min(
+            active_players,
+            key=lambda player: (
+                player.score,
+                player.rating,
+                _pairing_number(player),
+                player.id,
+            ),
+        )
+        bye_player_id = bye_player.id
+
+    pool = [player for player in active_players if player is not bye_player]
+    pairings: List[Tuple[Player, Player]] = []
+    pairing_ids: List[Tuple[str, str]] = []
+    while len(pool) >= 2:
+        player = pool.pop(0)
+        opponent_index = min(
+            range(len(pool)),
+            key=lambda index: (
+                frozenset({player.id, pool[index].id}) in previous_matches,
+                abs(player.score - pool[index].score),
+                abs(player.rating - pool[index].rating),
+                _pairing_number(pool[index]),
+                pool[index].id,
+            ),
+        )
+        opponent = pool.pop(opponent_index)
+        white, black = _assign_colors_fide(
+            player, opponent, current_round, initial_color
+        )
+        pairings.append((white, black))
+        pairing_ids.append((white.id, black.id))
+    return pairings, bye_player, pairing_ids, bye_player_id
+
+
 # Additional helper functions for optimization and FIDE compliance
-import functools
-from typing import Any, Dict, List, Optional, Set, Tuple
-
-
 @functools.lru_cache(maxsize=1024)
 def _cached_color_preference(
     player_id: str, color_history_tuple: tuple

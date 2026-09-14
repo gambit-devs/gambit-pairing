@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from PyQt6 import QtWidgets
 
+from gambitpairing.gui.gui_utils import get_native_icon
 from gambitpairing.gui.main_window_save_flow import UnsavedChangesPrompt
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
 
@@ -13,7 +14,6 @@ class UnsavedChangesDialog(QtWidgets.QDialog):
 
     def __init__(self, prompt: UnsavedChangesPrompt, parent=None):
         super().__init__(parent)
-        self.setProperty("class", "UnsavedChangesDialog")
         self._selected_action = "cancel"
 
         load_ui_into(self, "unsaved_changes_dialog.ui")
@@ -28,18 +28,36 @@ class UnsavedChangesDialog(QtWidgets.QDialog):
         self.setWindowTitle(prompt.title)
 
         self.message_label = required_child(self, QtWidgets.QLabel, "message_label")
-        self.save_button = required_child(self, QtWidgets.QPushButton, "save_button")
-        self.discard_button = required_child(
-            self, QtWidgets.QPushButton, "discard_button"
+        warning_icon_label = required_child(
+            self, QtWidgets.QLabel, "warning_icon_label"
         )
-        self.cancel_button = required_child(
-            self, QtWidgets.QPushButton, "cancel_button"
+        self.button_box = required_child(self, QtWidgets.QDialogButtonBox, "button_box")
+        self.save_button = self.button_box.addButton(
+            prompt.save_label,
+            QtWidgets.QDialogButtonBox.ButtonRole.AcceptRole,
         )
+        self.discard_button = self.button_box.addButton(
+            prompt.discard_label,
+            QtWidgets.QDialogButtonBox.ButtonRole.DestructiveRole,
+        )
+        self.cancel_button = self.button_box.button(
+            QtWidgets.QDialogButtonBox.StandardButton.Cancel
+        )
+        if self.cancel_button is None:
+            raise RuntimeError("Unsaved changes dialog is missing its Cancel button")
 
         self.message_label.setText(prompt.message)
-        self.save_button.setText(prompt.save_label)
-        self.discard_button.setText(prompt.discard_label)
+        warning_icon = get_native_icon(
+            "dialog-warning", QtWidgets.QStyle.StandardPixmap.SP_MessageBoxWarning
+        )
+        icon_size = self.style().pixelMetric(
+            QtWidgets.QStyle.PixelMetric.PM_MessageBoxIconSize, None, self
+        )
+        warning_icon_label.setPixmap(warning_icon.pixmap(icon_size, icon_size))
+        warning_icon_label.setText("")
+        warning_icon_label.setAccessibleName("Warning")
         self.cancel_button.setText(prompt.cancel_label)
+        self.save_button.setDefault(True)
 
         self.save_button.clicked.connect(lambda: self._finish("save"))
         self.discard_button.clicked.connect(lambda: self._finish("discard"))

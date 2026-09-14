@@ -11,11 +11,12 @@ from PyQt6.QtCore import Qt
 from importlib_resources import as_file, files
 
 from gambitpairing.constants import (
-    DEFAULT_TIEBREAK_SORT_ORDER,
+    DEFAULT_USCF_TIEBREAK_ORDER,
     RESULT_BLACK_WIN,
     RESULT_DRAW,
     RESULT_WHITE_WIN,
 )
+from gambitpairing.controllers.tournament.session import TournamentSession as Tournament
 from gambitpairing.gui.dialogs.about_dialog import AboutDialog
 from gambitpairing.gui.dialogs.manual_pairing_dialog import ManualPairingDialog
 from gambitpairing.gui.dialogs.new_tournament_dialog import NewTournamentDialog
@@ -36,7 +37,6 @@ from gambitpairing.gui.widgets.round_progress_indicator import RoundProgressIndi
 from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 from gambitpairing.models import Player
 from gambitpairing.models.enums import TournamentPhase
-from gambitpairing.models.tournament import Tournament
 
 _APP: QtWidgets.QApplication | None = None
 
@@ -66,7 +66,7 @@ def test_packaged_ui_files_are_parseable():
             assert base_class is not None, resource.name
 
 
-def test_pyinstaller_datas_include_runtime_ui_and_styles():
+def test_pyinstaller_datas_include_runtime_ui_and_icons():
     config_path = (
         Path(__file__).resolve().parents[1] / "scripts" / "pyinstaller_common.py"
     )
@@ -79,10 +79,15 @@ def test_pyinstaller_datas_include_runtime_ui_and_styles():
     data_sources = {source.replace("\\", "/") for source, _ in module.DATAS}
 
     assert any(source.endswith("gambitpairing/ui/*.ui") for source in data_sources)
-    assert any(
-        source.endswith("gambitpairing/resources/styles/*.qss")
+    icon_sources = {
+        source
         for source in data_sources
-    )
+        if source.endswith((".png", ".ico", ".webp"))
+        and "gambitpairing/resources/icons/" in source
+    }
+    assert icon_sources
+    assert not any("__pycache__" in source for source in data_sources)
+    assert not any("resources/styles" in source for source in data_sources)
 
 
 def test_designer_backed_dialogs_wire_expected_controls():
@@ -125,16 +130,29 @@ def test_designer_backed_dialogs_wire_expected_controls():
     assert unsaved_dialog.message_label.text() == unsaved_prompt.message
     assert unsaved_dialog.save_button.text() == "Save"
     assert unsaved_dialog.discard_button.text() == "Close without Saving"
-    assert unsaved_dialog.discard_button.minimumWidth() >= 300
     assert unsaved_dialog.cancel_button.text() == "Cancel"
 
     new_tournament = NewTournamentDialog()
     assert new_tournament.get_data() == (
         "My Swiss Tournament",
         5,
-        list(DEFAULT_TIEBREAK_SORT_ORDER),
+        list(DEFAULT_USCF_TIEBREAK_ORDER),
         "dutch_swiss",
+        False,
     )
+    assert (
+        new_tournament.pairing_combo.itemText(
+            new_tournament.pairing_combo.findData("dutch_swiss")
+        )
+        == "Dutch System"
+    )
+    assert new_tournament.pairing_combo.findData("bbp_dutch") == -1
+    assert not new_tournament.experimental_dutch_check.isHidden()
+    assert new_tournament.experimental_dutch_check.isEnabled()
+
+    new_tournament.experimental_dutch_check.setChecked(True)
+    data = new_tournament.get_data()
+    assert data is not None and data[-1] is True
 
     new_tournament.tiebreak_list.setCurrentRow(1)
     moved_item = new_tournament.tiebreak_list.item(1)
@@ -151,6 +169,8 @@ def test_designer_backed_dialogs_wire_expected_controls():
     assert new_tournament.rounds_spin.value() == 7
     assert new_tournament.rounds_spin.isHidden()
     assert new_tournament.rounds_label.isHidden()
+    assert new_tournament.experimental_dutch_check.isHidden()
+    assert not new_tournament.experimental_dutch_check.isEnabled()
 
     about_dialog = AboutDialog()
     assert about_dialog.windowTitle() == "About Gambit Pairing"
@@ -201,6 +221,39 @@ def test_designer_backed_player_management_dialog_preserves_public_api():
     assert edit_dialog.rating_spin.value() == 1900
     assert not edit_dialog.fide_group.isHidden()
 
+    create_dialog._populate_cfc_results(
+        {
+            "cfc_id": 100124,
+            "name_first": "Grace",
+            "name_last": "Hopper",
+            "regular_rating": 1900,
+            "addr_province": "NY",
+            "addr_city": "New York",
+        },
+        "100124",
+    )
+    assert create_dialog.cfc_table.item(0, 1).text() == "Grace Hopper"
+    assert create_dialog.cfc_table.item(0, 2).text() == "1900"
+
+    create_dialog._populate_cfc_results(
+        [
+            {
+                "cfc_id": "100123",
+                "name": "Ada Lovelace",
+                "rating": 1800,
+                "province": "ON",
+                "city": "Toronto",
+                "expiry_date": "2027-01-01",
+                "status": "Active",
+            }
+        ],
+        "Ada",
+    )
+    assert create_dialog.cfc_table.columnCount() == 7
+    assert create_dialog.cfc_table.cellWidget(0, 0) is None
+    create_dialog.cfc_table.selectRow(0)
+    assert create_dialog.btn_use_selected_cfc.isEnabled()
+
     tournament = Tournament("City Open", [Player("Ada", 1800)], 5)
     tournament_dialog = PlayerManagementDialog(tournament=tournament)
     assert tournament_dialog.tab_widget.count() == 4
@@ -229,18 +282,12 @@ def test_designer_backed_manual_pairing_dialog_preserves_public_api():
     assert (
         dialog.buttons.button(QtWidgets.QDialogButtonBox.StandardButton.Ok) is not None
     )
-    assert dialog.main_window_widget.centralWidget() is not None
-    assert dialog.player_pool_dock.widget() is not None
-    assert not dialog.main_window_widget.isWindow()
+    assert dialog.pairing_splitter.widget(0) is dialog.central_widget
+    assert dialog.pairing_splitter.widget(1) is dialog.player_pool_panel
     assert dialog.clear_all_btn.text() == "Clear All"
     assert dialog.auto_pair_btn.text() == "Auto Pair"
     assert dialog.player_pool.objectName() == "player_pool"
     assert dialog.bye_list.objectName() == "bye_list"
-    assert (
-        dialog.player_pool_dock.features()
-        == QtWidgets.QDockWidget.DockWidgetFeature.NoDockWidgetFeatures
-    )
-    assert not dialog.player_pool_dock.isFloating()
     assert (
         dialog.player_pool.dragDropMode()
         == QtWidgets.QAbstractItemView.DragDropMode.DropOnly
@@ -321,7 +368,7 @@ def test_designer_backed_tab_header_preserves_actions_and_title_api():
     header = TabHeader("Players")
     calls = {"refresh": 0}
     button = header.add_action_button(
-        "refresh.svg",
+        "view-refresh",
         "Refresh",
         lambda: calls.__setitem__("refresh", calls["refresh"] + 1),
     )
@@ -336,7 +383,7 @@ def test_designer_backed_tab_header_preserves_actions_and_title_api():
     header.set_title("Updated")
     assert header.title_label.text() == "Updated"
 
-    icon_header = TabHeader("Rounds", "play.svg")
+    icon_header = TabHeader("Rounds", "media-playback-start")
     assert not icon_header.icon_label.isHidden()
 
     header.close()
@@ -475,19 +522,18 @@ def test_designer_backed_pairings_table_preserves_public_api_and_results():
     table.close()
 
 
-def test_designer_backed_round_progress_indicator_keeps_dynamic_dots():
+def test_designer_backed_round_progress_indicator_uses_native_progress_bar():
     _app()
 
     indicator = RoundProgressIndicator()
     indicator.update_progress(2, 4, TournamentPhase.AWAITING_RESULTS)
 
     assert indicator.progress_label.text() == "Round 2 of 4"
-    assert len(indicator._dots) == 4
-    assert indicator._dots[0].property("state") == "completed"
-    assert indicator._dots[1].property("state") == "active"
-    assert indicator._dots[2].property("state") == "pending"
+    assert indicator.progress_bar.maximum() == 4
+    assert indicator.progress_bar.value() == 1
 
     indicator.update_progress(4, 4, TournamentPhase.FINISHED)
     assert indicator.progress_label.text() == "Tournament Complete (4 rounds)"
+    assert indicator.progress_bar.value() == 4
 
     indicator.close()

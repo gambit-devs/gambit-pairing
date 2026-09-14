@@ -2,30 +2,9 @@
 <ui version="4.0">
  <class>RoundControlsWidget</class>
  <widget class="QWidget" name="RoundControlsWidget">
-  <property name="class" stdset="0">
-   <string>ActionFooter</string>
-  </property>
-  <layout class="QHBoxLayout" name="main_layout">
-   <property name="spacing">
-    <number>10</number>
-   </property>
-   <property name="leftMargin">
-    <number>16</number>
-   </property>
-   <property name="topMargin">
-    <number>10</number>
-   </property>
-   <property name="rightMargin">
-    <number>16</number>
-   </property>
-   <property name="bottomMargin">
-    <number>10</number>
-   </property>
+ <layout class="QHBoxLayout" name="main_layout">
    <item>
     <widget class="QLabel" name="lbl_keyboard_hints">
-     <property name="class" stdset="0">
-      <string>KeyboardHints</string>
-     </property>
      <property name="text">
       <string>1  White win   D  Draw   0  Black win   Del  Clear   Enter  Next</string>
      </property>
@@ -33,9 +12,6 @@
    </item>
    <item>
     <widget class="QLabel" name="lbl_progress">
-     <property name="class" stdset="0">
-      <string>RoundProgress</string>
-     </property>
      <property name="text">
       <string/>
      </property>
@@ -43,14 +19,8 @@
    </item>
    <item>
     <layout class="QHBoxLayout" name="left_actions_layout">
-     <property name="spacing">
-      <number>8</number>
-     </property>
      <item>
       <widget class="QPushButton" name="btn_undo">
-       <property name="class" stdset="0">
-        <string>ToolbarAction</string>
-       </property>
        <property name="text">
         <string/>
        </property>
@@ -63,19 +33,19 @@
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>
+     <property name="sizeType">
+      <enum>QSizePolicy::Expanding</enum>
+     </property>
      <property name="sizeHint" stdset="0">
       <size>
-       <width>40</width>
-       <height>20</height>
+       <width>0</width>
+       <height>0</height>
       </size>
      </property>
     </spacer>
    </item>
    <item>
    <widget class="QPushButton" name="btn_primary_action">
-     <property name="class" stdset="0">
-      <string>ToolbarAction</string>
-     </property>
      <property name="text">
       <string/>
      </property>
