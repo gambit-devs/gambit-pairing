@@ -207,6 +207,7 @@ class RoundController:
             pairings=pairing_ids,
             bye_player_id=bye_id,
             active_player_ids=[player.id for player in active_players],
+            pairing_engine=self.last_engine,
         )
 
         self.rounds.append(round_data)

@@ -29,6 +29,10 @@ for _icon_pattern in ("*.png", "*.ico", "*.webp"):
 
 BINARIES = []
 _BBP_BIN_ROOT = SRC / "gambitpairing" / "resources" / "bin"
+DATAS.extend(
+    (str(notice), "gambitpairing/resources/bin")
+    for notice in sorted(_BBP_BIN_ROOT.glob("BBP-*.txt"))
+)
 for _bbp_binary in sorted(_BBP_BIN_ROOT.glob("bbpPairings*")):
     if _bbp_binary.is_file() and _bbp_binary.name != "README.txt":
         BINARIES.append((str(_bbp_binary), "gambitpairing/resources/bin"))

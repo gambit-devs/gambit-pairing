@@ -44,6 +44,7 @@ class CriterionStatus(Enum):
     COMPLIANT = "COMPLIANT"
     VIOLATION = "VIOLATION"
     NOT_APPLICABLE = "NOT_APPLICABLE"
+    NOT_VERIFIED = "NOT_VERIFIED"
 
 
 class ViolationType(Enum):
@@ -98,6 +99,39 @@ class ValidationReport:
     summary: str
     quality_warnings: List[CriterionResult] = field(default_factory=list)
     criteria_results: List[CriterionResult] = field(default_factory=list)
+    rules_version: str = "FIDE-Dutch-2026-02-01"
+    verification_complete: bool = False
+
+    @property
+    def verification_status(self) -> str:
+        if self.violations:
+            return "failed"
+        return "passed" if self.verification_complete else "not_verified"
+
+    def to_dict(self) -> dict:
+        def project(result):
+            return {
+                "criterion": result.criterion_id,
+                "status": result.status.value,
+                "message": result.message,
+                "details": result.details,
+            }
+
+        return {
+            "rules_version": self.rules_version,
+            "verification_status": self.verification_status,
+            "checked_criteria": [project(r) for r in self.criteria_results],
+            "violations": [project(r) for r in self.violations],
+            "quality_warnings": [project(r) for r in self.quality_warnings],
+            "summary": self.summary,
+            "limitations": (
+                []
+                if self.verification_complete
+                else [
+                    "Dutch candidate order and C5-C21 optimality have not been independently verified"
+                ]
+            ),
+        }
 
     @property
     def compliance_percentage(self) -> float:
@@ -125,7 +159,12 @@ class RoundContext:
 
 
 def _color_history(player: Player) -> List[str]:
-    return [c for c in getattr(player, "color_history", []) if c is not None]
+    outcomes = getattr(player, "outcome_types", [])
+    return [
+        c
+        for i, c in enumerate(getattr(player, "color_history", []))
+        if c is not None and (i >= len(outcomes) or outcomes[i] == "normal")
+    ]
 
 
 def _color_difference(player: Player, assigned_color: Optional[str] = None) -> int:
@@ -212,8 +251,14 @@ def _count_played_games(player: Player) -> int:
 
 
 def _has_full_point_bye(player: Player) -> bool:
-    for opponent_id, result in zip(player.opponent_ids, player.results):
-        if opponent_id is None and result is not None and result >= WIN_SCORE:
+    outcomes = getattr(player, "outcome_types", [])
+    for index, (opponent_id, result) in enumerate(
+        zip(player.opponent_ids, player.results)
+    ):
+        unplayed = opponent_id is None or (
+            index < len(outcomes) and outcomes[index] != "normal"
+        )
+        if unplayed and result is not None and result >= WIN_SCORE:
             return True
     return False
 
@@ -223,6 +268,16 @@ def _float_type(player: Player, rounds_back: int, current_round: int) -> FloatDi
         return FloatDirection.FLOAT_NONE
 
     match_index = current_round - rounds_back - 1
+    outcomes = getattr(player, "outcome_types", [])
+    if 0 <= match_index < len(outcomes) and outcomes[match_index] != "normal":
+        score = (
+            player.results[match_index] if match_index < len(player.results) else None
+        )
+        return (
+            FloatDirection.FLOAT_DOWN
+            if score and score > 0
+            else FloatDirection.FLOAT_NONE
+        )
     if match_index < 0 or match_index >= len(player.match_history):
         return FloatDirection.FLOAT_NONE
 
@@ -339,13 +394,6 @@ class AbsoluteCriteriaChecker:
         self, pairings: Pairings, current_round: int, total_rounds: int
     ) -> CriterionResult:
         """C3: Non-topscorers with same absolute preference shall not meet."""
-        if current_round != total_rounds:
-            return CriterionResult(
-                criterion="C3",
-                status=CriterionStatus.NOT_APPLICABLE,
-                description="C3 only applies in final round",
-            )
-
         violations = []
         for white, black in pairings:
             if _is_topscorer(white, current_round, total_rounds) or _is_topscorer(
@@ -1183,16 +1231,26 @@ class FPCValidator:
             and r.violation_type == ViolationType.QUALITY
         ]
 
+        for result in all_results:
+            if (
+                result.violation_type != ViolationType.ABSOLUTE
+                and result.criterion_id not in {"C1", "C2", "C3", "C4"}
+            ):
+                result.status = CriterionStatus.NOT_VERIFIED
+        compliant_count = sum(
+            r.status == CriterionStatus.COMPLIANT for r in all_results
+        )
+
         overall_status = (
             CriterionStatus.VIOLATION
             if absolute_violations
-            else CriterionStatus.COMPLIANT
+            else CriterionStatus.NOT_VERIFIED
         )
 
-        if overall_status == CriterionStatus.COMPLIANT:
+        if not absolute_violations:
             summary = (
                 f"Absolute criteria satisfied; {len(quality_warnings)} "
-                "quality criteria flagged"
+                "quality diagnostics; candidate optimality not verified"
             )
         else:
             summary = (
@@ -1253,7 +1311,10 @@ class FPCValidator:
         )
 
         player_map = {player.id: player for player in map(fresh_player, players)}
+        if len(player_map) != len(players):
+            raise ValueError("Duplicate player IDs")
         total_criteria = 0
+        criteria_results = []
         compliant_count = 0
         violations: List[CriterionResult] = []
         quality_warnings: List[CriterionResult] = []
@@ -1261,9 +1322,15 @@ class FPCValidator:
         bye_history: Dict[str, int] = {}
 
         rounds_sorted = sorted(rounds, key=lambda r: r.get("round_number", 0))
+        if [r.get("round_number") for r in rounds_sorted] != list(
+            range(1, len(rounds_sorted) + 1)
+        ):
+            raise ValueError("Round numbers must be unique and contiguous")
         for round_data in rounds_sorted:
             round_number = round_data.get("round_number", 0)
             pairing_ids = round_data.get("pairings", [])
+            if any(key not in player_map for pair in pairing_ids for key in pair):
+                raise ValueError("Unknown player in pairing")
             bye_id = round_data.get("bye_player_id") or round_data.get("bye_player")
             scheduled_byes = round_data.get("scheduled_byes", {})
             scheduled_ids = set(scheduled_byes.get("half_point", [])) | set(
@@ -1306,6 +1373,9 @@ class FPCValidator:
             )
 
             total_criteria += report.total_criteria
+            for criterion in report.criteria_results:
+                criterion.details["round"] = round_number
+                criteria_results.append(criterion)
             compliant_count += report.compliant_count
             for violation in report.violations:
                 violation.details["round"] = round_number
@@ -1314,16 +1384,19 @@ class FPCValidator:
                 warning.details["round"] = round_number
                 quality_warnings.append(warning)
 
-            for white, black in pairings:
-                previous_matches.add(frozenset({white.id, black.id}))
-
             if bye_player:
                 bye_history[bye_player.id] = bye_history.get(bye_player.id, 0) + 1
 
             replay_round(player_map, round_data)
+            for player in player_map.values():
+                previous_matches.update(
+                    frozenset((player.id, opponent))
+                    for i, opponent in enumerate(player.opponent_ids)
+                    if opponent is not None and player.outcome_types[i] == "normal"
+                )
 
         overall_status = (
-            CriterionStatus.VIOLATION if violations else CriterionStatus.COMPLIANT
+            CriterionStatus.VIOLATION if violations else CriterionStatus.NOT_VERIFIED
         )
 
         # Check if there are C4 absolute violations (indicating C1-C3 impossibility)
@@ -1361,7 +1434,7 @@ class FPCValidator:
             quality_warnings=quality_warnings,
             overall_status=overall_status,
             summary=summary,
-            criteria_results=[],
+            criteria_results=criteria_results,
         )
 
 

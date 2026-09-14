@@ -622,6 +622,25 @@ def build_bbp_pairing_trf(
     return "\n".join(lines) + "\n"
 
 
+def build_completed_tournament_trf(players: List[Player], rounds: int) -> str:
+    """Export completed history using the same fixed-width records as BBP input."""
+    numbers = ensure_bbp_pairing_numbers(players)
+    scores = {player.id: _compute_score(player, rounds) for player in players}
+    ranks = _compute_ranks(players, scores)
+    lines = [f"XXR {rounds}"]
+    for player in sorted(players, key=lambda p: numbers[p.id]):
+        line = _format_player_line(
+            numbers[player.id],
+            min(max(player.rating or 0, 0), 9999),
+            scores[player.id],
+            int(ranks[player.id]),
+            _format_match_history(player, numbers, rounds),
+        )
+        name = player.name.replace("\n", " ").replace("\r", " ")[:33]
+        lines.append(line[:14] + name.ljust(33) + line[47:])
+    return "\n".join(lines) + "\n"
+
+
 def ensure_bbp_pairing_numbers(players: Iterable[Player]) -> Dict[str, int]:
     """Ensure a roster has unique, TRF-compatible pairing numbers.
 

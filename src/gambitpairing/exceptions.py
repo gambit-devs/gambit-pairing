@@ -57,6 +57,10 @@ class NoPairingAvailableException(PairingException):
     pass
 
 
+class PairingTimeoutException(PairingException, TimeoutError):
+    """The search budget expired without a verified pairing result."""
+
+
 # ========== Tournament Exceptions ==========
 
 

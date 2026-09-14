@@ -109,6 +109,12 @@ class ComparisonResult:
             "round_number": self.round_number,
             "winner": self.winner,
             "score_difference": self.score_difference,
+            "exact_pairing_match": (
+                {(w.id, b.id) for w, b in self.gambit_pairings}
+                == {(w.id, b.id) for w, b in self.bbp_pairings}
+                and getattr(self.gambit_bye, "id", None)
+                == getattr(self.bbp_bye, "id", None)
+            ),
         }
 
         if self.gambit_metrics:
@@ -121,16 +127,10 @@ class ComparisonResult:
             result["pairing_differences"] = self.pairing_differences.to_dict()
 
         if self.fpc_gambit:
-            result["gambit_compliance"] = {
-                "percentage": self.fpc_gambit.compliance_percentage,
-                "summary": self.fpc_gambit.summary,
-            }
+            result["gambit_compliance"] = self.fpc_gambit.to_dict()
 
         if self.fpc_bbp:
-            result["bbp_compliance"] = {
-                "percentage": self.fpc_bbp.compliance_percentage,
-                "summary": self.fpc_bbp.summary,
-            }
+            result["bbp_compliance"] = self.fpc_bbp.to_dict()
 
         return result
 

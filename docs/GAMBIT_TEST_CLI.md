@@ -9,10 +9,40 @@
 - **Interactive Mode**: Full-featured shell with autocomplete and command discovery.
 - **Direct Command Mode**: Execute specific commands directly from the terminal.
 - **Multiple Testing Types**: Generate, compare, validate, benchmark, and run unit tests.
-- **FIDE Compliance Validation**: Ensure tournaments meet FIDE standards.
+- **FIDE Rule Checks**: Check absolute pairing criteria and report quality diagnostics; this is not certification.
 - **Performance Benchmarking**: Compare pairing engines and analyze performance.
 
 ## Installation
+
+BBP is discovered automatically by the GUI and every test command. From a source
+checkout, build the vendored engine once with `python scripts/build_bbp.py --test`
+(use Toolbox on Kinoite). Packaged applications should include the resulting
+binary and license notices. No `--bbp-executable` argument is needed; the option
+is retained only as an explicit override for testing another engine build.
+See [vendored engine source and build instructions](../vendor/README.md).
+
+`gambit-test bbp-reference --all` executes the differential regression suite
+against the integrated engine; it no longer merely prints C++ build instructions.
+It requires the source checkout and pytest. Upstream C++ tests are run by the
+build script's `--test` option.
+
+### Validation status and exit codes
+
+Validation reports distinguish `passed`, `failed`, and `not_verified`. The current
+checker does not independently prove global C5–C21 optimality, so an otherwise
+clean full-compliance check returns `not_verified`, not a compliance certificate.
+
+- `0`: command succeeded (or all requested checks were verified).
+- `1`: a rule violation or unit-test failure was found.
+- `2`: invalid input, engine/dependency failure, or incomplete verification.
+
+These validation semantics apply to `validate`, `generate --validate`, and
+comparison runs. Generation without validation can succeed with exit 0.
+Seed `0` is valid; seeded player/round ranges and player IDs are reproducible.
+TRF export includes the recorded round results, rather than just the roster.
+
+For the rules scope and opt-in independent-engine tests, see
+[Rules and verification](RULES_COMPLIANCE.md).
 
 Install Gambit Pairing and the CLI tool:
 

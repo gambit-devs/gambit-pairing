@@ -278,16 +278,20 @@ def run_comparison(args: argparse.Namespace) -> int:
 
     # Generate and compare tournaments
     all_results = []
+    range_random = random.Random(args.seed)
+    incomplete = False
+    expected_rounds = 0
+    completed_tournaments = 0
 
     for i in range(args.tournaments):
         # Determine tournament parameters (random from range or fixed)
         tournament_size = (
-            random.randint(size_spec[0], size_spec[1])
+            range_random.randint(size_spec[0], size_spec[1])
             if is_size_range
             else size_spec[0]
         )
         num_rounds = (
-            random.randint(rounds_spec[0], rounds_spec[1])
+            range_random.randint(rounds_spec[0], rounds_spec[1])
             if is_rounds_range
             else rounds_spec[0]
         )
@@ -299,10 +303,11 @@ def run_comparison(args: argparse.Namespace) -> int:
             tournament_size,
             num_rounds,
         )
+        expected_rounds += num_rounds
 
         try:
             # Create new RTG for each tournament with different seed
-            tournament_seed = args.seed + i if args.seed else None
+            tournament_seed = args.seed + i if args.seed is not None else None
             tournament_config = RTGConfig(
                 num_players=tournament_size,
                 num_rounds=num_rounds,
@@ -367,8 +372,10 @@ def run_comparison(args: argparse.Namespace) -> int:
                     all_results.append(result)
 
             logger.info("Tournament %d: compared %d rounds", i + 1, len(rounds))
+            completed_tournaments += 1
 
         except Exception as e:
+            incomplete = True
             logger.error(
                 "Failed to generate tournament %d: %s", i + 1, e, exc_info=True
             )
@@ -379,7 +386,7 @@ def run_comparison(args: argparse.Namespace) -> int:
         logger.error(
             "No comparison results generated - check BBP executable configuration"
         )
-        return 1
+        return 2
 
     logger.info("Analyzing %d comparison results", len(all_results))
     analyzer = create_statistical_analyzer(
@@ -398,6 +405,13 @@ def run_comparison(args: argparse.Namespace) -> int:
         "pattern": args.pattern,
         "fide_strict": args.fide_strict,
         "seed": args.seed,
+        "execution": {
+            "completed_tournaments": completed_tournaments,
+            "requested_tournaments": args.tournaments,
+            "expected_rounds": expected_rounds,
+            "compared_rounds": len(all_results),
+            "incomplete": incomplete or len(all_results) != expected_rounds,
+        },
         "scoring_weights": {
             "fide": args.fide_weight,
             "quality": args.quality_weight,
@@ -418,9 +432,33 @@ def run_comparison(args: argparse.Namespace) -> int:
 
     # Print summary to console
     print_summary(statistical_summary, report_path)
+    exact_matches = sum(
+        {(w.id, b.id) for w, b in result.gambit_pairings}
+        == {(w.id, b.id) for w, b in result.bbp_pairings}
+        and getattr(result.gambit_bye, "id", None)
+        == getattr(result.bbp_bye, "id", None)
+        for result in all_results
+    )
+    print(f"Exact oriented pairing/bye matches: {exact_matches}/{len(all_results)}")
+    print(f"Completed tournaments: {completed_tournaments}/{args.tournaments}")
+    print(
+        "Full rule verification: not_verified (global C5-C21 optimality is not independently proven)"
+    )
 
     logger.info("Comparison complete!")
-    return 0
+    reports = [
+        report
+        for result in all_results
+        for report in (result.fpc_gambit, result.fpc_bbp)
+    ]
+    if any(report and report.violations for report in reports):
+        return 1
+    return (
+        2
+        if incomplete
+        or any(report is None or not report.verification_complete for report in reports)
+        else 0
+    )
 
 
 def _remap_pairings(
@@ -464,7 +502,17 @@ def _create_fresh_player(source_player) -> Player:
 def _build_round_snapshot(players: list, rounds: list, round_number: int):
     from gambitpairing.controllers.tournament.replay import round_snapshot
 
-    return round_snapshot(players, rounds, round_number)
+    normalized = [
+        {
+            **data,
+            "pairings": [
+                (getattr(w, "id", w), getattr(b, "id", b))
+                for w, b in data.get("pairings", [])
+            ],
+        }
+        for data in rounds
+    ]
+    return round_snapshot(players, normalized, round_number)
 
 
 def _parse_snapshot_result(
@@ -555,7 +603,7 @@ def print_summary(summary, report_path: Path) -> None:
 
     # FIDE Compliance
     if summary.fide_comparison:
-        print("\nFIDE Compliance Scores:")
+        print("\nRule-check diagnostic scores (not certification):")
         gambit_fide = summary.fide_comparison.get("gambit_avg_fide", 0)
         bbp_fide = summary.fide_comparison.get("bbp_avg_fide", 0)
         print(f"  Gambit Average: {gambit_fide:.2f}/100")

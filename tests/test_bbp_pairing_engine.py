@@ -20,6 +20,22 @@ def _players(count: int) -> list[Player]:
     return [Player(f"Player {index}", 2000 - index) for index in range(count)]
 
 
+def test_generator_uses_application_engine_discovery(monkeypatch):
+    from gambitpairing.testing.rtg import BBPPairingEngine as GeneratorEngine, RTGConfig
+
+    monkeypatch.setattr(
+        BBPPairingEngine, "resolve_executable", lambda path: "/resolved/bundled-bbp"
+    )
+    assert (
+        GeneratorEngine(RTGConfig(num_players=4, num_rounds=2)).executable
+        == "/resolved/bundled-bbp"
+    )
+
+
+def test_explicit_missing_engine_does_not_silently_use_bundle(tmp_path):
+    assert BBPPairingEngine.resolve_executable(tmp_path / "missing") is None
+
+
 def _fake_bbp_executable(tmp_path: Path, output: str) -> Path:
     executable = tmp_path / "bbpPairings"
     executable.write_text(

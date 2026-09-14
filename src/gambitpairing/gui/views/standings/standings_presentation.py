@@ -16,7 +16,6 @@ from gambitpairing.constants import (
     TIEBREAK_NAMES,
 )
 
-
 TIEBREAK_FORMATS: dict[str, str] = {
     TB_MEDIAN: ".2f",
     TB_SOLKOFF: ".2f",
@@ -59,10 +58,7 @@ def build_standings_headers(
             "Rank",
             "Player Name (Rating)",
             "Total Score",
-            *[
-                TIEBREAK_NAMES.get(key, f"Tiebreak: {key}")
-                for key in tiebreak_order
-            ],
+            *[TIEBREAK_NAMES.get(key, f"Tiebreak: {key}") for key in tiebreak_order],
         ],
     )
 
@@ -79,13 +75,11 @@ def project_standings_rows(
     for rank, player in enumerate(standings):
         rows.append(
             StandingsRowProjection(
-                rank=str(rank + 1),
+                rank=str(getattr(player, "standing_rank", rank + 1)),
                 player=f"{player.name} ({player.rating or 'NR'})",
                 score=f"{player.score:.1f}",
                 tiebreaks=[
-                    format_tiebreak_value(
-                        tb_key, player.tiebreakers.get(tb_key, 0.0)
-                    )
+                    format_tiebreak_value(tb_key, player.tiebreakers.get(tb_key, 0.0))
                     for tb_key in tiebreak_order
                 ],
             )

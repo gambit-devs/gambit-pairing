@@ -24,6 +24,12 @@ from gambitpairing.constants import (
     DEFAULT_MODE,
     DEFAULT_USCF_TIEBREAK_ORDER,
     MODE_FIDE,
+    TB_BUCHHOLZ,
+    TB_BUCHHOLZ_CUT_1,
+    TB_BUCHHOLZ_MEDIAN_1,
+    TB_SONNENBORN_BERGER,
+    TB_DIRECT_ENCOUNTER,
+    TB_HEAD_TO_HEAD,
 )
 
 
@@ -56,9 +62,15 @@ class TournamentConfig:
     # Is the tournament complete?
     tournament_over: bool = False
     use_experimental_dutch: bool = False
+    rules_version: str = "2026"
+    unresolved_ties: str = "shared"
 
     def __post_init__(self) -> None:
         """Choose federation defaults without sharing mutable lists."""
+        if self.rules_version not in {"2026", "legacy-unspecified"}:
+            raise ValueError("Unsupported rules version")
+        if self.unresolved_ties != "shared":
+            raise ValueError("Only shared unresolved standings ranks are supported")
         # ``bbp_dutch`` was briefly exposed as a separate pairing-system ID.
         # Normalize it at the model boundary so the rest of the application
         # has one Dutch format and one explicit engine-selection flag.
@@ -74,8 +86,24 @@ class TournamentConfig:
                 else DEFAULT_USCF_TIEBREAK_ORDER
             )
             self.tiebreak_order = list(defaults)
+            if self.pairing_system == "round_robin":
+                self.tiebreak_order = [
+                    TB_SONNENBORN_BERGER,
+                    (
+                        TB_DIRECT_ENCOUNTER
+                        if self.tournament_mode == MODE_FIDE
+                        else TB_HEAD_TO_HEAD
+                    ),
+                ]
         else:
             self.tiebreak_order = list(self.tiebreak_order or [])
+
+        if self.tournament_mode == MODE_FIDE and self.pairing_system == "round_robin":
+            self.tiebreak_order = [
+                key
+                for key in self.tiebreak_order
+                if key not in {TB_BUCHHOLZ, TB_BUCHHOLZ_CUT_1, TB_BUCHHOLZ_MEDIAN_1}
+            ]
 
     @property
     def fide_strict_mode(self) -> bool:
@@ -98,6 +126,8 @@ class TournamentConfig:
             "fide_strict_mode": self.fide_strict,
             "tiebreak_order": list(self.tiebreak_order or []),
             "tournament_over": self.tournament_over,
+            "rules_version": self.rules_version,
+            "unresolved_ties": self.unresolved_ties,
         }
 
     @classmethod
@@ -128,6 +158,8 @@ class TournamentConfig:
                 list(data["tiebreak_order"]) if "tiebreak_order" in data else None
             ),
             tournament_over=data.get("tournament_over", False),
+            rules_version=data.get("rules_version", "legacy-unspecified"),
+            unresolved_ties=data.get("unresolved_ties", "shared"),
         )
 
 

@@ -1,0 +1,6 @@
+include scripts/build_bbp.py
+include vendor/README.md
+recursive-include vendor/bbp *.cpp *.h *.txt *.patch *.input *.expected Makefile
+prune vendor/bbp/build
+exclude vendor/bbp/test/test-includes.h
+exclude src/gambitpairing/resources/bin/bbpPairings*

@@ -194,6 +194,20 @@ class TournamentSession:
                 "Round count cannot change after pairing or for round robin"
             )
         messages = []
+        if mode == MODE_FIDE and self.pairing_system == "round_robin":
+            from gambitpairing.constants import (
+                TB_BUCHHOLZ,
+                TB_BUCHHOLZ_CUT_1,
+                TB_BUCHHOLZ_MEDIAN_1,
+            )
+
+            if any(
+                key in {TB_BUCHHOLZ, TB_BUCHHOLZ_CUT_1, TB_BUCHHOLZ_MEDIAN_1}
+                for key in tiebreak_order
+            ):
+                raise ValueError(
+                    "Buchholz tiebreaks cannot be used for FIDE round robins"
+                )
         if num_rounds != self.num_rounds:
             self.num_rounds = num_rounds
             messages.append(f"Number of rounds set to {num_rounds}.")
@@ -324,6 +338,7 @@ class TournamentSession:
             round_data, results_data, self.players
         )
         if success:
+            self._rebuild_pairing_history()
             round_data.pending_results.clear()
             self.round_controller.mark_round_completed(round_index + 1)
         return success
@@ -342,28 +357,29 @@ class TournamentSession:
         return self.result_recorder.set_pending_results(round_data, results_data)
 
     def compute_tiebreakers(self) -> None:
+        self.tiebreak_calculator.mode = self.config.tournament_mode
+        self.tiebreak_calculator.rounds = self.get_completed_rounds()
+        self.tiebreak_calculator.pairing_system = self.pairing_system
         self.tiebreak_calculator.calculate_all_tiebreaks(self.players)
 
     def get_standings(self) -> List[Player]:
         from gambitpairing.controllers.tournament.standings import rank_players
 
-        return rank_players(self.players, self.tiebreak_order)
+        return rank_players(
+            self.players,
+            self.tiebreak_order,
+            self.config.tournament_mode,
+            self.get_completed_rounds(),
+            self.pairing_system,
+        )
 
     def _compare_players(self, p1: Player, p2: Player) -> int:
-        if p1.score != p2.score:
-            return 1 if p1.score > p2.score else -1
-
-        for tiebreak_key in self.config.tiebreak_order or []:
-            tb1 = p1.tiebreakers.get(tiebreak_key, 0.0)
-            tb2 = p2.tiebreakers.get(tiebreak_key, 0.0)
-            if tb1 != tb2:
-                return 1 if tb1 > tb2 else -1
-
-        if p1.rating != p2.rating:
-            return 1 if p1.rating > p2.rating else -1
-        if p1.name != p2.name:
-            return -1 if p1.name < p2.name else 1
-        return 0
+        """Compatibility comparator using the canonical group-aware ranking."""
+        ranks = {player.id: player.standing_rank for player in self.get_standings()}
+        first, second = ranks.get(p1.id), ranks.get(p2.id)
+        if first is None or second is None:
+            raise ValueError("Cannot compare players outside the standings")
+        return (second > first) - (second < first)
 
     def get_completed_rounds(self) -> int:
         return self.round_controller.completed_rounds_count
@@ -412,8 +428,14 @@ class TournamentSession:
             }
         )
         for round_data in self.round_controller.rounds:
+            unplayed = {
+                frozenset((result.white_id, result.black_id))
+                for result in round_data.results
+                if result.outcome_type != "normal"
+            }
             for white_id, black_id in round_data.pairings:
-                self.pairing_history.add_pairing(white_id, black_id)
+                if frozenset((white_id, black_id)) not in unplayed:
+                    self.pairing_history.add_pairing(white_id, black_id)
         self.round_controller.pairing_history = self.pairing_history
 
     def to_dict(self) -> Dict[str, Any]:

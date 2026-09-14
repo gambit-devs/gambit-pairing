@@ -230,6 +230,29 @@ def test_pairing_preparation_is_detached_and_commit_detects_changes():
         commit_pairing_document(session, expected, result)
 
 
+def test_pairing_commit_rejects_changed_configuration_atomically():
+    session, _, _ = tournament()
+    session.pairing_system = "dutch_swiss"
+    session.use_experimental_dutch = True
+    expected = session.to_dict()
+    result = generate_pairing_document(expected, 0)
+    result["document"]["config"]["name"] = "Worker mutation"
+    with pytest.raises(ValueError, match="configuration"):
+        commit_pairing_document(session, expected, result)
+    assert session.to_dict() == expected
+
+
+def test_pairing_commit_accepts_unchanged_prepared_round():
+    session, _, _ = tournament()
+    session.pairing_system = "dutch_swiss"
+    session.use_experimental_dutch = True
+    expected = session.to_dict()
+    result = generate_pairing_document(expected, 0)
+    commit_pairing_document(session, expected, result)
+    assert len(session.rounds) == 1
+    assert not session.rounds[0].is_completed
+
+
 def test_settings_validate_before_mutating():
     session, _, _ = tournament()
     before = session.to_dict()

@@ -1,8 +1,10 @@
-Optional BBP Pairings executable
+Integrated BBP Pairings runtime
 
-Place a platform-appropriate bbpPairings executable in this directory when
-building a local packaged release. Gambit Pairing discovers it automatically.
+Build the pinned C++ source in vendor/bbp with:
+    python scripts/build_bbp.py --test
+On Kinoite, run that command in the existing Fedora Toolbox.
 
-The executable is not committed to the source repository. Download a matching
-release from:
-https://github.com/BieremaBoyzProgramming/bbpPairings/releases
+The build stages bbpPairings.exe and upstream license notices here. The GUI and
+all CLI pairing commands discover it automatically. Despite the .exe suffix,
+upstream uses this filename on Linux too. Binaries are platform-specific build
+outputs, not tracked source. See vendor/README.md for provenance and licensing.

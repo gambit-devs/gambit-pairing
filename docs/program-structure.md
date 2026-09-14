@@ -1,122 +1,32 @@
-# Program structure of Gambit-Pairing
+# Program structure of Gambit Pairing
 
-## Project Structure
+## Backend and presentation boundaries
 
-.
-├── docs
-│   ├── before_you_commit.md
-│   ├── HACKING.md
-│   ├── installing.md
-│   ├── manual-pairing-guide.md
-│   ├── program-structure.md
-│   ├── project_formatting.md
-│   └── screenshots
-├── Gambit-Pairing.spec
-├── install_editable_pip.sh
-├── licenses
-│   ├── LICENSE
-│   └── license.rtf
-├── make_executable.py
-├── make_executable.sh
-├── pyproject.toml
-├── README.md
-├── resources
-│   ├── scripts
-│   │   └── format_project.py
-│   └── unused_designs
-├── src
-│   ├── gambitpairing
-│   │   ├── core
-│   │   │   ├── api_utils.py
-│   │   │   ├── constants.py
-│   │   │   ├── exceptions.py
-│   │   │   ├── **init**.py
-│   │   │   ├── pairing_dutch_swiss.py
-│   │   │   ├── pairing_round_robin.py
-│   │   │   ├── player.py
-│   │   │   ├── print_utils.py
-│   │   │   ├── tournament.py
-│   │   │   ├── updater.py
-│   │   │   └── utils.py
-│   │   ├── gui
-│   │   │   ├── crosstable_tab.py
-│   │   │   ├── dialogs
-│   │   │   │   ├── about_dialog.py
-│   │   │   │   ├── **init**.py
-│   │   │   │   ├── manual_pairing_dialog.py
-│   │   │   │   ├── new_tournament_dialog.py
-│   │   │   │   ├── player_detail_dialog.py
-│   │   │   │   ├── player_edit_dialog.py
-│   │   │   │   ├── printing.py
-│   │   │   │   ├── settings_dialog.py
-│   │   │   │   ├── update_dialog.py
-│   │   │   │   └── update_prompt_dialog.py
-│   │   │   ├── dialogs.py
-│   │   │   ├── history_tab.py
-│   │   │   ├── **init**.py
-│   │   │   ├── mainwindow.py
-│   │   │   ├── notournament_placeholder.py
-│   │   │   ├── players_tab.py
-│   │   │   ├── standings_tab.py
-│   │   │   ├── tournament_tab.py
-│   │   │   └── update_worker.py
-│   │   ├── **init**.py
-│   │   ├── **main**.py
-│   │   ├── resources
-│   │   │   ├── icons
-│   │   │   ├── **init**.py
-│   │   │   ├── resource_utils.py
-│   │   │   ├── scripts
-│   │   │   └── styles/
-│   │   └── test
-│   │   ├── core
-│   │   │   └── pairing_round_robin.py
-│   │   ├── **init**.py
-│   │   └── **main**.py
-└── test_data
-├── players
-│   ├── test_16_rated_players.csv
-│   └── test_45_rated_players.csv
-└── tournaments
-├── test_32_player_tournament.json
-├── test_open_2025.json
-└── winter_chess_championship_2025.json
+- `src/gambitpairing/models/`: player, configuration, match and round data.
+- `controllers/tournament/`: session, recording/undo, canonical replay, standings,
+  and isolated pairing jobs. These modules do not import Qt.
+- `controllers/pairing/dutch_swiss.py`: native GP entry point and colour/float rules.
+- `controllers/pairing/strict_dutch.py`: bracket search and ordered criteria.
+- `controllers/pairing/matching.py`: exact matching bounds and deterministic
+  candidate selection; independent of BBP.
+- `controllers/pairing/bbp_dutch.py`: production BBP adapter and shared discovery.
+- `compatibility/bbp.py`: TRF conversion and pairing-output parsing.
+- `representation/`: validated document loading and reconstruction.
+- `validation/`: absolute rule checks and explicitly incomplete quality verification.
+- `testing/` and `comparison/`: generators, benchmarks and comparison reports.
+- `gui/`: Qt presentation and interaction; sporting ranks come from the backend.
 
-43 directories, 198 files
-- uses a src layout, see:
-  https://packaging.python.org/en/latest/discussions/src-layout-vs-flat-layout/#src-layout-vs-flat-layout
+Pairing workers receive document snapshots. Results are checked against the
+unchanged session before commit. Save/load and simulation share canonical replay.
 
-# in the gambitpairing module:
+## Third-party source and builds
 
-## **main**.py -- entry point
+The BBP C++ source is tracked in `vendor/bbp/`, with the Dutch algorithm in
+`vendor/bbp/src/swisssystems/dutch.cpp`. It is not an in-process Python extension:
+Gambit launches a bundled executable through its adapter.
 
-- Creates the main window. Handles various OS'.
-- `from gui.mainwindow import GambitPairingMainWindow` imports app
+`scripts/build_bbp.py --test` builds BBP, runs its upstream tests, and stages the
+binary and license notices in `src/gambitpairing/resources/bin/`. The GUI and CLI
+use the same automatic discovery. See [vendor instructions](../vendor/README.md).
 
-# gui module -- contains the various components and QT widgets
-
-## mainwindow.py -- in charge of the main window
-
-`class GambitPairingMainWindow(QtWidgets.QMainWindow):`
-
-## crosstable_tab.py
-
-`class CrosstableTab(QtWidgets.QWidget):`
-
-## ... This module contains the Qt Widgets
-
-# core module -- contains the business logic
-
-## utils.py -- logging and utility functions
-
-## updater.py -- Handles checking for and applying application updates from GitHub Releases.
-
-## player.py -- Represents a player in the tournament.
-
-`class Player:`
-
-## tournament.py -- Manages the tournament state, pairings, results, and tiebreakers.
-
-`class Tournament:`
-
-## constants.py -- what you think
+See [rules and verification](RULES_COMPLIANCE.md) for supported rules and limits.

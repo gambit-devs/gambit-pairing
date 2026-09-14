@@ -456,7 +456,24 @@ def _load_rounds(raw_rounds: Any, player_ids: Set[str]) -> List[RoundData]:
             raise TournamentDocumentError(
                 f"Round {round_number} has an invalid active roster"
             )
+        scheduled = raw_round.get("scheduled_byes", {})
+        assigned = {key for pair in pairings for key in pair}
+        if bye_player_id:
+            assigned.add(bye_player_id)
+        if not isinstance(scheduled, Mapping):
+            raise TournamentDocumentError("Scheduled byes must be an object")
+        for kind, ids in scheduled.items():
+            if kind not in {"half_point", "zero_point"} or not isinstance(ids, list):
+                raise TournamentDocumentError("Invalid scheduled bye type")
+            for key in ids:
+                if not isinstance(key, str) or key not in player_ids or key in assigned:
+                    raise TournamentDocumentError(
+                        "Duplicate or unknown scheduled bye player"
+                    )
+                assigned.add(key)
         normalized_round = {
+            "pairing_engine": raw_round.get("pairing_engine"),
+            "scheduled_byes": raw_round.get("scheduled_byes", {}),
             "active_player_ids": active_ids,
             "round_number": round_number,
             "pairings": pairings,

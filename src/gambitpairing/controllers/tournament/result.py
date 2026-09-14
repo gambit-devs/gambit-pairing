@@ -118,6 +118,18 @@ class ResultRecorder:
         if round_data.bye_player_id:
             affected_ids.add(round_data.bye_player_id)
 
+        scheduled = []
+        if not isinstance(round_data.scheduled_byes, dict):
+            return False
+        for kind, ids in round_data.scheduled_byes.items():
+            if kind not in {"half_point", "zero_point"} or not isinstance(ids, list):
+                return False
+            for key in ids:
+                if key not in players or key in affected_ids:
+                    return False
+                affected_ids.add(key)
+                scheduled.append((players[key], 0.5 if kind == "half_point" else 0.0))
+
         snapshots: Dict[str, Dict[str, Any]] = {
             player_id: deepcopy(dict(players[player_id].__dict__))
             for player_id in players
@@ -142,6 +154,8 @@ class ResultRecorder:
                 raise ValueError("Unable to record the round bye")
 
             round_data.pending_results.clear()
+            for player, score in scheduled:
+                player.add_round_result(None, score, None, OUTCOME_BYE)
             if (
                 round_data.bye_player_id
                 and not players[round_data.bye_player_id].is_active
@@ -687,6 +701,21 @@ class ResultRecorder:
                 return False
             operations.append((bye_player, None, bye_score, None, OUTCOME_BYE))
             affected_ids.add(bye_player.id)
+
+        for kind, ids in round_data.scheduled_byes.items():
+            for key in ids:
+                if key not in players or key in affected_ids:
+                    return False
+                affected_ids.add(key)
+                operations.append(
+                    (
+                        players[key],
+                        None,
+                        0.5 if kind == "half_point" else 0.0,
+                        None,
+                        OUTCOME_BYE,
+                    )
+                )
 
         if not operations:
             logger.error("Round %s has no results to undo", round_data.round_number)

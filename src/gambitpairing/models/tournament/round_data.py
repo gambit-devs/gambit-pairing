@@ -53,6 +53,8 @@ class RoundData:
     pending_results: List[MatchResult] = field(default_factory=list)
     bye_type: str = "full"
     active_player_ids: Optional[List[str]] = None
+    scheduled_byes: Dict[str, List[str]] = field(default_factory=dict)
+    pairing_engine: Optional[str] = None
 
     def __post_init__(self) -> None:
         if self.bye_type not in {"full", "half", "zero"}:
@@ -74,6 +76,12 @@ class RoundData:
             ]
         if self.active_player_ids is not None:
             data["active_player_ids"] = list(self.active_player_ids)
+        if self.scheduled_byes:
+            data["scheduled_byes"] = {
+                kind: list(ids) for kind, ids in self.scheduled_byes.items()
+            }
+        if self.pairing_engine is not None:
+            data["pairing_engine"] = self.pairing_engine
         return data
 
     @classmethod
@@ -85,6 +93,10 @@ class RoundData:
             bye_player_id=data.get("bye_player_id"),
             bye_type=data.get("bye_type", "full"),
             active_player_ids=data.get("active_player_ids"),
+            scheduled_byes={
+                kind: list(ids) for kind, ids in data.get("scheduled_byes", {}).items()
+            },
+            pairing_engine=data.get("pairing_engine"),
             results=[
                 MatchResult.from_dict(result) for result in data.get("results", [])
             ],

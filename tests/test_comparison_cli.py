@@ -81,3 +81,19 @@ def test_round_snapshot_preserves_double_forfeit_score():
     )
 
     assert {player.score for player in snapshot_players} == {0.0}
+
+
+def test_round_snapshot_accepts_generator_player_pairs_without_mutation():
+    white, black = Player("White", 1800), Player("Black", 1700)
+    rounds = [
+        {
+            "round_number": 1,
+            "pairings": [(white, black)],
+            "results": [(white.id, black.id, 1.0)],
+        }
+    ]
+    players, _, previous, _ = _build_round_snapshot([white, black], rounds, 2)
+    assert sorted(p.score for p in players) == [0, 1]
+    assert frozenset((white.id, black.id)) in previous
+    assert rounds[0]["pairings"] == [(white, black)]
+    assert white.results == black.results == []

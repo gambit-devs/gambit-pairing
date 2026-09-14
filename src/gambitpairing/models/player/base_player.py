@@ -241,7 +241,7 @@ class Player(PlayerABC):
             "federation": self.federation,
         }
         for key, value in self.__dict__.items():
-            if key.startswith("_"):
+            if key.startswith("_") or key in {"standing_rank", "standing_tie_size"}:
                 continue
             if isinstance(value, date):
                 data[key] = value.isoformat()

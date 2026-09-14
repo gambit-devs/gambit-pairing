@@ -97,15 +97,9 @@ class BBPPairingEngine:
                 logger.warning("Configured BBP executable was not found: %s", explicit)
             return resolved
 
-        for command_name in ("bbpPairings", "bbpPairings.exe"):
-            resolved = shutil.which(command_name)
-            if resolved:
-                return resolved
-
         package_root = Path(__file__).resolve().parents[2]
         search_roots = [
             package_root / "resources" / "bin",
-            Path.cwd(),
         ]
         if getattr(sys, "frozen", False):
             search_roots.insert(0, Path(sys.executable).resolve().parent)
@@ -118,6 +112,10 @@ class BBPPairingEngine:
                 resolved = cls._resolve_candidate(root / filename)
                 if resolved is not None:
                     return resolved
+        for command_name in ("bbpPairings", "bbpPairings.exe"):
+            resolved = shutil.which(command_name)
+            if resolved:
+                return resolved
         return None
 
     @staticmethod
@@ -144,8 +142,8 @@ class BBPPairingEngine:
             raise BBPUnavailableError("BBP backend disabled by configuration")
         if self.executable is None:
             raise BBPUnavailableError(
-                "BBP executable not found; set GAMBIT_BBP_EXECUTABLE or install "
-                "bbpPairings on PATH"
+                "Bundled BBP engine not found. Build it with python scripts/build_bbp.py "
+                "or reinstall an application distribution containing BBP."
             )
 
         active = list(active_players)

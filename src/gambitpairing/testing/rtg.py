@@ -42,7 +42,7 @@ from gambitpairing.models.enums import Colour
 from gambitpairing.models.player import Player
 from gambitpairing.models.tournament import PairingHistory
 from gambitpairing.utils import setup_logger
-from gambitpairing.utils.command_runner import check_command_exists, run_command
+from gambitpairing.utils.command_runner import run_command
 from gambitpairing.validation.fpc import create_fpc_validator
 
 logger = setup_logger(__name__)
@@ -128,8 +128,20 @@ class PlayerFactory:
                 rating=rating,
                 date_of_birth=self._generate_birth_year(rating),
             )
-            player.pairing_number = i + 1
+            if self.config.seed is not None:
+                from uuid import NAMESPACE_URL, uuid5
+
+                data = player.to_dict()
+                data["id"] = str(
+                    uuid5(NAMESPACE_URL, f"gambit-test/{self.config.seed}/{i}")
+                )
+                player = Player.from_dict(data)
             players.append(player)
+
+        for number, player in enumerate(
+            sorted(players, key=lambda p: (-p.rating, p.name)), 1
+        ):
+            player.pairing_number = number
 
         logger.info(
             "Created %s players with %s distribution",
@@ -314,14 +326,15 @@ class BBPPairingEngine:
         self.executable = self._resolve_executable(config.bbp_executable)
 
     def _resolve_executable(self, executable: Optional[str]) -> str:
-        if not executable:
-            raise ValueError("BBP executable is required for BBP pairing runs")
-        exe_path = Path(executable)
-        if exe_path.exists():
-            return str(exe_path)
-        if check_command_exists(executable):
-            return executable
-        raise FileNotFoundError(f"BBP executable not found: {executable}")
+        from gambitpairing.controllers.pairing.bbp_dutch import BBPPairingEngine
+
+        resolved = BBPPairingEngine.resolve_executable(executable)
+        if resolved is None:
+            raise FileNotFoundError(
+                "Bundled BBP engine is unavailable. Run python scripts/build_bbp.py "
+                "in a source checkout, or reinstall a distribution containing BBP."
+            )
+        return resolved
 
     def generate_pairings(
         self,
@@ -460,6 +473,7 @@ class RandomTournamentGenerator:
         if self.config.validate_with_fpc and self.config.pairing_system in {
             "dutch_swiss",
             "dual",
+            "bbp_dutch",
         }:
             validation_players = [
                 {
@@ -492,6 +506,8 @@ class RandomTournamentGenerator:
                 }
             )
             tournament_data["fpc_report"] = {
+                **report.to_dict(),
+                "verification_complete": report.verification_complete,
                 "summary": report.summary,
                 "compliance_percentage": report.compliance_percentage,
                 "warnings": summarize_fpc_warnings(report),
@@ -564,13 +580,9 @@ class RandomTournamentGenerator:
                 )
                 bbp_time_ms = (time.perf_counter() - start_time) * 1000
             except RuntimeError as exc:
-                logger.warning(
-                    "BBP pairing failed for round %s: %s",
-                    round_number,
-                    exc,
-                )
-                bbp_pairings = None
-                bbp_bye = None
+                raise RuntimeError(
+                    f"BBP could not complete round {round_number}: {exc}"
+                ) from exc
 
         if self.config.pairing_system == "bbp_dutch":
             pairings = bbp_pairings or []
@@ -595,33 +607,11 @@ class RandomTournamentGenerator:
                     forfeit,
                 )
             )
-            from gambitpairing.controllers.tournament.result import ResultRecorder
-            from gambitpairing.models.tournament import MatchResult, RoundData
-
-            outcome = (
-                ("double_forfeit" if white_score == black_score == 0 else "forfeit_win")
-                if forfeit
-                else "normal"
-            )
-            ResultRecorder()._record_game_result(
-                MatchResult(
-                    white_player.id, black_player.id, white_score, black_score, outcome
-                ),
-                RoundData(round_number),
-                {white_player.id: white_player, black_player.id: black_player},
-            )
-            self.pairing_history.add_pairing(white_player.id, black_player.id)
-
-        if bye_player is not None:
-            bye_player.add_round_result(None, BYE_SCORE, None)
-
-        for player in scheduled_half:
-            player.add_round_result(None, DRAW_SCORE, None)
-
-        for player in scheduled_zero:
-            player.add_round_result(None, LOSS_SCORE, None)
-
         round_payload = {
+            "pairing_engine": (
+                "BBP Dutch" if self.config.pairing_system == "bbp_dutch" else "GP Dutch"
+            ),
+            "active_player_ids": [p.id for p in active_players],
             "round_number": round_number,
             "pairings": pairings,
             "bye_player_id": bye_player.id if bye_player else None,
@@ -631,6 +621,18 @@ class RandomTournamentGenerator:
             },
             "results": results,
         }
+        from gambitpairing.controllers.tournament.replay import replay_round
+
+        replay_round(
+            {p.id: p for p in players},
+            {
+                **round_payload,
+                "pairings": [(w.id, b.id) for w, b in pairings],
+            },
+        )
+        for white_id, black_id, _, _, forfeit in results:
+            if not forfeit:
+                self.pairing_history.add_pairing(white_id, black_id)
         if gambit_pairings is not None:
             round_payload["gambit_pairings"] = gambit_pairings
             round_payload["gambit_bye_player_id"] = (
@@ -751,6 +753,8 @@ class RandomTournamentGenerator:
         serialized_rounds = []
         for round_data in tournament_data["rounds"]:
             round_payload = {
+                "pairing_engine": round_data.get("pairing_engine"),
+                "active_player_ids": round_data.get("active_player_ids"),
                 "round_number": round_data["round_number"],
                 "pairings": serialize_pairings(round_data["pairings"]),
                 "bye_player_id": round_data.get("bye_player_id"),
@@ -774,6 +778,11 @@ class RandomTournamentGenerator:
             serialized_rounds.append(round_payload)
 
         export_data = {
+            "config": {
+                "num_rounds": self.config.num_rounds,
+                "rules_version": "2026",
+                "pairing_system": self.config.pairing_system,
+            },
             "tournament_config": {
                 "num_players": self.config.num_players,
                 "num_rounds": self.config.num_rounds,
@@ -794,31 +803,17 @@ class RandomTournamentGenerator:
                 for player in tournament_data["players"]
             ],
             "rounds": serialized_rounds,
+            "fpc_report": tournament_data.get("fpc_report"),
         }
 
         return json.dumps(export_data, indent=2)
 
     def export_trf_format(self, tournament_data: Dict) -> str:
-        lines = []
-        lines.append(f"012 {self.config.num_players:03d}")
-        lines.append(f"013 {self.config.num_rounds:03d}")
-        lines.append(f"001 {self.config.seed or 0:010d}")
+        from gambitpairing.compatibility.bbp import build_completed_tournament_trf
 
-        for i, player in enumerate(tournament_data["players"]):
-            lines.append(
-                f"001 {i+1:04d} {player.name:20s} {player.rating or 0:04d} 0 0 0"
-            )
-
-        for round_data in tournament_data["rounds"]:
-            round_num = round_data["round_number"]
-            for white, black in round_data["pairings"]:
-                lines.append(
-                    f"022 {round_num:03d} {white.pairing_number:04d} {black.pairing_number:04d}"
-                )
-            for white_id, black_id, result, _forfeit in round_data["results"]:
-                lines.append(f"096 {round_num:03d} {white_id} {black_id} {result:.1f}")
-
-        return "\n".join(lines) + "\n"
+        return build_completed_tournament_trf(
+            tournament_data["players"], len(tournament_data["rounds"])
+        )
 
 
 def summarize_fpc_warnings(report) -> Dict[str, int]:

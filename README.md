@@ -140,9 +140,9 @@ pip install -e .
 
 ### Dutch Swiss pairing backend
 
-New tournaments use one `Dutch System` format backed by the upstream [bbpPairings](https://github.com/BieremaBoyzProgramming/bbpPairings) engine through the TRF(bx) file interface. The tournament dialog includes a Dutch-only `Use Gambit Dutch (Experimental)` checkbox for selecting Gambit's native implementation directly. If BBP is unavailable or cannot represent the tournament state, the GUI asks for approval before applying experimental fallback pairings. Pairing runs in a cancellable background process; cancelling leaves the tournament unchanged. The wheel does not bundle a BBP executable.
+New tournaments use one `Dutch System` format backed by BBP. Its pinned C++ source is in [vendor/bbp](vendor/bbp), including the [Dutch engine](vendor/bbp/src/swisssystems/dutch.cpp). Build and stage it once with `python scripts/build_bbp.py --test`; on Kinoite, run that command inside Toolbox. The GUI and test CLI automatically discover the staged engine, including `benchmark --compare-bbp` and `bbp-reference --all`. See [build and licensing details](vendor/README.md).
 
-To select an executable explicitly, set `GAMBIT_BBP_EXECUTABLE` to its path. The application also searches for `bbpPairings`/`bbpPairings.exe` on `PATH` and in the packaged `resources/bin` directory. Set `GAMBIT_PAIRING_ENGINE=native` when automation needs to exercise the native implementation directly instead of using the checkbox.
+BBP remains a bundled subprocess, not an in-process C++ extension. No executable path is required for ordinary runs. `GAMBIT_BBP_EXECUTABLE` is an optional testing override; otherwise the bundled engine takes priority over PATH. The `Use Gambit Dutch (Experimental)` checkbox selects the independent native GP engine. GP uses strict, deadline-bounded search and never switches to BBP on timeout. Pairing runs in a cancellable background process; cancelling leaves the tournament unchanged.
 
 ### Build and Deploy Status
 [![Build Windows Release](https://github.com/gambit-devs/gambit-pairing/actions/workflows/build-release-windows.yml/badge.svg)](https://github.com/gambit-devs/gambit-pairing/actions/workflows/build-release-windows.yml)

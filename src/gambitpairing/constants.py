@@ -77,7 +77,7 @@ TB_ARO = "aro"  # Average Rating of Opponents
 # Default display names for tiebreaks
 TIEBREAK_NAMES = {
     # USCF Tiebreakers
-    TB_MEDIAN: "Median",
+    TB_MEDIAN: "Modified Median",
     TB_SOLKOFF: "Solkoff",
     TB_CUMULATIVE: "Cumulative",
     TB_CUMULATIVE_OPP: "Cumulative Opp",

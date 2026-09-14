@@ -17,6 +17,7 @@ dependencies = [
     "importlib-resources",
     "Pillow",
     "prompt_toolkit>=3.0",
+    "networkx>=3.4,<4",
 ]
 license = {text = "GPL-3.0-or-later"}
 
@@ -65,6 +66,7 @@ dev = [
     "black",
     "isort",
     "pytest",
+    "pytest-cov",
     "pre-commit",
     "pyright",
     "PyQt6-stubs",  # Provides better type hints

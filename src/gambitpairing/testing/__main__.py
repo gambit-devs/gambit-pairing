@@ -279,16 +279,17 @@ def run_generate_command(args: argparse.Namespace) -> int:
     tournaments_with_violations = 0
     all_violation_criteria = set()
 
+    range_random = random.Random(args.seed)
     # Generate tournaments
     for tournament_idx in range(num_tournaments):
         # Determine tournament parameters (random from range or fixed)
         num_players = (
-            random.randint(players_spec[0], players_spec[1])
+            range_random.randint(players_spec[0], players_spec[1])
             if is_players_range
             else players_spec[0]
         )
         num_rounds = (
-            random.randint(rounds_spec[0], rounds_spec[1])
+            range_random.randint(rounds_spec[0], rounds_spec[1])
             if is_rounds_range
             else rounds_spec[0]
         )
@@ -300,7 +301,7 @@ def run_generate_command(args: argparse.Namespace) -> int:
             )
 
         # Determine seed
-        tournament_seed = args.seed + tournament_idx if args.seed else None
+        tournament_seed = args.seed + tournament_idx if args.seed is not None else None
 
         # Create config
         config = RTGConfig(
@@ -332,7 +333,7 @@ def run_generate_command(args: argparse.Namespace) -> int:
             tournament_games += len(pairings)
 
             # Count byes (odd number of players means one bye per round)
-            if players_count % 2 == 1:
+            if round_data.get("bye_player_id"):
                 tournament_byes += 1
 
         # Update totals
@@ -384,6 +385,11 @@ def run_generate_command(args: argparse.Namespace) -> int:
         if "fpc_report" in tournament_data:
             report = tournament_data["fpc_report"]
             print(f"\n{Colors.BOLD}FIDE Compliance:{Colors.ENDC}")
+            print(
+                f"  Verification: {report.get('verification_status', 'not_verified')}"
+            )
+            for limitation in report.get("limitations", []):
+                print(f"  Limitation: {limitation}")
 
             # Show violation counts if any
             num_violations = len(report.get("absolute_violations", []))
@@ -483,7 +489,16 @@ def run_generate_command(args: argparse.Namespace) -> int:
 
         print(f"\n{'=' * 70}\n")
 
-    return 0
+    if args.validate and "fpc_report" not in tournament_data:
+        return 2
+    if total_violations:
+        return 1
+    return (
+        2
+        if args.validate
+        and not tournament_data["fpc_report"].get("verification_complete", False)
+        else 0
+    )
 
 
 def run_compare_command(args: argparse.Namespace) -> int:
@@ -523,6 +538,12 @@ def _run_validate_command(args: argparse.Namespace) -> int:
     # Load tournament data
     with open(file_path, "r", encoding="utf-8") as f:
         tournament_data = json.load(f)
+    if not isinstance(tournament_data, dict):
+        raise ValueError("Tournament must be a JSON object")
+    if not isinstance(tournament_data.get("rounds", []), list) or any(
+        not isinstance(item, dict) for item in tournament_data.get("rounds", [])
+    ):
+        raise ValueError("Rounds must be a list of objects")
 
     # Validate
     validator = create_fpc_validator()
@@ -555,7 +576,8 @@ def _run_validate_command(args: argparse.Namespace) -> int:
 
     # Print results
     print(f"\n{Colors.BOLD}Validation Results:{Colors.ENDC}")
-    print(f"  Compliance: {report.compliance_percentage:.1f}%")
+    print(f"  Verification: {report.verification_status}")
+    print(f"  Rules: {report.rules_version}")
     print(f"  Summary: {report.summary}")
 
     if args.detailed:
@@ -567,30 +589,34 @@ def _run_validate_command(args: argparse.Namespace) -> int:
     if args.export:
         export_path = Path(args.export)
         if export_path.suffix == ".json":
-            export_data = {
-                "compliance_percentage": report.compliance_percentage,
-                "summary": report.summary,
-                "violations": [
-                    {
-                        "criterion": v.criterion_id,
-                        "status": v.status.value,
-                        "message": v.message,
-                    }
-                    for v in report.violations
-                ],
-            }
+            export_data = report.to_dict()
             export_path.write_text(json.dumps(export_data, indent=2), encoding="utf-8")
         else:
             export_path.write_text(report.summary, encoding="utf-8")
 
         print(f"\n{Colors.OKGREEN}Report exported to: {export_path}{Colors.ENDC}")
 
-    return 1 if report.violations else (0 if report.total_criteria else 2)
+    return 1 if report.violations else (0 if report.verification_complete else 2)
 
 
 def run_unit_command(args: argparse.Namespace) -> int:
     """Run unit tests using pytest."""
     import subprocess
+    from importlib.util import find_spec
+    import re
+
+    if find_spec("pytest") is None or (
+        args.coverage and find_spec("pytest_cov") is None
+    ):
+        print("Unit checks require pytest; --coverage also requires pytest-cov")
+        return 2
+    root = Path(__file__).resolve().parents[3]
+    if not (root / "tests").is_dir():
+        print("Unit tests require a source checkout containing tests/")
+        return 2
+    if args.module and not re.fullmatch(r"[A-Za-z0-9_]+", args.module):
+        print("Invalid test module")
+        return 2
 
     print(f"\n{Colors.BOLD}Running unit tests...{Colors.ENDC}")
 
@@ -617,25 +643,35 @@ def run_unit_command(args: argparse.Namespace) -> int:
     if args.markers:
         pytest_args.extend(["-m", args.markers])
 
-    result = subprocess.run(pytest_args)
-    return result.returncode
+    result = subprocess.run(pytest_args, cwd=root)
+    return result.returncode if result.returncode in {0, 1} else 2
 
 
 def run_bbp_reference_command(args: argparse.Namespace) -> int:
-    """Run BBP reference tests."""
-    print(f"\n{Colors.BOLD}Running BBP reference tests...{Colors.ENDC}")
-    print(f"{Colors.WARNING}BBP reference tests require C++ compilation{Colors.ENDC}")
-    print(f"Location: bbpPairings-dutch-2025/test/")
+    """Run differential tests using the application's bundled BBP resolver."""
+    import importlib.util
+    import os
+    import subprocess
+    from gambitpairing.controllers.pairing.bbp_dutch import BBPPairingEngine
 
-    if args.all:
-        print("\nTo run all BBP tests:")
-        print("  cd bbpPairings-dutch-2025/test && make test")
-    else:
-        print("\nTo run BBP tests:")
-        print("  cd bbpPairings-dutch-2025/test && make")
-
-    # Instructions are not a successful test execution.
-    return 2
+    engine = BBPPairingEngine.resolve_executable(args.path)
+    root = Path(__file__).resolve().parents[3]
+    suite = root / "tests" / "test_dutch_reference.py"
+    if (
+        engine is None
+        or not suite.is_file()
+        or importlib.util.find_spec("pytest") is None
+    ):
+        print(
+            "Reference checks require a source checkout, pytest, and the built BBP engine."
+        )
+        return 2
+    command = [sys.executable, "-m", "pytest", "-q", str(suite)]
+    if args.test_case:
+        command.extend(["-k", args.test_case])
+    env = {**os.environ, "GAMBIT_REFERENCE_BBP": engine}
+    result = subprocess.run(command, cwd=root, env=env)
+    return result.returncode if result.returncode in {0, 1} else 2
 
 
 def run_benchmark_command(args: argparse.Namespace) -> int:
@@ -653,7 +689,11 @@ def run_benchmark_command(args: argparse.Namespace) -> int:
     print(f"Tournament size: {args.size} players, {args.rounds} rounds")
     print(f"Iterations: {args.iterations}\n")
 
+    if args.iterations < 1 or args.size < 2 or args.rounds < 1:
+        print("Iterations and rounds must be positive; size must be at least two")
+        return 2
     times = []
+    engine_times = {"GP Dutch": [], "BBP Dutch": []}
 
     for i in range(args.iterations):
         config = RTGConfig(
@@ -663,13 +703,25 @@ def run_benchmark_command(args: argparse.Namespace) -> int:
             result_pattern=ResultPattern.REALISTIC,
             pairing_system="dual" if args.compare_bbp else "dutch_swiss",
             seed=42 + i,
+            validate_with_fpc=False,
         )
 
         rtg = RandomTournamentGenerator(config)
         start = time.perf_counter()
-        rtg.generate_complete_tournament()
+        generated = rtg.generate_complete_tournament()
         elapsed = time.perf_counter() - start
         times.append(elapsed)
+        for label, key in (
+            ("GP Dutch", "gambit_time_ms"),
+            ("BBP Dutch", "bbp_time_ms"),
+        ):
+            values = [
+                round_data[key]
+                for round_data in generated["rounds"]
+                if key in round_data
+            ]
+            if values:
+                engine_times[label].append(sum(values))
 
         print(f"  Iteration {i+1}/{args.iterations}: {elapsed*1000:.2f}ms")
 
@@ -682,6 +734,11 @@ def run_benchmark_command(args: argparse.Namespace) -> int:
     print(f"  Average: {avg_time*1000:.2f}ms")
     print(f"  Min: {min_time*1000:.2f}ms")
     print(f"  Max: {max_time*1000:.2f}ms")
+    for label, values in engine_times.items():
+        if values:
+            print(
+                f"  {label} pairing time per tournament: {sum(values)/len(values):.2f}ms"
+            )
 
     return 0
 
@@ -737,7 +794,9 @@ def run_interactive_mode():
                 continue
 
             # Parse and execute command
-            parts = user_input.split()
+            import shlex
+
+            parts = shlex.split(user_input)
             if not parts:
                 continue
 
@@ -808,7 +867,20 @@ def run_standard_mode():
 
     # Execute subcommand
     if hasattr(args, "func"):
-        return args.func(args)
+        from gambitpairing.exceptions import PairingException
+
+        try:
+            return args.func(args)
+        except (
+            OSError,
+            ValueError,
+            KeyError,
+            TypeError,
+            RuntimeError,
+            PairingException,
+        ) as error:
+            print(f"Command could not complete: {error}")
+            return 2
     else:
         parser.print_help()
         return 0
@@ -1088,7 +1160,7 @@ Examples:
     # BBP reference subcommand
     bbp_parser = subparsers.add_parser(
         "bbp-reference",
-        help="Show BBP reference-test instructions (does not run tests)",
+        help="Run GP differential tests against the integrated BBP engine",
     )
     bbp_parser.add_argument("--path")
     bbp_parser.add_argument("--test-case")

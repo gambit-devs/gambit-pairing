@@ -78,6 +78,7 @@ def replay_round(players: dict[str, Player], data: dict[str, Any]) -> None:
         pairings=[tuple(pair) for pair in data.get("pairings", [])],
         bye_player_id=data.get("bye_player_id") or data.get("bye_player"),
         bye_type=data.get("bye_type", "full"),
+        scheduled_byes=data.get("scheduled_byes", {}),
     )
     # Participation in historical rounds must not depend on today's active flag.
     statuses = {key: player.is_active for key, player in players.items()}
@@ -94,12 +95,6 @@ def replay_round(players: dict[str, Player], data: dict[str, Any]) -> None:
             for key in scheduled.get(kind, []):
                 if key not in players or key in assigned:
                     raise ValueError("Invalid scheduled bye")
-                if (
-                    len(players[key].results) == data["round_number"]
-                    and players[key].results[-1] is None
-                ):
-                    recorder._pop_player_result(players[key])
-                players[key].add_round_result(None, score, None, OUTCOME_BYE)
                 assigned.add(key)
         # Keep all histories indexed by actual tournament round, including
         # rounds skipped by withdrawn players.
@@ -119,7 +114,12 @@ def round_snapshot(players: list, rounds: list, round_number: int):
         if data["round_number"] >= round_number:
             break
         replay_round(roster, data)
-        previous_matches.update(frozenset(pair) for pair in data.get("pairings", []))
+        for player in roster.values():
+            previous_matches.update(
+                frozenset((player.id, opponent))
+                for i, opponent in enumerate(player.opponent_ids)
+                if opponent is not None and player.outcome_types[i] == "normal"
+            )
         bye_id = data.get("bye_player_id") or data.get("bye_player")
         if bye_id:
             bye_history[bye_id] = bye_history.get(bye_id, 0) + 1

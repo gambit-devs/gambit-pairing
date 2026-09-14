@@ -21,7 +21,9 @@ def test_validation_cli_success_and_round_selection():
     sample = (
         Path(__file__).parents[1] / "src/gambitpairing/testing/test_tournament.json"
     )
-    assert invoke("validate", "--file", sample, "--round", 1).returncode == 0
+    result = invoke("validate", "--file", sample, "--round", 1)
+    assert result.returncode == 2
+    assert "not_verified" in result.stdout
     assert invoke("validate", "--file", sample, "--round", 999).returncode == 2
 
 
@@ -57,5 +59,78 @@ def test_validation_cli_invalid_input_is_not_success(tmp_path):
     assert "Traceback" not in result.stderr
 
 
-def test_reference_instructions_do_not_claim_a_passing_run():
-    assert invoke("bbp-reference").returncode == 2
+def test_reference_missing_explicit_engine_does_not_claim_a_passing_run(tmp_path):
+    assert (
+        invoke("bbp-reference", "--path", tmp_path / "missing-engine").returncode == 2
+    )
+
+
+def test_generate_seed_zero_and_ranges_are_reproducible(tmp_path):
+    for label in ("first", "second"):
+        result = invoke(
+            "generate",
+            "--players",
+            "4-6",
+            "--rounds",
+            "1-2",
+            "--tournaments",
+            3,
+            "--seed",
+            0,
+            "--output",
+            tmp_path / f"{label}.json",
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+    for index in range(1, 4):
+        assert json.loads((tmp_path / f"first_{index}.json").read_text()) == json.loads(
+            (tmp_path / f"second_{index}.json").read_text()
+        )
+
+
+def test_generate_validate_reports_incomplete_verification(tmp_path):
+    path = tmp_path / "generated.json"
+    result = invoke(
+        "generate",
+        "--players",
+        4,
+        "--rounds",
+        1,
+        "--seed",
+        0,
+        "--validate",
+        "--output",
+        path,
+    )
+    assert result.returncode == 2, result.stdout + result.stderr
+    report = json.loads(path.read_text())["fpc_report"]
+    assert report["verification_status"] == "not_verified"
+    assert report["limitations"]
+
+
+def test_trf_export_contains_final_round_results(tmp_path):
+    path = tmp_path / "generated.trf"
+    result = invoke(
+        "generate",
+        "--players",
+        4,
+        "--rounds",
+        2,
+        "--seed",
+        0,
+        "--format",
+        "trf",
+        "--output",
+        path,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    records = [
+        line for line in path.read_text().splitlines() if line.startswith("001 ")
+    ]
+    assert len(records) == 4
+    assert all(len(line) == 109 and int(line[101:105]) > 0 for line in records)
+
+
+def test_benchmark_rejects_empty_iterations():
+    result = invoke("benchmark", "--iterations", 0)
+    assert result.returncode == 2
+    assert "Traceback" not in result.stderr
