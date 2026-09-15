@@ -8,12 +8,12 @@ from gambitpairing.controllers.tournament.standings import rank_players
 def test_bye_only_record_has_wins_and_fide_capped_dummy():
     p = Player("Bye", 1500)
     p.add_round_result(None, 1, None, c.OUTCOME_BYE)
-    TiebreakCalculator().calculate_all_tiebreaks({p.id: p})
-    assert p.tiebreakers[c.TB_WINS] == 1
-    assert p.tiebreakers[c.TB_PROGRESSIVE] == 1
-    assert p.tiebreakers[c.TB_CUMULATIVE] == 0
-    assert p.tiebreakers[c.TB_BUCHHOLZ] == 0.5
-    assert p.tiebreakers[c.TB_BUCHHOLZ_CUT_1] == 0
+    tiebreakers = TiebreakCalculator().calculate_all_tiebreaks({p.id: p})
+    assert tiebreakers[p.id][c.TB_WINS] == 1
+    assert tiebreakers[p.id][c.TB_PROGRESSIVE] == 1
+    assert tiebreakers[p.id][c.TB_CUMULATIVE] == 0
+    assert tiebreakers[p.id][c.TB_BUCHHOLZ] == 0.5
+    assert tiebreakers[p.id][c.TB_BUCHHOLZ_CUT_1] == 0
 
 
 def test_nine_round_modified_median_cuts_two():
@@ -36,21 +36,21 @@ def test_opposition_cumulative_and_withdrawal_adjustments():
     r.add_round_result(None, 1, None, c.OUTCOME_BYE)
     r.add_round_result(p, 0.5, Colour.WHITE)
     calc = TiebreakCalculator()
-    calc.calculate_all_tiebreaks({x.id: x for x in (p, q, r)})
-    assert p.tiebreakers[c.TB_CUMULATIVE_OPP] == 1.5
-    assert p.tiebreakers[c.TB_SOLKOFF] == 1.5
-    assert p.tiebreakers[c.TB_BUCHHOLZ] == 2
+    tiebreakers = calc.calculate_all_tiebreaks({x.id: x for x in (p, q, r)})
+    assert tiebreakers[p.id][c.TB_CUMULATIVE_OPP] == 1.5
+    assert tiebreakers[p.id][c.TB_SOLKOFF] == 1.5
+    assert tiebreakers[p.id][c.TB_BUCHHOLZ] == 2
 
 
 def test_forfeit_has_no_played_black_or_rating_contribution():
     p, q = Player("P", 1800), Player("Q", 2000)
     p.add_round_result(q, 1, Colour.BLACK, c.OUTCOME_FORFEIT_WIN)
     q.add_round_result(p, 0, Colour.WHITE, c.OUTCOME_FORFEIT_LOSS)
-    TiebreakCalculator().calculate_all_tiebreaks({p.id: p, q.id: q})
-    assert p.tiebreakers[c.TB_BLACK_GAMES] == 0
-    assert p.tiebreakers[c.TB_GAMES_WON] == 0
-    assert p.tiebreakers[c.TB_ARO] == 0
-    assert p.tiebreakers[c.TB_BUCHHOLZ] == 0
+    tiebreakers = TiebreakCalculator().calculate_all_tiebreaks({p.id: p, q.id: q})
+    assert tiebreakers[p.id][c.TB_BLACK_GAMES] == 0
+    assert tiebreakers[p.id][c.TB_GAMES_WON] == 0
+    assert tiebreakers[p.id][c.TB_ARO] == 0
+    assert tiebreakers[p.id][c.TB_BUCHHOLZ] == 0
 
 
 def test_shared_places_and_derived_ranks_not_saved():
@@ -104,12 +104,12 @@ def test_round_robin_forfeit_uses_actual_opponent_for_sb():
     q.add_round_result(p, 0, Colour.WHITE, c.OUTCOME_FORFEIT_LOSS)
     q.add_round_result(r, 1, Colour.WHITE)
     r.add_round_result(q, 0, Colour.BLACK)
-    TiebreakCalculator(pairing_system="round_robin").calculate_all_tiebreaks(
-        {x.id: x for x in (p, q, r)}
-    )
-    assert p.tiebreakers[c.TB_SONNENBORN_BERGER] == 1
-    assert p.tiebreakers[c.TB_GAMES_WON] == 1
-    assert p.tiebreakers[c.TB_ARO] == 0
+    tiebreakers = TiebreakCalculator(
+        pairing_system="round_robin"
+    ).calculate_all_tiebreaks({x.id: x for x in (p, q, r)})
+    assert tiebreakers[p.id][c.TB_SONNENBORN_BERGER] == 1
+    assert tiebreakers[p.id][c.TB_GAMES_WON] == 1
+    assert tiebreakers[p.id][c.TB_ARO] == 0
 
 
 def test_vur_is_cut_before_lower_played_contribution():
@@ -122,9 +122,11 @@ def test_vur_is_cut_before_lower_played_contribution():
         opponent.opponent_ids = [p.id] * 3
         opponent.outcome_types = ["normal"] * 3
         opponent.score = sum(scores)
-    TiebreakCalculator().calculate_all_tiebreaks({x.id: x for x in (p, q, r)})
-    assert p.tiebreakers[c.TB_BUCHHOLZ] == 4.5
-    assert p.tiebreakers[c.TB_BUCHHOLZ_CUT_1] == 3
+    tiebreakers = TiebreakCalculator().calculate_all_tiebreaks(
+        {x.id: x for x in (p, q, r)}
+    )
+    assert tiebreakers[p.id][c.TB_BUCHHOLZ] == 4.5
+    assert tiebreakers[p.id][c.TB_BUCHHOLZ_CUT_1] == 3
 
 
 def test_scheduled_byes_survive_record_save_load_and_undo():
@@ -146,11 +148,10 @@ def test_scheduled_byes_survive_record_save_load_and_undo():
     session.compute_tiebreakers()
     restored = tournament_from_dict(session.to_dict())
     restored.compute_tiebreakers()
-    assert {key: p.tiebreakers for key, p in session.players.items()} == {
-        key: p.tiebreakers for key, p in restored.players.items()
-    }
+    assert session.tiebreakers == restored.tiebreakers
     assert restored.players[d.id].score == 0.5
     assert restored.result_recorder.undo_round_results(
         restored.rounds[0], restored.players
     )
+    assert restored.tiebreakers == {}
     assert all(p.score == 0 and p.results == [] for p in restored.players.values())

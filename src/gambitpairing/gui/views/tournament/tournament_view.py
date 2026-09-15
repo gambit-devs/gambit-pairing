@@ -675,8 +675,9 @@ class TournamentView(QtWidgets.QWidget):
             self.dirty.emit()
             self.status_message.emit(messages.ready_status)
         except Exception as e:
-            logging.exception(
-                f"Error generating pairings for Round {display_round_number}:"
+            logger.exception(
+                "Error generating pairings for Round %s:",
+                display_round_number,
             )
             prompt = build_pairing_exception_prompt(display_round_number, e)
             QtWidgets.QMessageBox.critical(

@@ -22,7 +22,7 @@ This module handles recording match results with proper validation and error che
 from copy import deepcopy
 import math
 from numbers import Real
-from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Set, Tuple
 
 from gambitpairing.constants import (
     BYE_SCORE,
@@ -64,6 +64,13 @@ class ResultRecorder:
     - Handling bye results
     - Preventing duplicate result recording
     """
+
+    def __init__(self, on_state_changed: Optional[Callable[[], None]] = None):
+        self._on_state_changed = on_state_changed
+
+    def _notify_state_changed(self) -> None:
+        if self._on_state_changed is not None:
+            self._on_state_changed()
 
     def record_round_results(
         self,
@@ -175,6 +182,7 @@ class ResultRecorder:
             )
             return False
 
+        self._notify_state_changed()
         return True
 
     @staticmethod
@@ -765,6 +773,7 @@ class ResultRecorder:
                 and player.results[-1] is None
             ):
                 self._pop_player_result(player)
+        self._notify_state_changed()
         return True
 
     @staticmethod

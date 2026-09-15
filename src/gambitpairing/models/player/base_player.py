@@ -30,9 +30,14 @@ class Player(PlayerABC):
         date_of_birth: Optional[date] = None,
         federation: Optional[str] = None,
         cfc_id: Optional[int] = None,
-        **_: Any,
+        **kwargs: Any,
     ) -> None:
-        self._id: str = generate_id(self.__class__.__name__)
+        stored_id = kwargs.pop("_stored_id", None)
+        self._id: str = (
+            str(stored_id)
+            if stored_id is not None
+            else generate_id(self.__class__.__name__)
+        )
         self._name: str = name
         self._rating: int = rating if rating is not None else 0
         self._phone: Optional[str] = self._validate_and_set_phone(phone)
@@ -58,7 +63,6 @@ class Player(PlayerABC):
         self.is_moved_down: bool = False
         self.float_history: List[int] = []
         self.match_history: List[Optional[Dict[str, Any]]] = []
-        self.tiebreakers: Dict[str, float] = {}
         self._opponents_played_cache: List[Optional["Player"]] = []
 
     @property
@@ -92,7 +96,7 @@ class Player(PlayerABC):
 
     @phone.setter
     def phone(self, value: Optional[str]) -> None:
-        self._phone = value
+        self._phone = self._validate_and_set_phone(value)
 
     @property
     def email(self) -> Optional[str]:
@@ -100,7 +104,7 @@ class Player(PlayerABC):
 
     @email.setter
     def email(self, value: Optional[str]) -> None:
-        self._email = value
+        self._email = self._validate_and_set_email(value)
 
     @property
     def federation(self) -> Optional[str]:
@@ -125,7 +129,7 @@ class Player(PlayerABC):
         result = validate_phone(phone)
         if result.is_valid:
             return result.sanitized_value
-        logger.warning("Invalid phone number for %s: %s", self.name, phone)
+        logger.warning("Invalid phone number discarded for player_id=%s", self.id)
         return None
 
     def _validate_and_set_email(self, email: Optional[str]) -> Optional[str]:
@@ -134,7 +138,7 @@ class Player(PlayerABC):
         result = validate_email(email)
         if result.is_valid:
             return result.sanitized_value
-        logger.warning("Invalid email for %s: %s", self.name, email)
+        logger.warning("Invalid email discarded for player_id=%s", self.id)
         return None
 
     @property
@@ -274,12 +278,18 @@ class Player(PlayerABC):
             gender=gender,
             date_of_birth=date_of_birth,
             federation=player_data.get("federation"),
+            _stored_id=player_data.get("id"),
         )
 
+        # Contact fields were validated and normalized by the constructor.
         for key, value in player_data.items():
             if key == "id":
                 player._restore_id_from_storage(value)
-            elif hasattr(player, key) and not key.startswith("_"):
+            elif (
+                key not in {"phone", "email"}
+                and hasattr(player, key)
+                and not key.startswith("_")
+            ):
                 setattr(player, key, value)
 
         player.color_history = [
@@ -287,8 +297,6 @@ class Player(PlayerABC):
         ]
         cls._ensure_list_attributes(player)
         cls._ensure_boolean_attributes(player)
-        if not hasattr(player, "tiebreakers") or player.tiebreakers is None:
-            player.tiebreakers = {}
         player._opponents_played_cache = []
         return player
 

@@ -69,17 +69,22 @@ def format_tiebreak_value(tb_key: str, value: float) -> str:
 
 
 def project_standings_rows(
-    standings: Iterable[Any], tiebreak_order: Sequence[str]
+    standings: Iterable[Any],
+    tiebreak_order: Sequence[str],
+    tiebreakers: dict[str, dict[str, float]] | None = None,
 ) -> list[StandingsRowProjection]:
     rows: list[StandingsRowProjection] = []
     for rank, player in enumerate(standings):
+        player_tiebreakers = (tiebreakers or {}).get(player.id, {})
         rows.append(
             StandingsRowProjection(
                 rank=str(getattr(player, "standing_rank", rank + 1)),
                 player=f"{player.name} ({player.rating or 'NR'})",
                 score=f"{player.score:.1f}",
                 tiebreaks=[
-                    format_tiebreak_value(tb_key, player.tiebreakers.get(tb_key, 0.0))
+                    format_tiebreak_value(
+                        tb_key, player_tiebreakers.get(tb_key, 0.0)
+                    )
                     for tb_key in tiebreak_order
                 ],
             )

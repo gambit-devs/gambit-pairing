@@ -91,6 +91,10 @@ class RoundController:
         self.last_engine = pairing_system
         self.fallback_reason = None
 
+    def _invalidate_tiebreakers(self) -> None:
+        if self._model is not None:
+            self._model.invalidate_tiebreakers()
+
     @property
     def rounds(self) -> List[RoundData]:
         return self._model.rounds if self._model is not None else self._rounds
@@ -99,6 +103,7 @@ class RoundController:
     def rounds(self, value: List[RoundData]) -> None:
         if self._model is not None:
             self._model.rounds = value
+            self._invalidate_tiebreakers()
         else:
             self._rounds = value
 
@@ -211,6 +216,8 @@ class RoundController:
         )
 
         self.rounds.append(round_data)
+
+        self._invalidate_tiebreakers()
 
         # Update pairing history
         for white, black in pairings:
@@ -393,6 +400,7 @@ class RoundController:
             f"Set manual pairings for round {round_number}: "
             f"{len(pairings)} pairings, bye: {bye_player.name if bye_player else 'None'}"
         )
+        self._invalidate_tiebreakers()
         return True
 
     def mark_round_completed(self, round_number: int) -> bool:
@@ -410,6 +418,7 @@ class RoundController:
             return False
 
         round_data.is_completed = True
+        self._invalidate_tiebreakers()
         logger.info(f"Round {round_number} marked as completed")
         return True
 
@@ -434,6 +443,7 @@ class RoundController:
             self.pairing_history.previous_matches.discard(pair)
 
         self.rounds.pop()
+        self._invalidate_tiebreakers()
         logger.info(f"Undid round {last_round.round_number}")
         return True
 

@@ -21,15 +21,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 1
         },
         {
@@ -52,15 +43,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 2
         },
         {
@@ -83,15 +65,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 3
         },
         {
@@ -114,15 +87,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 4
         },
         {
@@ -145,15 +109,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 5
         },
         {
@@ -176,15 +131,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 6
         },
         {
@@ -207,15 +153,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 7
         },
         {
@@ -238,15 +175,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 8
         },
         {
@@ -269,15 +197,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 9
         },
         {
@@ -300,15 +219,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 10
         },
         {
@@ -331,15 +241,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 11
         },
         {
@@ -362,15 +263,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 12
         },
         {
@@ -393,15 +285,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 13
         },
         {
@@ -424,15 +307,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 14
         },
         {
@@ -455,15 +329,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 15
         },
         {
@@ -486,15 +351,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 16
         },
         {
@@ -517,15 +373,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 17
         },
         {
@@ -548,15 +395,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 18
         },
         {
@@ -579,15 +417,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 19
         },
         {
@@ -610,15 +439,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 20
         },
         {
@@ -641,15 +461,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 21
         },
         {
@@ -672,15 +483,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 22
         },
         {
@@ -703,15 +505,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 23
         },
         {
@@ -734,15 +527,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 24
         },
         {
@@ -765,15 +549,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 25
         },
         {
@@ -796,15 +571,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 26
         },
         {
@@ -827,15 +593,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 27
         },
         {
@@ -858,15 +615,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 28
         },
         {
@@ -889,15 +637,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 29
         },
         {
@@ -920,15 +659,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 30
         },
         {
@@ -951,15 +681,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 31
         },
         {
@@ -982,15 +703,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 32
         },
         {
@@ -1013,15 +725,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 33
         },
         {
@@ -1044,15 +747,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 34
         },
         {
@@ -1075,15 +769,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 35
         },
         {
@@ -1106,15 +791,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 36
         },
         {
@@ -1137,15 +813,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 37
         },
         {
@@ -1168,15 +835,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 38
         },
         {
@@ -1199,15 +857,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 39
         },
         {
@@ -1230,15 +879,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 40
         },
         {
@@ -1261,15 +901,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 41
         },
         {
@@ -1292,15 +923,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 42
         },
         {
@@ -1323,15 +945,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 43
         },
         {
@@ -1354,15 +967,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 44
         },
         {
@@ -1385,15 +989,6 @@
             "num_black_games": 0,
             "float_history": [],
             "match_history": [],
-            "tiebreakers": {
-                "median": 0.0,
-                "solkoff": 0,
-                "cumulative": 0.0,
-                "cumulative_opp": 0.0,
-                "sb": 0.0,
-                "most_blacks": 0.0,
-                "h2h": 0.0
-            },
             "pairing_number": 45
         }
     ],
