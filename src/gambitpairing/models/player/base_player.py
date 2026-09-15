@@ -58,7 +58,6 @@ class Player(PlayerABC):
         self.is_moved_down: bool = False
         self.float_history: List[int] = []
         self.match_history: List[Optional[Dict[str, Any]]] = []
-        self.tiebreakers: Dict[str, float] = {}
         self._opponents_played_cache: List[Optional["Player"]] = []
 
     @property
@@ -287,8 +286,6 @@ class Player(PlayerABC):
         ]
         cls._ensure_list_attributes(player)
         cls._ensure_boolean_attributes(player)
-        if not hasattr(player, "tiebreakers") or player.tiebreakers is None:
-            player.tiebreakers = {}
         player._opponents_played_cache = []
         return player
 

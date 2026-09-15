@@ -61,6 +61,7 @@ def commit_pairing_document(tournament, expected, result):
         before.pop("pairing_number", None)
         after.pop("pairing_number", None)
         if before != after:
+            breakpoint()
             raise ValueError("Pairing job changed player data")
     if len(prepared.rounds) != tournament.get_completed_rounds() + 1:
         raise ValueError("Pairing job returned an unexpected round count")

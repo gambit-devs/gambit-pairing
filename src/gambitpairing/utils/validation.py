@@ -138,7 +138,7 @@ def validate_phone(
             error_message=f"Phone number contains invalid characters: {phone}",
         )
 
-    # Check length (US: 10 digits, International: 10-15 digits)
+    # Check length (North American Numbering Plan: 10 digits, International: 10-15 digits)
     if len(digits_only) < 10 or len(digits_only) > 15:
         return ValidationResult(
             is_valid=False,
