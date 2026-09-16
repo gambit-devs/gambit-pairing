@@ -158,7 +158,11 @@ class StandingsView(QtWidgets.QWidget):
             # )
             # standings = all_players_sorted # Use this if showing all players.
 
-            rows = project_standings_rows(standings, self.tournament.tiebreak_order)
+            rows = project_standings_rows(
+                standings,
+                self.tournament.tiebreak_order,
+                self.tournament.tiebreakers,
+            )
             self.table_standings.setRowCount(len(rows))
 
             for rank, row_projection in enumerate(rows):
@@ -220,7 +224,11 @@ class StandingsView(QtWidgets.QWidget):
                 else:
                     f.write(delimiter.join(header) + "\n")
 
-                rows = project_standings_rows(standings, self.tournament.tiebreak_order)
+                rows = project_standings_rows(
+                    standings,
+                    self.tournament.tiebreak_order,
+                    self.tournament.tiebreakers,
+                )
                 for data_row in build_export_rows(rows):
                     if writer:
                         writer.writerow(data_row)
@@ -275,7 +283,9 @@ class StandingsView(QtWidgets.QWidget):
             # Get proper round information using unified utility
             round_subtitle = self._get_current_round_info()
             rows = project_standings_rows(
-                self.tournament.get_standings(), self.tournament.tiebreak_order
+                self.tournament.get_standings(),
+                self.tournament.tiebreak_order,
+                self.tournament.tiebreakers,
             )
             html = build_print_standings_html(
                 tournament_name=tournament_name,
@@ -324,6 +334,8 @@ class StandingsView(QtWidgets.QWidget):
         ):
             return ""
         rows = project_standings_rows(
-            self.tournament.get_standings(), self.tournament.tiebreak_order
+            self.tournament.get_standings(),
+            self.tournament.tiebreak_order,
+            self.tournament.tiebreakers,
         )
         return build_standings_table_html(rows, self.tournament.tiebreak_order)

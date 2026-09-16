@@ -1,9 +1,11 @@
 """Behavioral regressions from the upstream/working-tree MVC audit."""
 
 import json
-import os
+import logging
 import subprocess
 import sys
+from copy import deepcopy
+from pathlib import Path
 
 import pytest
 
@@ -11,7 +13,9 @@ from gambitpairing.controllers import TournamentController
 from gambitpairing.controllers.tournament.pairing_job import (
     commit_pairing_document,
     generate_pairing_document,
+    run_pairing_process,
 )
+from gambitpairing.controllers.tournament import pairing_job as pairing_job_module
 from gambitpairing.controllers.tournament.replay import round_snapshot
 from gambitpairing.controllers.tournament.session import TournamentSession
 from gambitpairing.models.player import Player
@@ -128,8 +132,10 @@ def test_manual_replacement_rebuilds_history_and_pending_results():
 def test_clear_completed_round_rolls_back_scores_and_histories():
     session, controller, _ = tournament()
     record_first(session, controller)
+    session.compute_tiebreakers()
     session.clear_rounds_from(0)
     assert session.rounds == []
+    assert session.tiebreakers == {}
     assert all(
         player.score == 0 and not player.results for player in session.players.values()
     )
@@ -138,12 +144,64 @@ def test_clear_completed_round_rolls_back_scores_and_histories():
 def test_undo_invalidates_later_prepared_pairings():
     session, controller, players = tournament()
     record_first(session, controller)
+    session.compute_tiebreakers()
     assert controller.set_manual_pairings(
         1, [(players[0], players[2]), (players[1], players[3])], None
     )
     assert controller.undo_last_results() == (True, None)
     assert len(session.rounds) == 1
     assert not session.rounds[0].is_completed
+    assert session.tiebreakers == {}
+
+
+def test_tiebreak_cache_is_invalidated_by_configuration_and_round_mutations():
+    session, controller, players = tournament()
+    record_first(session, controller)
+
+    session.compute_tiebreakers()
+    assert session.tiebreakers
+
+    session.config = deepcopy(session.config)
+    assert session.tiebreakers == {}
+
+    session.compute_tiebreakers()
+    session.tiebreak_order = list(session.tiebreak_order)
+    assert session.tiebreakers == {}
+
+    session.compute_tiebreakers()
+    session.round_controller.rounds = list(session.rounds)
+    assert session.tiebreakers == {}
+
+    session.compute_tiebreakers()
+    session.rounds_byes_ids = [None]
+    assert session.tiebreakers == {}
+
+    session.compute_tiebreakers()
+    assert session.set_manual_pairings(
+        1, [(players[0], players[2]), (players[1], players[3])], None
+    )
+    assert session.tiebreakers == {}
+
+
+def test_tiebreak_cache_is_invalidated_and_recalculated_after_result_changes():
+    session, controller, players = tournament()
+    record_first(session, controller)
+    session.compute_tiebreakers()
+    old_aro = session.tiebreakers[players[0].id]["aro"]
+
+    session.update_player(players[1].id, {"rating": 2100})
+    assert session.tiebreakers == {}
+    session.compute_tiebreakers()
+    assert old_aro != session.tiebreakers[players[0].id]["aro"]
+
+    assert session.set_manual_pairings(
+        1, [(players[0], players[2]), (players[1], players[3])], None
+    )
+    session.compute_tiebreakers()
+    assert controller.record_results(
+        1, [(w, b, 0.5) for w, b in session.rounds[1].pairings]
+    ).success
+    assert session.tiebreakers == {}
 
 
 @pytest.mark.parametrize(
@@ -228,6 +286,146 @@ def test_pairing_preparation_is_detached_and_commit_detects_changes():
     session.name = "Changed during generation"
     with pytest.raises(ValueError, match="changed"):
         commit_pairing_document(session, expected, result)
+
+
+def test_pairing_commit_uses_tournament_tiebreak_values():
+    session, _, _ = tournament()
+    session.pairing_system = "dutch_swiss"
+    session.use_experimental_dutch = True
+    session.compute_tiebreakers()
+    expected = session.to_dict()
+
+    assert set(session.tiebreakers) == set(session.players)
+    assert all(
+        not hasattr(player, "tiebreakers") for player in session.players.values()
+    )
+    assert all("tiebreakers" not in player for player in expected["players"])
+    result = generate_pairing_document(expected, 0)
+
+    assert commit_pairing_document(session, expected, result)
+    assert len(session.rounds) == 1
+
+
+def test_winter_fixture_pairs_with_current_player_schema():
+    fixture = (
+        Path(__file__).parents[1]
+        / "test_data/tournaments/winter_chess_championship_2025.json"
+    )
+    session = tournament_from_dict(json.loads(fixture.read_text(encoding="utf-8")))
+    expected = session.to_dict()
+
+    assert session.players["player_016"].phone is None
+    assert all("tiebreakers" not in player for player in expected["players"])
+    result = generate_pairing_document(expected, 0)
+
+    assert commit_pairing_document(session, expected, result)
+    assert len(session.rounds) == 1
+
+
+def test_pairing_commit_logs_safe_player_diff_with_round_and_id(caplog):
+    session, _, players = tournament()
+    session.pairing_system = "dutch_swiss"
+    session.use_experimental_dutch = True
+    expected = session.to_dict()
+    result = generate_pairing_document(expected, 0)
+    changed_player = next(
+        item for item in result["document"]["players"] if item["id"] == players[0].id
+    )
+    changed_player.update(
+        {
+            "rating": 1900,
+            "phone": "15551234567",
+            "email": "replacement@example.com",
+        }
+    )
+
+    with caplog.at_level(
+        logging.ERROR,
+        logger="gambitpairing.controllers.tournament.pairing_job",
+    ):
+        with pytest.raises(
+            ValueError,
+            match=f"Pairing job changed player data for player {players[0].id} "
+            r"for round 1",
+        ):
+            commit_pairing_document(session, expected, result)
+
+    messages = "\n".join(record.getMessage() for record in caplog.records)
+    assert "round=1" in messages
+    assert f"player_id={players[0].id}" in messages
+    assert "field_diff" in messages
+    assert "rating" in messages
+    assert "phone" in messages
+    assert "email" in messages
+    assert "<redacted>" in messages
+    assert "15551234567" not in messages
+    assert "replacement@example.com" not in messages
+
+
+def test_pairing_worker_logs_original_exception_context(monkeypatch, caplog):
+    class Connection:
+        def __init__(self):
+            self.messages = []
+            self.closed = False
+
+        def send(self, message):
+            self.messages.append(message)
+
+        def close(self):
+            self.closed = True
+
+    def fail_generation(*_args):
+        raise RuntimeError("synthetic worker failure")
+
+    connection = Connection()
+    monkeypatch.setattr(
+        pairing_job_module, "generate_pairing_document", fail_generation
+    )
+    monkeypatch.setattr(pairing_job_module.os, "setsid", lambda: None)
+
+    with caplog.at_level(
+        logging.ERROR,
+        logger="gambitpairing.controllers.tournament.pairing_job",
+    ):
+        run_pairing_process(connection, {}, 2)
+
+    worker_records = [
+        record
+        for record in caplog.records
+        if "Pairing generation worker failed" in record.getMessage()
+    ]
+    assert worker_records
+    assert "round=3" in worker_records[-1].getMessage()
+    assert "error_type=RuntimeError" in worker_records[-1].getMessage()
+    assert worker_records[-1].exc_info is not None
+    assert connection.messages == [{"error": "synthetic worker failure"}]
+    assert connection.closed
+
+
+def test_player_load_applies_contact_validation_and_redacts_warning(caplog):
+    raw_phone = "+1-555-0116"
+    raw_email = "daniel.petrov@email.com"
+
+    with caplog.at_level(
+        logging.WARNING,
+        logger="gambitpairing.models.player.base_player",
+    ):
+        player = Player.from_dict(
+            {
+                "id": "player_phone_validation",
+                "name": "Daniel Petrov",
+                "rating": 2300,
+                "phone": raw_phone,
+                "email": raw_email,
+            }
+        )
+
+    assert player.phone is None
+    assert player.email == raw_email
+    assert player.to_dict()["phone"] is None
+    assert raw_phone not in caplog.text
+    assert raw_email not in caplog.text
+    assert "player_id=player_phone_validation" in caplog.text
 
 
 def test_pairing_commit_rejects_changed_configuration_atomically():

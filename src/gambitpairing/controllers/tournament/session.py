@@ -59,7 +59,7 @@ class TournamentSession:
             use_experimental_dutch=self.config.use_experimental_dutch,
         )
         self.round_manager = self.round_controller
-        self.result_recorder = ResultRecorder()
+        self.result_recorder = ResultRecorder(self.invalidate_tiebreakers)
         self.tiebreak_calculator = TiebreakCalculator()
 
     @property
@@ -69,6 +69,11 @@ class TournamentSession:
     @config.setter
     def config(self, value):
         self.model.config = value
+        self.invalidate_tiebreakers()
+
+    def invalidate_tiebreakers(self) -> None:
+        """Clear derived values after a tiebreak input changes."""
+        self.model.invalidate_tiebreakers()
 
     @property
     def players(self):
@@ -110,6 +115,7 @@ class TournamentSession:
             self.use_experimental_dutch = False
         self.config.pairing_system = value
         self.round_controller.pairing_system = value
+        self.invalidate_tiebreakers()
 
     @property
     def use_experimental_dutch(self) -> bool:
@@ -121,6 +127,8 @@ class TournamentSession:
         self.config.use_experimental_dutch = normalized_value
         if hasattr(self, "round_controller"):
             self.round_controller.use_experimental_dutch = normalized_value
+        if hasattr(self, "model"):
+            self.invalidate_tiebreakers()
 
     @property
     def tournament_mode(self) -> str:
@@ -129,6 +137,7 @@ class TournamentSession:
     @tournament_mode.setter
     def tournament_mode(self, value: str) -> None:
         self.config.tournament_mode = value
+        self.invalidate_tiebreakers()
 
     @property
     def fide_strict(self) -> bool:
@@ -146,6 +155,16 @@ class TournamentSession:
     @tiebreak_order.setter
     def tiebreak_order(self, value: List[str]) -> None:
         self.config.tiebreak_order = value
+        self.invalidate_tiebreakers()
+
+    @property
+    def tiebreakers(self) -> Dict[str, Dict[str, float]]:
+        """Calculated tiebreak values keyed by tournament player ID."""
+        return self.model.tiebreakers
+
+    @tiebreakers.setter
+    def tiebreakers(self, value: Dict[str, Dict[str, float]]) -> None:
+        self.model.tiebreakers = value
 
     @property
     def tournament_over(self) -> bool:
@@ -163,6 +182,7 @@ class TournamentSession:
     def rounds(self, value: List[RoundData]) -> None:
         self.round_controller.rounds = value
         self._rebuild_pairing_history()
+        self.invalidate_tiebreakers()
 
     def get_player_list(self, active_only: bool = False) -> List[Player]:
         players = list(self.players.values())
@@ -217,10 +237,12 @@ class TournamentSession:
         if mode != self.tournament_mode:
             self.tournament_mode = mode
             messages.append(f"Chess federation changed to {mode}.")
+        self.invalidate_tiebreakers()
         return messages
 
     def add_player(self, player: Player) -> None:
         self.players[player.id] = player
+        self.invalidate_tiebreakers()
 
     def update_player(self, player_id: str, data: Dict[str, Any]) -> Player:
         """Update registration metadata without replacing tournament history."""
@@ -255,16 +277,21 @@ class TournamentSession:
             raise ValueError("A player with this name already exists")
         replacement = create_player_from_dict({**player.to_dict(), **changes})
         self.players[player_id] = replacement
+        self.invalidate_tiebreakers()
         return replacement
 
     def remove_player(self, player_id: str) -> bool:
-        return self.players.pop(player_id, None) is not None
+        removed = self.players.pop(player_id, None) is not None
+        if removed:
+            self.invalidate_tiebreakers()
+        return removed
 
     def set_player_active(self, player_id: str, is_active: bool) -> bool:
         player = self.players.get(player_id)
         if not player:
             return False
         player.is_active = is_active
+        self.invalidate_tiebreakers()
         return True
 
     def _get_active_players(self) -> List[Player]:
@@ -289,6 +316,7 @@ class TournamentSession:
             len(pairings),
             bye_player.name if bye_player else "None",
         )
+        self.invalidate_tiebreakers()
         return pairings, bye_player
 
     def get_pairings_for_round(
@@ -320,6 +348,7 @@ class TournamentSession:
         if success:
             self.rounds[round_index].bye_type = bye_type
             self.rounds[round_index].active_player_ids = sorted(assigned)
+            self.invalidate_tiebreakers()
         return success
 
     def record_results(self, round_index: int, results_data: List[tuple]) -> bool:
@@ -341,6 +370,7 @@ class TournamentSession:
             self._rebuild_pairing_history()
             round_data.pending_results.clear()
             self.round_controller.mark_round_completed(round_index + 1)
+            self.invalidate_tiebreakers()
         return success
 
     def set_pending_results(self, round_index: int, results_data: List[tuple]) -> bool:
@@ -360,17 +390,21 @@ class TournamentSession:
         self.tiebreak_calculator.mode = self.config.tournament_mode
         self.tiebreak_calculator.rounds = self.get_completed_rounds()
         self.tiebreak_calculator.pairing_system = self.pairing_system
-        self.tiebreak_calculator.calculate_all_tiebreaks(self.players)
+        self.tiebreakers = self.tiebreak_calculator.calculate_all_tiebreaks(
+            self.players
+        )
 
     def get_standings(self) -> List[Player]:
         from gambitpairing.controllers.tournament.standings import rank_players
 
+        self.compute_tiebreakers()
         return rank_players(
             self.players,
             self.tiebreak_order,
             self.config.tournament_mode,
             self.get_completed_rounds(),
             self.pairing_system,
+            tiebreakers=self.tiebreakers,
         )
 
     def _compare_players(self, p1: Player, p2: Player) -> int:
@@ -402,6 +436,7 @@ class TournamentSession:
             self.players[player_id]._opponents_played_cache = []
         self.round_controller.rounds = self.round_controller.rounds[:round_index]
         self._rebuild_pairing_history()
+        self.invalidate_tiebreakers()
 
     def _get_eligible_bye_player(
         self, potential_bye_players: List[Player]
@@ -489,6 +524,7 @@ class TournamentSession:
         for index, bye_player_id in enumerate(value):
             self.round_controller.rounds[index].bye_player_id = bye_player_id
         self._rebuild_pairing_history()
+        self.invalidate_tiebreakers()
 
     @property
     def previous_matches(self):

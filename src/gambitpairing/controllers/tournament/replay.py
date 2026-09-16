@@ -41,7 +41,6 @@ def fresh_player(source_player) -> Player:
     fresh.num_black_games = 0
     fresh.bsn = None
     fresh.is_moved_down = False
-    fresh.tiebreakers = {}
     fresh._opponents_played_cache = []
     fresh.is_active = data.get("is_active", True)
 

@@ -20,8 +20,7 @@
       "has_received_bye": false,
       "num_black_games": 0,
       "float_history": [],
-      "match_history": [],
-      "tiebreakers": {}
+      "match_history": []
     },
     {
       "id": "player_003",
@@ -42,8 +41,7 @@
       "has_received_bye": false,
       "num_black_games": 0,
       "float_history": [],
-      "match_history": [],
-      "tiebreakers": {}
+      "match_history": []
     },
     {
       "id": "player_008",
@@ -64,8 +62,7 @@
       "has_received_bye": false,
       "num_black_games": 0,
       "float_history": [],
-      "match_history": [],
-      "tiebreakers": {}
+      "match_history": []
     },
     {
       "id": "player_001",
@@ -86,8 +83,7 @@
       "has_received_bye": false,
       "num_black_games": 0,
       "float_history": [],
-      "match_history": [],
-      "tiebreakers": {}
+      "match_history": []
     },
     {
       "id": "player_013",
@@ -108,8 +104,7 @@
       "has_received_bye": false,
       "num_black_games": 0,
       "float_history": [],
-      "match_history": [],
-      "tiebreakers": {}
+      "match_history": []
     },
     {
       "id": "player_005",
@@ -130,8 +125,7 @@
       "has_received_bye": false,
       "num_black_games": 0,
       "float_history": [],
-      "match_history": [],
-      "tiebreakers": {}
+      "match_history": []
     },
     {
       "id": "player_002",
@@ -152,8 +146,7 @@
       "has_received_bye": false,
       "num_black_games": 0,
       "float_history": [],
-      "match_history": [],
-      "tiebreakers": {}
+      "match_history": []
     },
     {
       "id": "player_011",
@@ -174,8 +167,7 @@
       "has_received_bye": false,
       "num_black_games": 0,
       "float_history": [],
-      "match_history": [],
-      "tiebreakers": {}
+      "match_history": []
     },
     {
       "id": "player_007",
@@ -196,8 +188,7 @@
       "has_received_bye": false,
       "num_black_games": 0,
       "float_history": [],
-      "match_history": [],
-      "tiebreakers": {}
+      "match_history": []
     },
     {
       "id": "player_015",
@@ -218,8 +209,7 @@
       "has_received_bye": false,
       "num_black_games": 0,
       "float_history": [],
-      "match_history": [],
-      "tiebreakers": {}
+      "match_history": []
     },
     {
       "id": "player_009",
@@ -240,8 +230,7 @@
       "has_received_bye": false,
       "num_black_games": 0,
       "float_history": [],
-      "match_history": [],
-      "tiebreakers": {}
+      "match_history": []
     },
     {
       "id": "player_004",
@@ -262,8 +251,7 @@
       "has_received_bye": false,
       "num_black_games": 0,
       "float_history": [],
-      "match_history": [],
-      "tiebreakers": {}
+      "match_history": []
     },
     {
       "id": "player_012",
@@ -284,8 +272,7 @@
       "has_received_bye": false,
       "num_black_games": 0,
       "float_history": [],
-      "match_history": [],
-      "tiebreakers": {}
+      "match_history": []
     },
     {
       "id": "player_006",
@@ -306,8 +293,7 @@
       "has_received_bye": false,
       "num_black_games": 0,
       "float_history": [],
-      "match_history": [],
-      "tiebreakers": {}
+      "match_history": []
     },
     {
       "id": "player_014",
@@ -328,8 +314,7 @@
       "has_received_bye": false,
       "num_black_games": 0,
       "float_history": [],
-      "match_history": [],
-      "tiebreakers": {}
+      "match_history": []
     },
     {
       "id": "player_010",
@@ -350,8 +335,7 @@
       "has_received_bye": false,
       "num_black_games": 0,
       "float_history": [],
-      "match_history": [],
-      "tiebreakers": {}
+      "match_history": []
     }
   ],
   "num_rounds": 5,

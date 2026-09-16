@@ -13,10 +13,16 @@ from .tiebreak_calculator import TiebreakCalculator
 
 
 def rank_players(
-    players, tiebreak_order, mode=MODE_FIDE, rounds=None, pairing_system="dutch_swiss"
+    players,
+    tiebreak_order,
+    mode=MODE_FIDE,
+    rounds=None,
+    pairing_system="dutch_swiss",
+    tiebreakers=None,
 ):
     calculator = TiebreakCalculator(mode, rounds, pairing_system)
-    calculator.calculate_all_tiebreaks(players)
+    if tiebreakers is None:
+        tiebreakers = calculator.calculate_all_tiebreaks(players)
     eligible = [player for player in players.values() if player.is_active]
     criteria_order = list(tiebreak_order)
     if mode == MODE_FIDE and any(player.rating <= 0 for player in players.values()):
@@ -82,7 +88,8 @@ def rank_players(
                 )
         else:
             values = {
-                player.id: player.tiebreakers.get(criterion, 0.0) for player in group
+                player.id: tiebreakers.get(player.id, {}).get(criterion, 0.0)
+                for player in group
             }
         result = []
         subgroups = [

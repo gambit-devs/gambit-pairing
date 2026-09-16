@@ -73,13 +73,19 @@ class TiebreakCalculator:
         return total
 
     def calculate_all_tiebreaks(self, players):
+        """Return tiebreak values keyed by player ID without mutating players."""
         rounds = self.rounds
         if rounds is None:
             rounds = max((len(p.results) for p in players.values()), default=0)
+        tiebreakers = {}
         for player in players.values():
-            self.calculate_player_tiebreaks(player, players, rounds)
+            tiebreakers[player.id] = self.calculate_player_tiebreaks(
+                player, players, rounds
+            )
+        return tiebreakers
 
     def calculate_player_tiebreaks(self, player, all_players, rounds=None):
+        """Calculate one player's values without storing them on the player."""
         if rounds is None:
             rounds = (
                 self.rounds
@@ -143,7 +149,7 @@ class TiebreakCalculator:
         median = list(cut)
         if median:
             median.pop(max(range(len(median)), key=lambda i: median[i][0]))
-        player.tiebreakers = {
+        tiebreakers = {
             c.TB_MEDIAN: self._calculate_median(player, uscf_scores),
             c.TB_SOLKOFF: sum(uscf_scores),
             c.TB_CUMULATIVE: self._progressive(player, rounds, uscf=True),
@@ -167,6 +173,7 @@ class TiebreakCalculator:
             c.TB_BLACK_WINS: float(black_wins),
             c.TB_ARO: aro,
         }
+        return tiebreakers
 
     def _calculate_median(self, player, opponent_scores):
         scores = sorted(opponent_scores)

@@ -474,6 +474,8 @@ class TournamentController:
 
         # Invalidate opponent cache
         player._opponents_played_cache = []
+        if self.tournament is not None:
+            self.tournament.invalidate_tiebreakers()
 
     def set_manual_pairings(
         self,

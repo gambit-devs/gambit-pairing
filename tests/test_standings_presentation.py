@@ -14,8 +14,13 @@ from gambitpairing.models.player import Player
 def _player(name: str, rating: int, score: float) -> Player:
     player = Player(name, rating)
     player.score = score
-    player.tiebreakers = {TB_SOLKOFF: 3.456, TB_MEDIAN: 2.345, TB_MOST_BLACKS: 2}
     return player
+
+
+def _tiebreakers(player: Player) -> dict[str, dict[str, float]]:
+    return {
+        player.id: {TB_SOLKOFF: 3.456, TB_MEDIAN: 2.345, TB_MOST_BLACKS: 2}
+    }
 
 
 def test_standings_headers_and_tiebreak_formatting():
@@ -34,8 +39,11 @@ def test_standings_headers_and_tiebreak_formatting():
 
 
 def test_standings_rows_and_export_rows():
+    player = _player("Ada", 1800, 2.5)
     rows = project_standings_rows(
-        [_player("Ada", 1800, 2.5)], [TB_SOLKOFF, TB_MEDIAN, TB_MOST_BLACKS]
+        [player],
+        [TB_SOLKOFF, TB_MEDIAN, TB_MOST_BLACKS],
+        _tiebreakers(player),
     )
 
     assert rows[0].cells == ["1", "Ada (1800)", "2.5", "3.46", "2.35", "2"]
@@ -45,7 +53,8 @@ def test_standings_rows_and_export_rows():
 
 
 def test_standings_html_builders_handle_empty_and_escaped_content():
-    rows = project_standings_rows([_player("Ada <A>", 0, 1.0)], [TB_SOLKOFF])
+    player = _player("Ada <A>", 0, 1.0)
+    rows = project_standings_rows([player], [TB_SOLKOFF], _tiebreakers(player))
 
     assert build_standings_table_html([], [TB_SOLKOFF]) == ""
     html = build_standings_table_html(rows, [TB_SOLKOFF])
@@ -55,7 +64,8 @@ def test_standings_html_builders_handle_empty_and_escaped_content():
 
 
 def test_print_standings_html_includes_title_width_and_footer():
-    rows = project_standings_rows([_player("Ada", 1800, 1.0)], [TB_SOLKOFF])
+    player = _player("Ada", 1800, 1.0)
+    rows = project_standings_rows([player], [TB_SOLKOFF], _tiebreakers(player))
 
     assert table_width_for_player_count(8) == "70%"
     assert table_width_for_player_count(16) == "85%"

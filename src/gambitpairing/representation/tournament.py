@@ -131,7 +131,6 @@ def tournament_from_dict(data: Mapping[str, Any]) -> Any:
         "match_history",
         "has_received_bye",
         "num_black_games",
-        "tiebreakers",
         "float_history",
         "is_moved_down",
     )
@@ -351,13 +350,6 @@ def _load_players(player_data_list: List[Any]) -> List[Any]:
             raise TournamentDocumentError(
                 f"Player {player_id} is_active must be a boolean"
             )
-        if "tiebreakers" in raw_player and not isinstance(
-            raw_player["tiebreakers"], Mapping
-        ):
-            raise TournamentDocumentError(
-                f"Player {player_id} tiebreakers must be an object"
-            )
-
         try:
             player = create_player_from_dict(dict(raw_player))
         except Exception as error:

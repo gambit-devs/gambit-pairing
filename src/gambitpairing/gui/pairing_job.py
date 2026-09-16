@@ -9,9 +9,13 @@ import subprocess
 from PyQt6 import QtCore, QtWidgets
 
 from gambitpairing.controllers.tournament.pairing_job import run_pairing_process
+from gambitpairing.utils import setup_logger
+
+logger = setup_logger(__name__)
 
 
 def generate_with_progress(parent, document, round_index):
+    round_number = round_index + 1
     context = multiprocessing.get_context("spawn")
     receiver, sender = context.Pipe(duplex=False)
     process = context.Process(
@@ -28,9 +32,26 @@ def generate_with_progress(parent, document, round_index):
             try:
                 result.update(receiver.recv())
             except EOFError:
+                logger.exception(
+                    "Pairing generation worker closed its pipe without a result: "
+                    "round=%s",
+                    round_number,
+                )
                 result["error"] = "Pairing process exited without a result"
+            if result.get("error"):
+                logger.error(
+                    "Pairing generation worker reported failure: round=%s; "
+                    "see worker traceback for the original exception",
+                    round_number,
+                )
             progress.accept()
         elif not process.is_alive():
+            logger.error(
+                "Pairing generation worker exited without a result: round=%s "
+                "exit_code=%s",
+                round_number,
+                process.exitcode,
+            )
             result["error"] = "Pairing process exited without a result"
             progress.accept()
 
