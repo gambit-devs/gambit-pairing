@@ -19,7 +19,7 @@ usage() {
     cat <<'EOF'
 Usage: scripts/setup-dev.sh [options]
 
-Install Gambit's Linux development dependencies and create an editable .venv.
+Install Gambit's build tools and create an isolated editable .venv.
 Package managers: apt, dnf/yum, pacman, zypper, apk, and xbps.
 
   --python PATH      Use this Python interpreter (Python 3.10 or newer).
@@ -55,8 +55,7 @@ done
 
 [[ "$(uname -s)" == Linux ]] || die "This script is for Linux development environments."
 cd "$project_dir"
-# User site packages and an activated environment's import overrides can hide
-# the distro's PyQt6 or expose an unrelated pip installation.
+# Keep user site packages and an activated environment from leaking into setup.
 export PYTHONNOUSERSITE=1
 unset PYTHONHOME PYTHONPATH
 
@@ -102,7 +101,7 @@ detect_package_manager() {
             return
         fi
     done
-    die "No supported package manager found. Install Python $minimum_python+, pip, venv, PyQt6, QtSvg, make and g++ manually, then use --skip-system-deps."
+    die "No supported package manager found. Install Python $minimum_python+, pip, venv, make and g++ manually, then use --skip-system-deps."
 }
 
 install_packages() {
@@ -127,8 +126,8 @@ find_python() {
     if [[ -n "$requested_python" ]]; then
         candidates=("$requested_python")
     else
-        # Prefer distro interpreters to pyenv shims, /usr/local, and active venvs:
-        # only the matching distro Python can normally import system PyQt6.
+        # Prefer distro interpreters to pyenv shims and active venvs so the
+        # project environment is based on a stable system Python.
         candidates=(/usr/bin/python3 /usr/bin/python3.[0-9]* python3 python)
     fi
     for candidate in "${candidates[@]}"; do
@@ -138,10 +137,6 @@ find_python() {
         if python_is_compatible "$resolved"; then
             if [[ -z "$first_compatible" ]]; then
                 first_compatible="$resolved"
-            fi
-            if "$resolved" -c 'from PyQt6 import QtCore, QtGui, QtWidgets, QtPrintSupport, QtSvg, uic' >/dev/null 2>&1; then
-                python_bin="$resolved"
-                return
             fi
         elif [[ -z "$old_python_version" ]]; then
             version="$("$resolved" -c 'import sys; print("%s.%s.%s" % sys.version_info[:3])' 2>/dev/null)" || continue
@@ -156,7 +151,7 @@ check_python() {
         return
     fi
     if [[ -n "$old_python_version" ]]; then
-        die "Setup cannot continue: Python $old_python_version is older than Gambit's required Python $minimum_python. Install a newer Python with matching PyQt6 packages, then rerun with --python /path/to/python3 --recreate. The existing Python has not been replaced."
+        die "Setup cannot continue: Python $old_python_version is older than Gambit's required Python $minimum_python. Install a newer Python, then rerun with --python /path/to/python3 --recreate. The existing Python has not been replaced."
     fi
     if [[ -n "$requested_python" ]]; then
         die "Cannot run the requested Python interpreter: $requested_python"
@@ -167,9 +162,9 @@ check_python() {
 [[ ! -L "$venv_dir" ]] || die "$venv_dir is a symlink. Use a local .venv directory instead."
 if [[ -e "$venv_dir" && "$recreate_venv" -eq 0 ]]; then
     if [[ ! -f "$venv_dir/pyvenv.cfg" || ! -x "$venv_dir/bin/python" ]] ||
-        ! grep -Eq '^include-system-site-packages[[:space:]]*=[[:space:]]*true[[:space:]]*$' "$venv_dir/pyvenv.cfg" ||
+        ! grep -Eq '^include-system-site-packages[[:space:]]*=[[:space:]]*false[[:space:]]*$' "$venv_dir/pyvenv.cfg" ||
         ! python_is_compatible "$venv_dir/bin/python"; then
-        die "$venv_dir is broken, outdated, or cannot see system packages. Rerun with --recreate."
+        die "$venv_dir is broken, outdated, or uses system packages. Rerun with --recreate."
     fi
 fi
 
@@ -212,51 +207,37 @@ if [[ "$install_system_deps" -eq 1 ]]; then
 
     case "$package_manager" in
         apt-get)
-            packages=(python3-pip python3-venv python3-pyqt6 python3-pyqt6.qtsvg qt6-svg-plugins make g++)
-            style_packages=(kde-style-breeze breeze-icon-theme)
+            packages=(python3-pip python3-venv make g++)
             ;;
         dnf|dnf5|yum)
-            packages=(python3-pip python3-pyqt6 qt6-qtsvg make gcc-c++)
-            style_packages=(plasma-breeze-qt6 breeze-icon-theme)
+            packages=(python3-pip make gcc-c++)
             ;;
         pacman)
-            packages=(python-pip python-pyqt6 qt6-svg make gcc)
-            style_packages=(breeze breeze-icons)
+            packages=(python-pip make gcc)
             ;;
         zypper)
             python_tag="$("$python_bin" -c 'import sys; print("python%s%s" % sys.version_info[:2])')"
-            packages=("$python_tag-pip" "$python_tag-PyQt6" libQt6Svg6 make gcc-c++)
-            style_packages=(breeze6-style kf6-breeze-icons)
+            packages=("$python_tag-pip" make gcc-c++)
             ;;
         apk)
-            packages=(py3-pip py3-qt6 qt6-qtsvg build-base)
-            style_packages=(breeze breeze-icons)
+            packages=(py3-pip build-base)
             ;;
         xbps-install)
-            packages=(python3-pip python3-pyqt6 python3-pyqt6-widgets python3-pyqt6-printsupport python3-pyqt6-svg qt6-svg base-devel)
-            style_packages=(breeze-qt6 breeze-icons)
+            packages=(python3-pip base-devel)
             ;;
     esac
     if ! install_packages "${packages[@]}"; then
         die "Required packages could not be installed. Check the enabled repositories and package names for your release, or install equivalents and use --skip-system-deps."
     fi
-    if ! install_packages "${style_packages[@]}"; then
-        notes+=("Optional Breeze packages could not be installed; check your release's package names and repositories.")
-    fi
-    # Installing packages may add PyQt6 for a different distro Python flavor.
     find_python
     check_python
-fi
-
-if ! system_qt="$("$python_bin" -c 'import os; from PyQt6 import QtCore, QtGui, QtWidgets, QtPrintSupport, QtSvg, uic; print(os.path.realpath(QtCore.__file__))')"; then
-    die "The selected Python ($python_bin) cannot import the required PyQt6 modules. Install matching distro packages or select their interpreter with --python."
 fi
 
 if [[ "$recreate_venv" -eq 1 ]]; then
     rm -rf -- "$venv_dir"
 fi
 if [[ ! -e "$venv_dir" ]]; then
-    if ! "$python_bin" -m venv --system-site-packages "$venv_dir"; then
+    if ! "$python_bin" -m venv "$venv_dir"; then
         die "Could not create .venv. Install this Python's venv/ensurepip package and rerun with --recreate."
     fi
 fi
@@ -264,12 +245,6 @@ fi
 venv_python="$venv_dir/bin/python"
 base_python="$("$venv_python" -c 'import os, sys; print(os.path.realpath(sys._base_executable))')"
 [[ "$base_python" == "$python_bin" ]] || die ".venv uses a different Python. Rerun with --recreate to use $python_bin."
-check_venv_qt() {
-    local venv_qt
-    venv_qt="$("$venv_python" -c 'import os; from PyQt6 import QtCore; print(os.path.realpath(QtCore.__file__))')" || return 1
-    [[ "$venv_qt" == "$system_qt" ]]
-}
-check_venv_qt || die ".venv is shadowing the selected Python's PyQt6. Rerun with --recreate to use the distro Qt runtime."
 
 if ! "$venv_python" -m pip --version >/dev/null 2>&1; then
     if "$venv_python" -m ensurepip --version >/dev/null 2>&1; then
@@ -281,23 +256,18 @@ if ! "$venv_python" -m pip --version >/dev/null 2>&1; then
     fi
 fi
 
-# Prevent pip from replacing the distro PyQt6 with a wheel bundling another Qt.
-constraints_file="$(mktemp)"
-trap 'rm -f -- "$constraints_file"' EXIT
-"$venv_python" -c 'from PyQt6.QtCore import PYQT_VERSION_STR; print("PyQt6==" + PYQT_VERSION_STR)' > "$constraints_file"
 "$venv_python" -m pip install --upgrade pip
 
 if ! command -v make >/dev/null 2>&1 || ! command -v g++ >/dev/null 2>&1; then
     die "The BBP pairing engine needs GNU make and a C++20-capable g++. Install them and rerun."
 fi
 "$venv_python" scripts/build_bbp.py
-"$venv_python" -m pip install --constraint "$constraints_file" --editable "$project_dir"
-check_venv_qt || die "pip replaced the distro PyQt6. Recreate .venv and check your Python package constraints."
+"$venv_python" -m pip install --editable "$project_dir"
 
 echo "Checking the Qt runtime..."
 if ! QT_QPA_PLATFORM=offscreen GAMBIT_NATIVE_STYLE_REQUIRED="$require_breeze" \
     "$venv_dir/bin/gambit-pairing" --verify-native-style; then
-    die "Gambit's Qt runtime check failed. Check the output above; Breeze requires a Qt 6 style plugin matching the distro PyQt6."
+    die "Gambit's Qt runtime check failed. Check the output above for missing Qt runtime dependencies."
 fi
 if ! QT_QPA_PLATFORM=offscreen "$venv_python" - <<'PY'
 from PyQt6.QtWidgets import QApplication, QStyleFactory
@@ -305,7 +275,7 @@ app = QApplication([])
 raise SystemExit("breeze" not in {name.casefold() for name in QStyleFactory.keys()})
 PY
 then
-    notes+=("Breeze's Qt 6 style is unavailable. Gambit will use the available Qt style; install a matching Qt 6 Breeze plugin for Breeze styling.")
+    notes+=("Breeze's Qt 6 style is unavailable. Gambit will use the available Qt style; a compatible Breeze plugin can be added to this Qt runtime if desired.")
 fi
 
 cat <<EOF
