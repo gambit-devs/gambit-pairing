@@ -32,13 +32,10 @@ logger = setup_logger(__name__)
 
 
 def configure_native_style(app: QtWidgets.QApplication) -> str:
-    """Report the style selected by Qt's platform integration.
+    """Select Breeze when its native Qt Widgets style plugin is available.
 
-    The style is deliberately not assigned here. KDE's platform theme owns
-    that decision so the user's selected palette, accent color, font, and
-    light/dark preference remain authoritative. The portable Linux bundle
-    selects its bundled Breeze plugin before QApplication is constructed;
-    this check refuses to hide a broken bundle behind Qt Fusion.
+    Qt discovers the style from its plugin paths. A source or future bundled
+    runtime must provide Breeze and its KDE Frameworks libraries there.
 
     Returns
     -------
@@ -49,8 +46,23 @@ def configure_native_style(app: QtWidgets.QApplication) -> str:
     if active_qstyle is None:
         raise RuntimeError("QApplication has no active Qt style")
     active_style = active_qstyle.objectName()
+
+    available_styles = {
+        style_name.casefold(): style_name
+        for style_name in QtWidgets.QStyleFactory.keys()
+    }
+    if active_style.casefold() != "breeze" and "breeze" in available_styles:
+        breeze_style = QtWidgets.QStyleFactory.create(available_styles["breeze"])
+        if breeze_style is not None:
+            app.setStyle(breeze_style)
+            active_qstyle = app.style()
+            if active_qstyle is not None:
+                active_style = active_qstyle.objectName()
+
     if active_style.casefold() == "breeze":
-        logger.info("Using native Breeze style")
+        if not QIcon.themeName():
+            QIcon.setThemeName("breeze")
+        logger.info("Using native Breeze style (icon theme: %s)", QIcon.themeName())
         return active_style
 
     native_style_required = os.environ.get("GAMBIT_NATIVE_STYLE_REQUIRED") == "1"
@@ -60,32 +72,16 @@ def configure_native_style(app: QtWidgets.QApplication) -> str:
     )
     if native_style_required or bundled_style_required:
         raise RuntimeError(
-            "The configured KDE runtime could not load Breeze "
-            f"(active style: {active_style!r}); refusing a Fusion fallback"
+            "Breeze was required but the Qt runtime could not load its style plugin "
+            f"(active style: {active_style!r})"
         )
 
-    desktop = os.environ.get("XDG_CURRENT_DESKTOP", "").casefold()
-    kde_session = "kde" in desktop or bool(os.environ.get("KDE_FULL_SESSION"))
-    available_styles = {
-        style_name.casefold(): style_name
-        for style_name in QtWidgets.QStyleFactory.keys()
-    }
-
-    if kde_session and "breeze" in available_styles:
-        logger.warning(
-            "KDE selected style %r although compatible Breeze plugin %r is "
-            "available; check QT_STYLE_OVERRIDE and the Qt runtime",
-            active_style,
-            available_styles["breeze"],
-        )
-    elif kde_session:
-        logger.warning(
-            "KDE session is using Qt style %r; no compatible Breeze plugin is "
-            "visible to this Qt runtime",
-            active_style,
-        )
-    else:
-        logger.info("Using Qt platform style: %s", active_style)
+    logger.warning(
+        "Breeze Qt style plugin is unavailable; keeping Qt style %r. "
+        "Qt plugin path: %s",
+        active_style,
+        QLibraryInfo.path(QLibraryInfo.LibraryPath.PluginsPath),
+    )
 
     return active_style
 

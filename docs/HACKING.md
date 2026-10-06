@@ -6,7 +6,7 @@
 
   - bash
   - pip or pip3 (if so replace pip with pip3)
-  - python3.8 or newer
+  - Python 3.10 or newer (see `requires-python` in `pyproject.toml`)
   - all runtime dependencies
 
     test building with `python3 -m build .` (from git root)
