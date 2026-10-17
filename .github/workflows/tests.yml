@@ -22,6 +22,9 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: sudo apt-get update && sudo apt-get install -y libegl1 libopengl0
+      # Installing never compiles the engine; stage it explicitly so engine
+      # tests run and the built wheel contains it.
+      - run: python scripts/build_bbp.py --jobs 4
       - run: python -m pip install '.[dev]'
       - run: python -m pytest -q
       - run: python -m pyright
@@ -29,3 +32,33 @@ jobs:
       - run: python -m pip install --force-reinstall --no-deps dist/*.whl
       - run: python -I scripts/smoke_release.py
       - run: gambit-test --help && gambit-compare --help
+
+  setup-dev-smoke:
+    # First real run of scripts/setup_dev.py on Windows and macOS.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      QT_QPA_PLATFORM: offscreen
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libopengl0
+      - run: python scripts/setup_dev.py
+      - name: Locate the project virtual environment
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            echo "VENV_PYTHON=.venv/Scripts/python.exe" >> "$GITHUB_ENV"
+          else
+            echo "VENV_PYTHON=.venv/bin/python" >> "$GITHUB_ENV"
+          fi
+      - run: '"$VENV_PYTHON" -m pytest tests/test_setup_dev.py -q'
+      - run: '"$VENV_PYTHON" -m gambitpairing --verify-native-style'

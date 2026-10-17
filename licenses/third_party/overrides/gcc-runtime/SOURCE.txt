@@ -1,0 +1,4 @@
+The GCC Runtime Library Exception, which applies to libgcc_s and libstdc++
+shipped in the Linux bundle. Copied from /usr/share/licenses/gcc/COPYING.RUNTIME
+(Fedora gcc package). The GPL-3.0 text those libraries are under is in
+licenses/third_party/overrides/gcc-runtime/COPYING3 below.

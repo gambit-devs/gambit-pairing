@@ -1,0 +1,3 @@
+The Python runtime (libpython3.14 in the frozen bundle). This is the LICENSE.txt
+shipped with CPython 3.14 (Fedora /usr/lib64/python3.14/LICENSE.txt), which
+contains the Python Software Foundation License and the license history.

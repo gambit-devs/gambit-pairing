@@ -21,11 +21,11 @@ $$  ____/  \_______|\__|\__|      \__|\__|  \__| \____$$ |
 $$ |                                            $$\   $$ |
 $$ |                                            \$$$$$$  |
 \__|                                             \______/
-                      ___  _____                     
-                     / _ \|___  |                    
- _____ _____ _____  | | | |  / /   _____ _____ _____ 
-|_____|_____|_____| | |_| | / /   |_____|_____|_____|
-                     \___(_)_/                       
+                      ___   ___
+                     / _ \ ( _ )
+ _____ _____ _____  | | | |/ _ \   _____ _____ _____
+|_____|_____|_____| | |_| | (_) | |_____|_____|_____|
+                     \___(_)___/
 ```
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
@@ -36,7 +36,7 @@ $$ |                                            \$$$$$$  |
 
 **Important:** Gambit Pairing is in alpha development. Features and stability are not guaranteed.
 
-[Join our Discord](https://discord.gg/eEnnetMDfr)
+[Join our Discord](https://discord.gg/rNPdxPyMVs)
 
 Gambit Pairing is a desktop application for managing Swiss-system chess tournaments. It provides a modern graphical user interface (GUI) built with PyQt6, supporting USCF-style pairings, tiebreaks, and tournament management.
 
@@ -111,14 +111,7 @@ Gambit Pairing is a desktop application for managing Swiss-system chess tourname
 
 ## Downloads
 
-### Automatic Releases
-Pre-built executables and installers are automatically created for each release:
-
-- **Windows MSI Installer** - Full installation with Start Menu shortcuts
-- **Windows Portable** - Single-file executable, run directly
-- **Windows Directory** - Faster startup, extract and run
-- **Linux** - Executable for Linux x64 systems  
-- **macOS** - App bundle for macOS x64 systems
+### Releases
 
 Visit the [Releases page](https://github.com/gambit-devs/gambit-pairing/releases) to download the latest version.
 

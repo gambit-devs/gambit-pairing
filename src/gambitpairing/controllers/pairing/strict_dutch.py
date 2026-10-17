@@ -15,9 +15,9 @@ def pair_round(players, previous, current_round, total_rounds, initial_color, ch
     from .dutch_swiss import (
         FloatType,
         _assign_colors_fide,
-        _get_float_type,
-        _get_color_preference,
         _get_color_imbalance,
+        _get_color_preference,
+        _get_float_type,
         _has_strong_color_preference,
         _is_topscorer,
         _meets_absolute_criteria,
@@ -278,6 +278,7 @@ def pair_round(players, previous, current_round, total_rounds, initial_color, ch
                 head = (len(down), tuple(p.score for p in down))
                 if (
                     best_key is not None
+                    and best is not None
                     and best_key[0] == lowest_bye
                     and head > best[2]
                 ):

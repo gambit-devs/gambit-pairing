@@ -32,7 +32,6 @@ from gambitpairing.controllers.tournament import (
     TournamentPersistenceService,
 )
 from gambitpairing.controllers.tournament.session import TournamentSession as Tournament
-from gambitpairing.update import Updater
 from gambitpairing.utils import setup_logger
 
 from .dialogs import (
@@ -87,25 +86,23 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self.last_recorded_results_data: List[tuple] = []
         self._current_filepath: Optional[str] = None
         self._dirty: bool = False
-        self.updater: Optional[Updater] = Updater(APP_VERSION)
         self.persistence_service = TournamentPersistenceService()
         self.import_mgr = PlayerImportWorkflow(self)
 
         self._setup_ui()
         self.update_workflow = UpdateWorkflowController(
             parent=self,
-            updater=self.updater,
             app_name=APP_NAME,
             app_version=APP_VERSION,
             status_callback=self.statusBar().showMessage,
             close_callback=self.close,
+            confirm_close=self.check_save,
         )
         self._update_ui_state()
 
-        # Check for pending update first, then check for new online updates.
-        if not self.check_for_pending_update():
-            if self.updater:
-                QtCore.QTimer.singleShot(1500, self.check_for_updates_auto)
+        # Velopack installs any update downloaded earlier during startup, so only
+        # the online check remains here.
+        QtCore.QTimer.singleShot(1500, self.check_for_updates_auto)
 
         logger.info("GambitPairingMainWindow __init__ done.")
 
@@ -352,10 +349,6 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         )
         return reply == QMessageBox.StandardButton.Yes
 
-    def check_for_pending_update(self) -> bool:
-        """Check for a previously downloaded update and ask to install it."""
-        return self.update_workflow.check_for_pending_update()
-
     def check_for_updates_manual(self) -> None:
         """Manually check for updates and notify the user of the result."""
         self.update_workflow.check_for_updates_manual()
@@ -363,21 +356,6 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
     def check_for_updates_auto(self) -> None:
         """Automatically check for updates in the background."""
         self.update_workflow.check_for_updates_auto()
-
-    def prompt_update(self) -> bool:
-        """Show a dialog prompting the user to download the new version."""
-        return self.update_workflow.prompt_update()
-
-    def start_update_download(self) -> None:
-        """Initiate the update download and shows the progress dialog."""
-        self.update_workflow.start_update_download()
-
-    def on_update_done(self, success: bool, message: str) -> None:
-        """Handle both success and error for update."""
-        self.update_workflow.on_update_done(success, message)
-
-    def _restart_with_update(self, extracted_path: str) -> None:
-        self.update_workflow.restart_with_update(extracted_path)
 
     def closeEvent(self, event: QCloseEvent):
         """Handle a close Event, checking if needed."""

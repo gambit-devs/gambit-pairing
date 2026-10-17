@@ -119,3 +119,9 @@ DEFAULT_FIDE_TIEBREAK_ORDER = [
 DEFAULT_TIEBREAK_SORT_ORDER = DEFAULT_USCF_TIEBREAK_ORDER
 
 UPDATE_URL = "https://api.github.com/repos/gambit-devs/Gambit-Pairing/releases/latest"
+
+# GitHub repository whose releases Velopack reads in-app updates from, and
+# whose release pages non-Windows builds open. The update check itself uses
+# UPDATE_URL (the GitHub API "latest release" endpoint for the same repository).
+RELEASES_REPOSITORY_URL = "https://github.com/gambit-devs/gambit-pairing"
+RELEASES_PAGE_URL = RELEASES_REPOSITORY_URL + "/releases/latest"

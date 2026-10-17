@@ -8,7 +8,12 @@ class UpdatePromptDialog(QtWidgets.QDialog):
     """A dialog to prompt the user for an update."""
 
     def __init__(
-        self, new_version: str, current_version: str, release_notes: str, parent=None
+        self,
+        new_version: str,
+        current_version: str,
+        release_notes: str,
+        action_text: str = "Download",
+        parent=None,
     ):
         super().__init__(parent)
         load_ui_into(self, "update_prompt_dialog.ui")
@@ -30,7 +35,7 @@ class UpdatePromptDialog(QtWidgets.QDialog):
 
         self.button_box = required_child(self, QtWidgets.QDialogButtonBox, "button_box")
         self.download_button = self.button_box.addButton(
-            "Download", QtWidgets.QDialogButtonBox.ButtonRole.AcceptRole
+            action_text, QtWidgets.QDialogButtonBox.ButtonRole.AcceptRole
         )
         self.later_button = self.button_box.addButton(
             "Later", QtWidgets.QDialogButtonBox.ButtonRole.RejectRole

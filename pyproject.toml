@@ -18,6 +18,9 @@ dependencies = [
     "Pillow",
     "prompt_toolkit>=3.0",
     "networkx>=3.4,<4",
+    # Velopack installer/updater runtime. Keep in lockstep with VPK_VERSION in
+    # .github/workflows/build-release.yml (Velopack requires matching versions).
+    "velopack==1.2.161",
 ]
 license = {text = "GPL-3.0-or-later"}
 
@@ -70,6 +73,7 @@ dev = [
     "pre-commit",
     "pyright",
     "PyQt6-stubs",  # Provides better type hints
+    "pyfiglet",  # Draws the README version banner (scripts/update_readme_version.py)
 ]
 
 # Setuptools configuration

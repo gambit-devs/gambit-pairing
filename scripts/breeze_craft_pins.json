@@ -1,0 +1,958 @@
+{
+  "_comment": "KDE Craft binary packages that provide the Breeze Qt6 widget style and its runtime libraries, generated from the Craft cache manifests; scripts/stage_breeze.py downloads exactly these files and verifies sha256. Targets with a 'rebuild' section build the listed frameworks from 'framework_sources' against the pinned official Qt SDK instead of using Craft's binaries; their 'build_packages' are Craft packages needed only to build them and are not shipped. license_dir names the directory below licenses/breeze/ with the full license texts that ship with each package.",
+  "craft_release": "26.05",
+  "base_url": "https://files.kde.org/craft/Qt6/26.05/{craft_path}/RelWithDebInfo/",
+  "qt_sdks": {
+    "_comment": "Official Qt SDK archives from download.qt.io (the same files the Qt online installer and aqtinstall use), pinned by SHA-256. Only used to build the frameworks in a target's 'rebuild' section. The PyQt6-Qt6 wheel version must match 'version'; on Windows the wheel's Qt6Core.dll is byte-identical to this SDK's.",
+    "version": "6.11.2",
+    "base_url": "https://download.qt.io/online/qtsdkrepository/",
+    "sdks": {
+      "msvc2022_64": {
+        "path": "windows_x86/desktop/qt6_6112/qt6_6112_msvc2022_64/qt.qt6.6112.win64_msvc2022_64/",
+        "archives": [
+          {
+            "file": "6.11.2-0-202608131017qtbase-Windows-Windows_11_24H2-MSVC2022-Windows-Windows_11_24H2-X86_64.7z",
+            "sha256": "fd984b7264361b4dd3fd2a417702ca1258e4086268f2ee6a69b9a393d9c3f6bb"
+          },
+          {
+            "file": "6.11.2-0-202608131017qtsvg-Windows-Windows_11_24H2-MSVC2022-Windows-Windows_11_24H2-X86_64.7z",
+            "sha256": "417f44499c835b2303f3ff78043179bb23442f33d5d2816fbf7e8dbf275b1c89"
+          },
+          {
+            "file": "6.11.2-0-202608131017qtdeclarative-Windows-Windows_11_24H2-MSVC2022-Windows-Windows_11_24H2-X86_64.7z",
+            "sha256": "5591ca564c1a9299a45a15b6b1d324c86e0aaed7cf6c47b7e6fe464aecae2587"
+          }
+        ]
+      },
+      "clang_64": {
+        "path": "mac_x64/desktop/qt6_6112/qt6_6112/qt.qt6.6112.clang_64/",
+        "archives": [
+          {
+            "file": "6.11.2-0-202608131016qtbase-MacOS-MacOS_15-Clang-MacOS-MacOS_15-X86_64-ARM64.7z",
+            "sha256": "9592f84f7e26d532c5c56824d1da7c9214a766cb0a17beb5af71022bcfbcd271"
+          },
+          {
+            "file": "6.11.2-0-202608131016qtsvg-MacOS-MacOS_15-Clang-MacOS-MacOS_15-X86_64-ARM64.7z",
+            "sha256": "c52f6cec6ce4b52ca017e0046345a85d33b2b73e0f6a93474bb7a60f8e829317"
+          },
+          {
+            "file": "6.11.2-0-202608131016qtdeclarative-MacOS-MacOS_15-Clang-MacOS-MacOS_15-X86_64-ARM64.7z",
+            "sha256": "ceb8e3f3830531a52de5007ef3f50ffc5525021feb132ee322f59583eb2903cf"
+          }
+        ]
+      }
+    }
+  },
+  "framework_sources": {
+    "_comment": "KDE Frameworks release tarballs built by scripts/stage_breeze.py for targets with a 'rebuild' section, in this order. SHA-256 values match the ones download.kde.org publishes. The breeze-icons patch is the one KDE Craft applies to its 6.31.0-1 package (symlink handling on Windows).",
+    "extra-cmake-modules": {
+      "version": "6.31.0",
+      "url": "https://download.kde.org/stable/frameworks/6.31/extra-cmake-modules-6.31.0.tar.xz",
+      "sha256": "8f74af329e4c918358bfe54316f8cf4d530c28444595a3e2fb15075f72877f17",
+      "directory": "extra-cmake-modules-6.31.0",
+      "license": "BSD-3-Clause",
+      "source": "https://invent.kde.org/frameworks/extra-cmake-modules",
+      "cmake_args": [
+        "-DBUILD_HTML_DOCS=OFF",
+        "-DBUILD_MAN_DOCS=OFF",
+        "-DBUILD_QTHELP_DOCS=OFF"
+      ]
+    },
+    "breeze-icons": {
+      "version": "6.31.0",
+      "url": "https://download.kde.org/stable/frameworks/6.31/breeze-icons-6.31.0.tar.xz",
+      "sha256": "82ab1c13f782cb37176e7c13c5fb2c77536a65f24b85d09127f3575f917fb56d",
+      "directory": "breeze-icons-6.31.0",
+      "license": "LGPL-3.0-or-later",
+      "license_dir": "breeze-icons",
+      "source": "https://invent.kde.org/frameworks/breeze-icons",
+      "patches": [
+        {
+          "url": "https://invent.kde.org/packaging/craft-blueprints-kde/-/raw/22919394ad67524aa091cbffd0f1c2bd66942853/kde/frameworks/tier1/breeze-icons/breeze-icons-6.23.0-symlink-fix.diff",
+          "sha256": "edbd27005c7c0d76fb1f34fc04590289a6c45523e9a4e8a09cffb90d4dc28585",
+          "strip": 1
+        }
+      ],
+      "cmake_args": [
+        "-DSKIP_INSTALL_ICONS=ON",
+        "-DWITH_ICONS_LIBRARY=ON"
+      ]
+    },
+    "kcolorscheme": {
+      "version": "6.31.0",
+      "url": "https://download.kde.org/stable/frameworks/6.31/kcolorscheme-6.31.0.tar.xz",
+      "sha256": "41a8b12a4d9f4fdada70e4853879a2f43a7bf43e870a18c6038eebd956a1f863",
+      "directory": "kcolorscheme-6.31.0",
+      "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+      "license_dir": "kcolorscheme",
+      "source": "https://invent.kde.org/frameworks/kcolorscheme"
+    },
+    "kiconthemes": {
+      "version": "6.31.0",
+      "url": "https://download.kde.org/stable/frameworks/6.31/kiconthemes-6.31.0.tar.xz",
+      "sha256": "d6558d7dc6ed6de90ef3b5eef905c25fb624147a01d2703329144534a5df58ec",
+      "directory": "kiconthemes-6.31.0",
+      "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+      "license_dir": "kiconthemes",
+      "source": "https://invent.kde.org/frameworks/kiconthemes",
+      "cmake_args": [
+        "-DKICONTHEMES_USE_QTQUICK=OFF",
+        "-DBUILD_DESIGNERPLUGIN=OFF",
+        "-DUSE_DBUS=OFF"
+      ]
+    }
+  },
+  "targets": {
+    "linux-x86_64": {
+      "craft_path": "linux/gcc/x86_64",
+      "plugin": {
+        "package": "kde/plasma/breeze",
+        "member": "plugins/styles/breeze6.so"
+      },
+      "packages": [
+        {
+          "name": "kde/frameworks/tier1/breeze-icons",
+          "version": "6.31.0-1",
+          "file": "kde/frameworks/tier1/breeze-icons/breeze-icons-6.31.0-1-153-20261015T210327-linux-gcc-x86_64.tar.7z",
+          "sha256": "6090db2c4a9b28f98f62e94488e98b8ae9aa37d0788d53e7862724ce4d9a1e1d",
+          "license": "LGPL-3.0-or-later",
+          "license_dir": "breeze-icons",
+          "source": "https://invent.kde.org/frameworks/breeze-icons"
+        },
+        {
+          "name": "kde/frameworks/tier1/karchive",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier1/karchive/karchive-6.31.0-153-20261015T210337-linux-gcc-x86_64.tar.7z",
+          "sha256": "1409447605b960f1df61484b280f2938d631a28211555f18d8f0421537e467ca",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "karchive",
+          "source": "https://invent.kde.org/frameworks/karchive"
+        },
+        {
+          "name": "kde/frameworks/tier1/kconfig",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier1/kconfig/kconfig-6.31.0-153-20261015T210434-linux-gcc-x86_64.tar.7z",
+          "sha256": "2cc89dc4e5fd2b32925ec0b54e06ff8a59a1dfdeb44f8c8a57a1e0407cd32825",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "kconfig",
+          "source": "https://invent.kde.org/frameworks/kconfig"
+        },
+        {
+          "name": "kde/frameworks/tier1/kcoreaddons",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier1/kcoreaddons/kcoreaddons-6.31.0-153-20261015T210457-linux-gcc-x86_64.tar.7z",
+          "sha256": "a81dc4a962fed3ea8659977cdb906c927cca9b4167d8e184f23ba0b0784b5692",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "kcoreaddons",
+          "source": "https://invent.kde.org/frameworks/kcoreaddons"
+        },
+        {
+          "name": "kde/frameworks/tier1/kguiaddons",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier1/kguiaddons/kguiaddons-6.31.0-153-20261015T210523-linux-gcc-x86_64.tar.7z",
+          "sha256": "104b362085d4367bc7186a9bd7a64061c6aa2c91d2863c75904bb340dbb8f514",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "kguiaddons",
+          "source": "https://invent.kde.org/frameworks/kguiaddons"
+        },
+        {
+          "name": "kde/frameworks/tier1/ki18n",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier1/ki18n/ki18n-6.31.0-153-20261015T210553-linux-gcc-x86_64.tar.7z",
+          "sha256": "f6888fe8d0dc7b61e7e5073ffdfbc87ae16eea10aa9a29b3690055a46b472456",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "ki18n",
+          "source": "https://invent.kde.org/frameworks/ki18n"
+        },
+        {
+          "name": "kde/frameworks/tier1/kwidgetsaddons",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier1/kwidgetsaddons/kwidgetsaddons-6.31.0-153-20261015T210944-linux-gcc-x86_64.tar.7z",
+          "sha256": "57a42a95c228b7c1e65f5d4fa4f7734226aabb0cd0c6f57c0ac231c5533a7fa5",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "kwidgetsaddons",
+          "source": "https://invent.kde.org/frameworks/kwidgetsaddons"
+        },
+        {
+          "name": "kde/frameworks/tier1/kwindowsystem",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier1/kwindowsystem/kwindowsystem-6.31.0-153-20261015T211008-linux-gcc-x86_64.tar.7z",
+          "sha256": "a7c531c9418f922e6bae2ec02bc99659d5930f93923672294857e724a7e08014",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "kwindowsystem",
+          "source": "https://invent.kde.org/frameworks/kwindowsystem"
+        },
+        {
+          "name": "kde/frameworks/tier2/kcolorscheme",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier2/kcolorscheme/kcolorscheme-6.31.0-153-20261015T211220-linux-gcc-x86_64.tar.7z",
+          "sha256": "62fd5f20c7293b05a7862e4bb7380efbb9685acc2ded1a5cf9d5166d9577ab01",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "kcolorscheme",
+          "source": "https://invent.kde.org/frameworks/kcolorscheme"
+        },
+        {
+          "name": "kde/frameworks/tier3/kiconthemes",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier3/kiconthemes/kiconthemes-6.31.0-153-20261015T211337-linux-gcc-x86_64.tar.7z",
+          "sha256": "00c2e38de998d17303ffb221780218aa60eda63a05d1a799a4a9f7e7c27b4ba5",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "kiconthemes",
+          "source": "https://invent.kde.org/frameworks/kiconthemes"
+        },
+        {
+          "name": "kde/frameworks/tier4/frameworkintegration",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier4/frameworkintegration/frameworkintegration-6.31.0-153-20261015T212414-linux-gcc-x86_64.tar.7z",
+          "sha256": "7ab37f7b32ae612f4e1b80446ce7bfcc082c88fc4b0086996c19ecd198a7055d",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "frameworkintegration",
+          "source": "https://invent.kde.org/frameworks/frameworkintegration"
+        },
+        {
+          "name": "kde/plasma/breeze",
+          "version": "6.7.5",
+          "file": "kde/plasma/breeze/breeze-6.7.5-147-20260928T162055-linux-gcc-x86_64.tar.7z",
+          "sha256": "803ee0209667c332fe800a43b282e25653435b5bb8b18489f556cf6ae1a8fd1a",
+          "license": "GPL-2.0-or-later",
+          "license_dir": "breeze",
+          "source": "https://invent.kde.org/plasma/breeze"
+        },
+        {
+          "name": "libs/gettext",
+          "version": "0.22.3-3",
+          "file": "libs/gettext/gettext-0.22.3-3-97-20260611T113344-linux-gcc-x86_64.tar.7z",
+          "sha256": "9b256a93f59e874e7a9453b3464ebf90147a1a474a4f1f116d123060ab845625",
+          "license": "LGPL-2.1-or-later (libintl)",
+          "license_dir": "gettext",
+          "source": "https://www.gnu.org/software/gettext/"
+        },
+        {
+          "name": "libs/iconv",
+          "version": "1.18",
+          "file": "libs/iconv/iconv-1.18-97-20260611T112750-linux-gcc-x86_64.tar.7z",
+          "sha256": "7b0b816400942910325fd431a6a3ec73fad5a8d105ee10dbbbfa90724c449b8a",
+          "license": "LGPL-2.1-or-later (GNU libiconv)",
+          "license_dir": "libiconv",
+          "source": "https://www.gnu.org/software/libiconv/"
+        },
+        {
+          "name": "libs/libbzip2",
+          "version": "1.0.8-1",
+          "file": "libs/libbzip2/libbzip2-1.0.8-1-97-20260611T112522-linux-gcc-x86_64.tar.7z",
+          "sha256": "8d73915a1d8a4618ddbcf95d22e6bbcd70be757ee6bd3977d1a485fc21a2cacf",
+          "license": "bzip2-1.0.6",
+          "license_dir": "libbzip2",
+          "source": "https://sourceware.org/bzip2/"
+        }
+      ],
+      "libraries": [
+        {
+          "package": "libs/libbzip2",
+          "member": "lib/libbz2.so.1.0"
+        },
+        {
+          "package": "libs/iconv",
+          "member": "lib/libiconv.so.2"
+        },
+        {
+          "package": "libs/gettext",
+          "member": "lib/libintl.so.8"
+        },
+        {
+          "package": "kde/frameworks/tier1/karchive",
+          "member": "lib/libKF6Archive.so.6"
+        },
+        {
+          "package": "kde/frameworks/tier1/breeze-icons",
+          "member": "lib/libKF6BreezeIcons.so.6"
+        },
+        {
+          "package": "kde/frameworks/tier2/kcolorscheme",
+          "member": "lib/libKF6ColorScheme.so.6"
+        },
+        {
+          "package": "kde/frameworks/tier1/kconfig",
+          "member": "lib/libKF6ConfigCore.so.6"
+        },
+        {
+          "package": "kde/frameworks/tier1/kconfig",
+          "member": "lib/libKF6ConfigGui.so.6"
+        },
+        {
+          "package": "kde/frameworks/tier1/kcoreaddons",
+          "member": "lib/libKF6CoreAddons.so.6"
+        },
+        {
+          "package": "kde/frameworks/tier1/kguiaddons",
+          "member": "lib/libKF6GuiAddons.so.6"
+        },
+        {
+          "package": "kde/frameworks/tier1/ki18n",
+          "member": "lib/libKF6I18n.so.6"
+        },
+        {
+          "package": "kde/frameworks/tier3/kiconthemes",
+          "member": "lib/libKF6IconThemes.so.6"
+        },
+        {
+          "package": "kde/frameworks/tier4/frameworkintegration",
+          "member": "lib/libKF6Style.so.6"
+        },
+        {
+          "package": "kde/frameworks/tier1/kwidgetsaddons",
+          "member": "lib/libKF6WidgetsAddons.so.6"
+        },
+        {
+          "package": "kde/frameworks/tier1/kwindowsystem",
+          "member": "lib/libKF6WindowSystem.so.6"
+        }
+      ]
+    },
+    "windows-x86_64": {
+      "craft_path": "windows/cl/msvc2022/x86_64",
+      "plugin": {
+        "package": "kde/plasma/breeze",
+        "member": "plugins/styles/breeze6.dll"
+      },
+      "packages": [
+        {
+          "name": "kde/frameworks/tier1/karchive",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier1/karchive/karchive-6.31.0-153-20261015T205834-windows-cl-msvc2022-x86_64.7z",
+          "sha256": "ceea72193f9e2b735c57cf4644b085afc748607c6a8316bc46b0dca99d336a8a",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "karchive",
+          "source": "https://invent.kde.org/frameworks/karchive"
+        },
+        {
+          "name": "kde/frameworks/tier1/kconfig",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier1/kconfig/kconfig-6.31.0-153-20261015T210044-windows-cl-msvc2022-x86_64.7z",
+          "sha256": "47002adffe465be2c6052f6c1af95d856489a8540337f20195757def7efeca89",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "kconfig",
+          "source": "https://invent.kde.org/frameworks/kconfig"
+        },
+        {
+          "name": "kde/frameworks/tier1/kguiaddons",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier1/kguiaddons/kguiaddons-6.31.0-153-20261015T210251-windows-cl-msvc2022-x86_64.7z",
+          "sha256": "ad4a7ed3a1f178d2d729f05342df42d0b92edceaf5ed2ba38099f6aefb477414",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "kguiaddons",
+          "source": "https://invent.kde.org/frameworks/kguiaddons"
+        },
+        {
+          "name": "kde/frameworks/tier1/ki18n",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier1/ki18n/ki18n-6.31.0-153-20261015T210428-windows-cl-msvc2022-x86_64.7z",
+          "sha256": "bbd6c59a79dd9060dea4d4338a2f774a89d8b30bbc150b43b9dcd864654e9d78",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "ki18n",
+          "source": "https://invent.kde.org/frameworks/ki18n"
+        },
+        {
+          "name": "kde/frameworks/tier1/kwindowsystem",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier1/kwindowsystem/kwindowsystem-6.31.0-153-20261015T211157-windows-cl-msvc2022-x86_64.7z",
+          "sha256": "be0ed457768c07633270965468ad6f071371905a11a6dfbb612b3c9bbc06f4fe",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "kwindowsystem",
+          "source": "https://invent.kde.org/frameworks/kwindowsystem"
+        },
+        {
+          "name": "kde/plasma/breeze",
+          "version": "6.7.5",
+          "file": "kde/plasma/breeze/breeze-6.7.5-147-20260928T162956-windows-cl-msvc2022-x86_64.7z",
+          "sha256": "61631dcbb7a7b844383eb58de90d000434cdd5af484a361ebf1858e5cbd37885",
+          "license": "GPL-2.0-or-later",
+          "license_dir": "breeze",
+          "source": "https://invent.kde.org/plasma/breeze"
+        },
+        {
+          "name": "libs/gettext",
+          "version": "0.22.3-3",
+          "file": "libs/gettext/gettext-0.22.3-3-88-20260525T011930-windows-cl-msvc2022-x86_64.7z",
+          "sha256": "45d0f5361384138c0a73af7c897051c1d29dc3060de52f4fce1548273af5ba61",
+          "license": "LGPL-2.1-or-later (libintl)",
+          "license_dir": "gettext",
+          "source": "https://www.gnu.org/software/gettext/"
+        },
+        {
+          "name": "libs/iconv",
+          "version": "0.0.10",
+          "file": "libs/iconv/iconv-0.0.10-88-20260524T102110-windows-cl-msvc2022-x86_64.7z",
+          "sha256": "114ae4ebdda988c8d803434bc967ebf8a4361e21aabdd1a60df3a7bdb20eb047",
+          "license": "Public domain (win-iconv)",
+          "license_dir": "win-iconv",
+          "source": "https://github.com/win-iconv/win-iconv"
+        },
+        {
+          "name": "libs/libbzip2",
+          "version": "1.0.8-1",
+          "file": "libs/libbzip2/libbzip2-1.0.8-1-88-20260524T100311-windows-cl-msvc2022-x86_64.7z",
+          "sha256": "6bcca1d8c666dae60927dbf1c9e89526b3914919eb2af443257cef3a6d874be7",
+          "license": "bzip2-1.0.6",
+          "license_dir": "libbzip2",
+          "source": "https://sourceware.org/bzip2/"
+        },
+        {
+          "name": "libs/liblzma",
+          "version": "5.2.3-1",
+          "file": "libs/liblzma/liblzma-5.2.3-1-119-20260812T185330-windows-cl-msvc2022-x86_64.7z",
+          "sha256": "20356ec49060aa6a9742d9fc9d3f701f251f547d9d45b058b5ec3c3b706f3955",
+          "license": "Public domain (liblzma 5.2.3)",
+          "license_dir": "liblzma",
+          "source": "https://tukaani.org/xz/"
+        },
+        {
+          "name": "libs/libzstd",
+          "version": "1.5.7",
+          "file": "libs/libzstd/libzstd-1.5.7-88-20260525T012326-windows-cl-msvc2022-x86_64.7z",
+          "sha256": "98282bf1617fcd4f9285439171fd36aeebda71bc8dbff89865ecb1798551d2c5",
+          "license": "BSD-3-Clause OR GPL-2.0-only",
+          "license_dir": "libzstd",
+          "source": "https://github.com/facebook/zstd"
+        },
+        {
+          "name": "libs/openssl",
+          "version": "3.6.4",
+          "file": "libs/openssl/openssl-3.6.4-148-20261011T155313-windows-cl-msvc2022-x86_64.7z",
+          "sha256": "de5e82193cd3f44bfccfdb11d1b9de1253c9eaa9f6b7260b97d999b36c465cde",
+          "license": "Apache-2.0",
+          "license_dir": "openssl",
+          "source": "https://www.openssl.org/"
+        },
+        {
+          "name": "libs/zlib",
+          "version": "1.3.1",
+          "file": "libs/zlib/zlib-1.3.1-88-20260524T100336-windows-cl-msvc2022-x86_64.7z",
+          "sha256": "0c2876b3ac271edc33ee83887f2acc2cd4219bb5c9d580c262146cce07fce49b",
+          "license": "Zlib",
+          "license_dir": "zlib",
+          "source": "https://zlib.net/"
+        }
+      ],
+      "libraries": [
+        {
+          "package": "libs/libbzip2",
+          "member": "bin/bz2.dll"
+        },
+        {
+          "package": "libs/iconv",
+          "member": "bin/iconv.dll"
+        },
+        {
+          "package": "libs/gettext",
+          "member": "bin/intl-8.dll"
+        },
+        {
+          "package": "kde/frameworks/tier1/karchive",
+          "member": "bin/KF6Archive.dll"
+        },
+        {
+          "framework": "breeze-icons",
+          "member": "bin/KF6BreezeIcons.dll"
+        },
+        {
+          "framework": "kcolorscheme",
+          "member": "bin/KF6ColorScheme.dll"
+        },
+        {
+          "package": "kde/frameworks/tier1/kconfig",
+          "member": "bin/KF6ConfigCore.dll"
+        },
+        {
+          "package": "kde/frameworks/tier1/kconfig",
+          "member": "bin/KF6ConfigGui.dll"
+        },
+        {
+          "package": "kde/frameworks/tier1/kguiaddons",
+          "member": "bin/KF6GuiAddons.dll"
+        },
+        {
+          "package": "kde/frameworks/tier1/ki18n",
+          "member": "bin/KF6I18n.dll"
+        },
+        {
+          "framework": "kiconthemes",
+          "member": "bin/KF6IconThemes.dll"
+        },
+        {
+          "package": "kde/frameworks/tier1/kwindowsystem",
+          "member": "bin/KF6WindowSystem.dll"
+        },
+        {
+          "package": "libs/openssl",
+          "member": "bin/libcrypto-3-x64.dll"
+        },
+        {
+          "package": "libs/liblzma",
+          "member": "bin/liblzma.dll"
+        },
+        {
+          "package": "libs/zlib",
+          "member": "bin/zlib1.dll"
+        },
+        {
+          "package": "libs/libzstd",
+          "member": "bin/zstd.dll"
+        }
+      ],
+      "rebuild": {
+        "qt_sdk": "msvc2022_64",
+        "frameworks": [
+          "extra-cmake-modules",
+          "breeze-icons",
+          "kcolorscheme",
+          "kiconthemes"
+        ],
+        "cmake_args": [],
+        "build_packages": [
+          {
+            "name": "kde/frameworks/tier1/kwidgetsaddons",
+            "version": "6.31.0",
+            "file": "kde/frameworks/tier1/kwidgetsaddons/kwidgetsaddons-6.31.0-153-20261015T211141-windows-cl-msvc2022-x86_64.7z",
+            "sha256": "e36ffd5b666e66d09319a1a004267f06f6bc3633dfe19cee912f705937146ee8",
+            "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+            "license_dir": "kwidgetsaddons",
+            "source": "https://invent.kde.org/frameworks/kwidgetsaddons"
+          }
+        ]
+      }
+    },
+    "macos-arm64": {
+      "craft_path": "macos/clang/arm64",
+      "plugin": {
+        "package": "kde/plasma/breeze",
+        "member": "plugins/styles/breeze6.so"
+      },
+      "packages": [
+        {
+          "name": "kde/frameworks/tier1/karchive",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier1/karchive/karchive-6.31.0-153-20261015T163915-macos-clang-arm64.tar.7z",
+          "sha256": "7404b535ca8bfb3f62e10cb0c0b49e8121e347ec1c160da783f442a575933943",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "karchive",
+          "source": "https://invent.kde.org/frameworks/karchive"
+        },
+        {
+          "name": "kde/frameworks/tier1/kconfig",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier1/kconfig/kconfig-6.31.0-153-20261015T163749-macos-clang-arm64.tar.7z",
+          "sha256": "e4b85829d821fee9719eb87fd279d27695b521bc6748a1b681a03b9a7d13ae78",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "kconfig",
+          "source": "https://invent.kde.org/frameworks/kconfig"
+        },
+        {
+          "name": "kde/frameworks/tier1/kcoreaddons",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier1/kcoreaddons/kcoreaddons-6.31.0-153-20261015T163525-macos-clang-arm64.tar.7z",
+          "sha256": "fd18c2d4ab786020bbdfd50faad1e7afe2e8eb41953cc8a8ac78f57a959f69cf",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "kcoreaddons",
+          "source": "https://invent.kde.org/frameworks/kcoreaddons"
+        },
+        {
+          "name": "kde/frameworks/tier1/kguiaddons",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier1/kguiaddons/kguiaddons-6.31.0-153-20261015T163601-macos-clang-arm64.tar.7z",
+          "sha256": "82ba7982779b48e51c1fe2df5ea26ebf3a25180cc966d5d468d58220b11dcfe2",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "kguiaddons",
+          "source": "https://invent.kde.org/frameworks/kguiaddons"
+        },
+        {
+          "name": "kde/frameworks/tier1/ki18n",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier1/ki18n/ki18n-6.31.0-153-20261015T164002-macos-clang-arm64.tar.7z",
+          "sha256": "5f87c4a100245f0e911e0205b327cea01391d4d43e65e7d6072640fa72fca83d",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "ki18n",
+          "source": "https://invent.kde.org/frameworks/ki18n"
+        },
+        {
+          "name": "kde/frameworks/tier1/kwindowsystem",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier1/kwindowsystem/kwindowsystem-6.31.0-153-20261015T163725-macos-clang-arm64.tar.7z",
+          "sha256": "3172ba4b916771f65db7d82a167ea724bec435c79b56b9b66585df9350c8614e",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "kwindowsystem",
+          "source": "https://invent.kde.org/frameworks/kwindowsystem"
+        },
+        {
+          "name": "kde/plasma/breeze",
+          "version": "6.7.5",
+          "file": "kde/plasma/breeze/breeze-6.7.5-147-20261001T125512-macos-clang-arm64.tar.7z",
+          "sha256": "384a628f926aa34126b690fbb457d109a42720afc2e571a951b2b07cc595ed72",
+          "license": "GPL-2.0-or-later",
+          "license_dir": "breeze",
+          "source": "https://invent.kde.org/plasma/breeze"
+        },
+        {
+          "name": "libs/gettext",
+          "version": "0.22.3-3",
+          "file": "libs/gettext/gettext-0.22.3-3-84-20260523T144051-macos-clang-arm64.tar.7z",
+          "sha256": "a64b14a327846fcf3c05a646205931501901dff04319254e213d0ba61551d69c",
+          "license": "LGPL-2.1-or-later (libintl)",
+          "license_dir": "gettext",
+          "source": "https://www.gnu.org/software/gettext/"
+        },
+        {
+          "name": "libs/libbzip2",
+          "version": "1.0.8-1",
+          "file": "libs/libbzip2/libbzip2-1.0.8-1-84-20260523T143137-macos-clang-arm64.tar.7z",
+          "sha256": "1a456b0665ce9dc70ecb2ca603a93b203cdfb4a676566f78433aee26bdee30a5",
+          "license": "bzip2-1.0.6",
+          "license_dir": "libbzip2",
+          "source": "https://sourceware.org/bzip2/"
+        },
+        {
+          "name": "libs/liblzma",
+          "version": "5.2.3-1",
+          "file": "libs/liblzma/liblzma-5.2.3-1-119-20260816T092724-macos-clang-arm64.tar.7z",
+          "sha256": "92a19e320c83abc3cf9ff3238985eb0d18d83d14ed05f13dc7f853c912f27efc",
+          "license": "Public domain (liblzma 5.2.3)",
+          "license_dir": "liblzma",
+          "source": "https://tukaani.org/xz/"
+        },
+        {
+          "name": "libs/libzstd",
+          "version": "1.5.7",
+          "file": "libs/libzstd/libzstd-1.5.7-84-20260523T144408-macos-clang-arm64.tar.7z",
+          "sha256": "aed1e003a8ed5450dbea71f2a897b586e48c0dffec119121ebb5ff89069b5ef1",
+          "license": "BSD-3-Clause OR GPL-2.0-only",
+          "license_dir": "libzstd",
+          "source": "https://github.com/facebook/zstd"
+        },
+        {
+          "name": "libs/openssl",
+          "version": "3.6.4",
+          "file": "libs/openssl/openssl-3.6.4-148-20261011T155936-macos-clang-arm64.tar.7z",
+          "sha256": "d1a08b47b5005b2b889d2fcb5a0d3b3a479e4822de8990067e1372d583ec0b25",
+          "license": "Apache-2.0",
+          "license_dir": "openssl",
+          "source": "https://www.openssl.org/"
+        },
+        {
+          "name": "libs/zlib",
+          "version": "1.3.1",
+          "file": "libs/zlib/zlib-1.3.1-84-20260523T143145-macos-clang-arm64.tar.7z",
+          "sha256": "b80f1bd23a5408873a2ba6d117cc2115d6e296a8a2480566caaf325241c4e349",
+          "license": "Zlib",
+          "license_dir": "zlib",
+          "source": "https://zlib.net/"
+        }
+      ],
+      "libraries": [
+        {
+          "package": "libs/libbzip2",
+          "member": "lib/libbz2.1.0.dylib"
+        },
+        {
+          "package": "libs/openssl",
+          "member": "lib/libcrypto.3.dylib"
+        },
+        {
+          "package": "libs/gettext",
+          "member": "lib/libintl.8.dylib"
+        },
+        {
+          "package": "kde/frameworks/tier1/karchive",
+          "member": "lib/libKF6Archive.6.dylib"
+        },
+        {
+          "framework": "breeze-icons",
+          "member": "lib/libKF6BreezeIcons.6.dylib"
+        },
+        {
+          "framework": "kcolorscheme",
+          "member": "lib/libKF6ColorScheme.6.dylib"
+        },
+        {
+          "package": "kde/frameworks/tier1/kconfig",
+          "member": "lib/libKF6ConfigCore.6.dylib"
+        },
+        {
+          "package": "kde/frameworks/tier1/kconfig",
+          "member": "lib/libKF6ConfigGui.6.dylib"
+        },
+        {
+          "package": "kde/frameworks/tier1/kcoreaddons",
+          "member": "lib/libKF6CoreAddons.6.dylib"
+        },
+        {
+          "package": "kde/frameworks/tier1/kguiaddons",
+          "member": "lib/libKF6GuiAddons.6.dylib"
+        },
+        {
+          "package": "kde/frameworks/tier1/ki18n",
+          "member": "lib/libKF6I18n.6.dylib"
+        },
+        {
+          "framework": "kiconthemes",
+          "member": "lib/libKF6IconThemes.6.dylib"
+        },
+        {
+          "package": "kde/frameworks/tier1/kwindowsystem",
+          "member": "lib/libKF6WindowSystem.6.dylib"
+        },
+        {
+          "package": "libs/liblzma",
+          "member": "lib/liblzma.5.dylib"
+        },
+        {
+          "package": "libs/zlib",
+          "member": "lib/libz.1.dylib"
+        },
+        {
+          "package": "libs/libzstd",
+          "member": "lib/libzstd.1.dylib"
+        }
+      ],
+      "rebuild": {
+        "qt_sdk": "clang_64",
+        "frameworks": [
+          "extra-cmake-modules",
+          "breeze-icons",
+          "kcolorscheme",
+          "kiconthemes"
+        ],
+        "cmake_args": [
+          "-DCMAKE_OSX_ARCHITECTURES=arm64",
+          "-DCMAKE_OSX_DEPLOYMENT_TARGET=13.0"
+        ],
+        "build_packages": [
+          {
+            "name": "kde/frameworks/tier1/kwidgetsaddons",
+            "version": "6.31.0",
+            "file": "kde/frameworks/tier1/kwidgetsaddons/kwidgetsaddons-6.31.0-153-20261015T163831-macos-clang-arm64.tar.7z",
+            "sha256": "331ab09187f67a4727a02ee18386b33cc59c8290747e6976db2cf0e9381b7413",
+            "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+            "license_dir": "kwidgetsaddons",
+            "source": "https://invent.kde.org/frameworks/kwidgetsaddons"
+          }
+        ]
+      }
+    },
+    "macos-x86_64": {
+      "craft_path": "macos/clang/x86_64",
+      "plugin": {
+        "package": "kde/plasma/breeze",
+        "member": "plugins/styles/breeze6.so"
+      },
+      "packages": [
+        {
+          "name": "kde/frameworks/tier1/karchive",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier1/karchive/karchive-6.31.0-153-20261015T153444-macos-clang-x86_64.tar.7z",
+          "sha256": "5bae8de7eab54b2ec5959fa536520131cf6957a57bfa83894ee42ffe6f8c99d3",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "karchive",
+          "source": "https://invent.kde.org/frameworks/karchive"
+        },
+        {
+          "name": "kde/frameworks/tier1/kconfig",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier1/kconfig/kconfig-6.31.0-153-20261015T153305-macos-clang-x86_64.tar.7z",
+          "sha256": "51d21dbe10ea9c1c5597d4bd40c07d4af14f793ab2480d6c63cd40f510c88c99",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "kconfig",
+          "source": "https://invent.kde.org/frameworks/kconfig"
+        },
+        {
+          "name": "kde/frameworks/tier1/kcoreaddons",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier1/kcoreaddons/kcoreaddons-6.31.0-153-20261015T153016-macos-clang-x86_64.tar.7z",
+          "sha256": "01d87957d41481f7ebed84decbd4a3f2ca10b3a20d82d60f24238788e18c6d40",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "kcoreaddons",
+          "source": "https://invent.kde.org/frameworks/kcoreaddons"
+        },
+        {
+          "name": "kde/frameworks/tier1/kguiaddons",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier1/kguiaddons/kguiaddons-6.31.0-153-20261015T153056-macos-clang-x86_64.tar.7z",
+          "sha256": "f2707c37e382f81e066bd08a268b9c80ec52c72b0e5ba24e1be86528de070f57",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "kguiaddons",
+          "source": "https://invent.kde.org/frameworks/kguiaddons"
+        },
+        {
+          "name": "kde/frameworks/tier1/ki18n",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier1/ki18n/ki18n-6.31.0-153-20261015T153542-macos-clang-x86_64.tar.7z",
+          "sha256": "33763f60b1166d50f9d95d13a84ec1138d905c3246ec7df0d2b00691a8dcd007",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "ki18n",
+          "source": "https://invent.kde.org/frameworks/ki18n"
+        },
+        {
+          "name": "kde/frameworks/tier1/kwindowsystem",
+          "version": "6.31.0",
+          "file": "kde/frameworks/tier1/kwindowsystem/kwindowsystem-6.31.0-153-20261015T153238-macos-clang-x86_64.tar.7z",
+          "sha256": "fa6b227c42e605a992993ccffe22a5eff1f45634b2faea38877a72f3ef961fe5",
+          "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+          "license_dir": "kwindowsystem",
+          "source": "https://invent.kde.org/frameworks/kwindowsystem"
+        },
+        {
+          "name": "kde/plasma/breeze",
+          "version": "6.7.5",
+          "file": "kde/plasma/breeze/breeze-6.7.5-147-20261001T131005-macos-clang-x86_64.tar.7z",
+          "sha256": "3aaa07322ad4290a097be6543dddb7db98a22fdd40cd77fa3724c1b2f09c7917",
+          "license": "GPL-2.0-or-later",
+          "license_dir": "breeze",
+          "source": "https://invent.kde.org/plasma/breeze"
+        },
+        {
+          "name": "libs/gettext",
+          "version": "0.22.3-3",
+          "file": "libs/gettext/gettext-0.22.3-3-88-20260524T082356-macos-clang-x86_64.tar.7z",
+          "sha256": "43d588601997fac1094c867d06320802971e043b5d953fddcc107861c011a535",
+          "license": "LGPL-2.1-or-later (libintl)",
+          "license_dir": "gettext",
+          "source": "https://www.gnu.org/software/gettext/"
+        },
+        {
+          "name": "libs/libbzip2",
+          "version": "1.0.8-1",
+          "file": "libs/libbzip2/libbzip2-1.0.8-1-88-20260524T081133-macos-clang-x86_64.tar.7z",
+          "sha256": "33213e02e5746afaab88481d4fd81f6ec44061c705f5f398c403d112b7103326",
+          "license": "bzip2-1.0.6",
+          "license_dir": "libbzip2",
+          "source": "https://sourceware.org/bzip2/"
+        },
+        {
+          "name": "libs/liblzma",
+          "version": "5.2.3-1",
+          "file": "libs/liblzma/liblzma-5.2.3-1-119-20260816T091919-macos-clang-x86_64.tar.7z",
+          "sha256": "9c3758a51f681f90c274f09d0e34eab7731d8c1de9e9975af5807a5c1d156b6f",
+          "license": "Public domain (liblzma 5.2.3)",
+          "license_dir": "liblzma",
+          "source": "https://tukaani.org/xz/"
+        },
+        {
+          "name": "libs/libzstd",
+          "version": "1.5.7",
+          "file": "libs/libzstd/libzstd-1.5.7-88-20260524T082759-macos-clang-x86_64.tar.7z",
+          "sha256": "edf3a0bfe733869a3de24b293efc4fbda3b3baec8290aefc8603b8680ef759aa",
+          "license": "BSD-3-Clause OR GPL-2.0-only",
+          "license_dir": "libzstd",
+          "source": "https://github.com/facebook/zstd"
+        },
+        {
+          "name": "libs/openssl",
+          "version": "3.6.4",
+          "file": "libs/openssl/openssl-3.6.4-148-20261011T154518-macos-clang-x86_64.tar.7z",
+          "sha256": "b86719f6f24bb557b1495e859e0907ab30983f1946855d19892c26456c3774cf",
+          "license": "Apache-2.0",
+          "license_dir": "openssl",
+          "source": "https://www.openssl.org/"
+        },
+        {
+          "name": "libs/zlib",
+          "version": "1.3.1",
+          "file": "libs/zlib/zlib-1.3.1-88-20260524T081140-macos-clang-x86_64.tar.7z",
+          "sha256": "6f24f6d954b9bb602e876f047ba7d3016a5cdfe3945dea49d41f1b35c3af3917",
+          "license": "Zlib",
+          "license_dir": "zlib",
+          "source": "https://zlib.net/"
+        }
+      ],
+      "libraries": [
+        {
+          "package": "libs/libbzip2",
+          "member": "lib/libbz2.1.0.dylib"
+        },
+        {
+          "package": "libs/openssl",
+          "member": "lib/libcrypto.3.dylib"
+        },
+        {
+          "package": "libs/gettext",
+          "member": "lib/libintl.8.dylib"
+        },
+        {
+          "package": "kde/frameworks/tier1/karchive",
+          "member": "lib/libKF6Archive.6.dylib"
+        },
+        {
+          "framework": "breeze-icons",
+          "member": "lib/libKF6BreezeIcons.6.dylib"
+        },
+        {
+          "framework": "kcolorscheme",
+          "member": "lib/libKF6ColorScheme.6.dylib"
+        },
+        {
+          "package": "kde/frameworks/tier1/kconfig",
+          "member": "lib/libKF6ConfigCore.6.dylib"
+        },
+        {
+          "package": "kde/frameworks/tier1/kconfig",
+          "member": "lib/libKF6ConfigGui.6.dylib"
+        },
+        {
+          "package": "kde/frameworks/tier1/kcoreaddons",
+          "member": "lib/libKF6CoreAddons.6.dylib"
+        },
+        {
+          "package": "kde/frameworks/tier1/kguiaddons",
+          "member": "lib/libKF6GuiAddons.6.dylib"
+        },
+        {
+          "package": "kde/frameworks/tier1/ki18n",
+          "member": "lib/libKF6I18n.6.dylib"
+        },
+        {
+          "framework": "kiconthemes",
+          "member": "lib/libKF6IconThemes.6.dylib"
+        },
+        {
+          "package": "kde/frameworks/tier1/kwindowsystem",
+          "member": "lib/libKF6WindowSystem.6.dylib"
+        },
+        {
+          "package": "libs/liblzma",
+          "member": "lib/liblzma.5.dylib"
+        },
+        {
+          "package": "libs/zlib",
+          "member": "lib/libz.1.dylib"
+        },
+        {
+          "package": "libs/libzstd",
+          "member": "lib/libzstd.1.dylib"
+        }
+      ],
+      "rebuild": {
+        "qt_sdk": "clang_64",
+        "frameworks": [
+          "extra-cmake-modules",
+          "breeze-icons",
+          "kcolorscheme",
+          "kiconthemes"
+        ],
+        "cmake_args": [
+          "-DCMAKE_OSX_ARCHITECTURES=x86_64",
+          "-DCMAKE_OSX_DEPLOYMENT_TARGET=13.0"
+        ],
+        "build_packages": [
+          {
+            "name": "kde/frameworks/tier1/kwidgetsaddons",
+            "version": "6.31.0",
+            "file": "kde/frameworks/tier1/kwidgetsaddons/kwidgetsaddons-6.31.0-153-20261015T153354-macos-clang-x86_64.tar.7z",
+            "sha256": "027d0ba115a06d63da22959d23c5374b4ff253aa8430e30d26b84bcf00cff60d",
+            "license": "LGPL-2.0-or-later (KDE Frameworks policy)",
+            "license_dir": "kwidgetsaddons",
+            "source": "https://invent.kde.org/frameworks/kwidgetsaddons"
+          }
+        ]
+      }
+    }
+  }
+}

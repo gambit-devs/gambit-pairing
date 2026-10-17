@@ -22,10 +22,10 @@ class UpdateDownloadDialog(QtWidgets.QDialog):
 
         self.button_box = required_child(self, QtWidgets.QDialogButtonBox, "button_box")
         self.restart_btn = self.button_box.addButton(
-            "Close", QtWidgets.QDialogButtonBox.ButtonRole.AcceptRole
+            "Restart Now", QtWidgets.QDialogButtonBox.ButtonRole.AcceptRole
         )
         self.close_btn = self.button_box.addButton(
-            "Done", QtWidgets.QDialogButtonBox.ButtonRole.RejectRole
+            "Later", QtWidgets.QDialogButtonBox.ButtonRole.RejectRole
         )
         self.restart_btn.hide()
         self.close_btn.hide()
@@ -47,7 +47,8 @@ class UpdateDownloadDialog(QtWidgets.QDialog):
     def show_complete(self):
         self.progress_bar.setValue(100)
         self.status_label.setText(
-            "Update downloaded! Please close and restart the application to apply it."
+            "Update downloaded. Restart now to install it, or it will be installed "
+            "the next time the application starts."
         )
         self.restart_btn.show()
         self.close_btn.show()
@@ -57,6 +58,7 @@ class UpdateDownloadDialog(QtWidgets.QDialog):
         self.status_label.setText(f"Update failed:\n{error_text}")
         self.progress_bar.setEnabled(False)
         self.restart_btn.hide()
+        self.close_btn.setText("Close")
         self.close_btn.show()
 
     def closeEvent(self, event):

@@ -1,0 +1,4 @@
+Velopack (pip package "velopack", 1.2.161) ships no licence file in its wheel.
+Its metadata declares MIT. This text is the MIT licence from the upstream
+repository, https://github.com/velopack/velopack, file LICENSE (fetched from
+the master branch).

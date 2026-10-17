@@ -1,4 +1,9 @@
-"""Update-check and download orchestration for the main window."""
+"""Update-check and update orchestration for the main window.
+
+The GitHub release check decides whether a newer version exists. Accepting the
+prompt then either updates in place through Velopack (platforms in
+``IN_APP_UPDATE_PLATFORMS``, currently Windows) or opens the release page.
+"""
 
 from __future__ import annotations
 
@@ -6,87 +11,110 @@ from collections.abc import Callable
 import sys
 from typing import Any
 
-from PyQt6 import QtCore, QtWidgets
+from PyQt6 import QtCore, QtGui, QtWidgets
 
-from gambitpairing.update import Updater, UpdateWorker
+from gambitpairing.update import (
+    ReleaseInfo,
+    UpdateCheckError,
+    VelopackUpdater,
+    find_newer_release,
+    in_app_update_supported,
+)
+from gambitpairing.utils import setup_logger
 
 from .dialogs import UpdateDownloadDialog, UpdatePromptDialog
 
+logger = setup_logger(__name__)
+
+IN_APP_ACTION_TEXT = "Update and Restart"
+BROWSER_ACTION_TEXT = "Open Download Page"
+
+
+class UpdateDownloadWorker(QtCore.QObject):
+    """Download a Velopack update in a background thread."""
+
+    progress = QtCore.pyqtSignal(int)
+    status = QtCore.pyqtSignal(str)
+    done = QtCore.pyqtSignal(bool, str)  # (success, version or error message)
+
+    def __init__(self, updater: VelopackUpdater, expected_version: str):
+        super().__init__()
+        self.updater = updater
+        self.expected_version = expected_version
+
+    def run(self) -> None:
+        try:
+            self.status.emit(f"Downloading version {self.expected_version}...")
+            version = self.updater.download(
+                self.expected_version, lambda value: self.progress.emit(int(value))
+            )
+        except Exception as error:  # Velopack raises RuntimeError subclasses
+            logger.error("Update download failed: %s", error, exc_info=True)
+            self.done.emit(False, str(error))
+            return
+        self.status.emit("Update ready to install.")
+        self.done.emit(True, version)
+
 
 class UpdateWorkflowController:
-    """Coordinate update checks, prompts, downloads, and restart flow."""
+    """Coordinate update checks, prompts, Velopack updates and restarts."""
 
     def __init__(
         self,
         *,
         parent: QtWidgets.QWidget,
-        updater: Updater | None,
         app_name: str,
         app_version: str,
         status_callback: Callable[[str], object],
         close_callback: Callable[[], object],
+        confirm_close: Callable[[], bool] | None = None,
+        find_release: Callable[[str], ReleaseInfo | None] = find_newer_release,
+        velopack_updater: VelopackUpdater | None = None,
         packaged_check: Callable[[], bool] | None = None,
-        question: Callable[..., Any] | None = None,
+        platform: str | None = None,
+        open_url: Callable[[QtCore.QUrl], object] | None = None,
         information: Callable[..., Any] | None = None,
         warning: Callable[..., Any] | None = None,
         prompt_dialog_factory: Callable[..., QtWidgets.QDialog] | None = None,
         download_dialog_factory: Callable[..., UpdateDownloadDialog] | None = None,
-        worker_factory: Callable[[Updater], UpdateWorker] | None = None,
+        worker_factory: (
+            Callable[[VelopackUpdater, str], UpdateDownloadWorker] | None
+        ) = None,
         thread_factory: Callable[[], QtCore.QThread] | None = None,
         timer_single_shot: Callable[[int, Callable[[], object]], object] | None = None,
     ) -> None:
         self._parent = parent
-        self.updater = updater
         self._app_name = app_name
         self._app_version = app_version
         self._status_callback = status_callback
         self._close_callback = close_callback
-        self._packaged_check = packaged_check or (lambda: bool(getattr(sys, "frozen", False)))
-        self._question = question or QtWidgets.QMessageBox.question
+        self._confirm_close = confirm_close or (lambda: True)
+        self._find_release = find_release
+        self.velopack_updater = velopack_updater or VelopackUpdater()
+        self._packaged_check = packaged_check or (
+            lambda: bool(getattr(sys, "frozen", False))
+        )
+        self._platform = sys.platform if platform is None else platform
+        self._open_url = open_url or QtGui.QDesktopServices.openUrl
         self._information = information or QtWidgets.QMessageBox.information
         self._warning = warning or QtWidgets.QMessageBox.warning
         self._prompt_dialog_factory = prompt_dialog_factory or UpdatePromptDialog
         self._download_dialog_factory = download_dialog_factory or UpdateDownloadDialog
-        self._worker_factory = worker_factory or UpdateWorker
+        self._worker_factory = worker_factory or UpdateDownloadWorker
         self._thread_factory = thread_factory or QtCore.QThread
         self._timer_single_shot = timer_single_shot or QtCore.QTimer.singleShot
 
         self.is_updating = False
         self.download_dialog: UpdateDownloadDialog | None = None
         self.update_thread: QtCore.QThread | None = None
-        self.worker: UpdateWorker | None = None
+        self.worker: UpdateDownloadWorker | None = None
 
-    def check_for_pending_update(self) -> bool:
-        """Check for a previously downloaded update and ask to install it."""
-        if not self.updater:
+    # -- checking --------------------------------------------------------
+    def uses_in_app_update(self) -> bool:
+        """Return True when accepting the prompt should update in place."""
+        if not in_app_update_supported(self._platform, self._packaged_check()):
             return False
-
-        pending_path = self.updater.get_pending_update_path()
-        if not pending_path:
-            return False
-
-        reply = self._question(
-            self._parent,
-            "Update Ready to Install",
-            "A downloaded update is ready. This will restart the application.\n\nInstall now?",
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No,
-        )
-
-        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-            self.restart_with_update(pending_path)
-            return True
-
-        discard_reply = self._question(
-            self._parent,
-            "Discard Update?",
-            "Do you want to discard the downloaded update? If not, you will be asked again on the next launch.",
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No,
-        )
-        if discard_reply == QtWidgets.QMessageBox.StandardButton.Yes:
-            self.updater.cleanup_pending_update()
-        return False
+        return self.velopack_updater.is_available()
 
     def check_for_updates_manual(self) -> None:
         """Manually check for updates and notify the user of the result."""
@@ -94,114 +122,116 @@ class UpdateWorkflowController:
             self._information(
                 self._parent,
                 "Update Check",
-                "Automatic updates are only available in packaged releases.\n\n"
-                "If you installed from source, please update using git or your package manager. ie: `pip install --upgrade [git-root]`",
-            )
-            return
-        if not self.updater:
-            self._information(
-                self._parent, "Update Check", "The update checker is not configured."
+                "Update checks are only available in packaged releases.\n\n"
+                "If you installed from source, please update using git or your "
+                "package manager. ie: `pip install --upgrade [git-root]`",
             )
             return
 
         self._status_callback("Checking for updates...")
-        has_update = self.updater.check_for_updates()
-        if has_update:
-            self.prompt_update()
-        else:
-            self._status_callback("No new updates available.")
-            self._information(
-                self._parent,
-                "Update Check",
-                f"You are using the latest version of {self._app_name} ({self._app_version}).",
-            )
-
-    def check_for_updates_auto(self) -> None:
-        """Automatically check for updates in the background."""
-        if not self._packaged_check():
+        try:
+            release = self._find_release(self._app_version)
+        except UpdateCheckError as error:
+            self._status_callback("Update check failed.")
+            self._warning(self._parent, "Update Check", str(error))
             return
-        if not self.updater:
+        if release is not None:
+            self.prompt_update(release)
             return
-        if self.updater.check_for_updates():
-            self.prompt_update()
-
-    def prompt_update(self) -> bool:
-        """Show a dialog prompting the user to download the new version."""
-        if not self.updater or not self.updater.latest_version_info:
-            return False
-
-        latest_version = self.updater.get_latest_version()
-        release_notes = self.updater.get_release_notes()
-
-        if latest_version is None or release_notes is None:
-            self._warning(
-                self._parent,
-                "Update Error",
-                "Could not retrieve complete update information.",
-            )
-            return False
-
-        dialog = self._prompt_dialog_factory(
-            new_version=latest_version,
-            current_version=self._app_version,
-            release_notes=release_notes,
-            parent=self._parent,
+        self._status_callback("No new updates available.")
+        self._information(
+            self._parent,
+            "Update Check",
+            f"You are using the latest version of {self._app_name} ({self._app_version}).",
         )
 
-        if dialog.exec():
-            self.start_update_download()
-            return True
-        return False
-
-    def start_update_download(self) -> None:
-        """Initiate the update download and show the progress dialog."""
-        if not self.updater:
+    def check_for_updates_auto(self) -> None:
+        """Check for updates at startup; failures are only logged."""
+        if not self._packaged_check():
             return
+        try:
+            release = self._find_release(self._app_version)
+        except UpdateCheckError as error:
+            logger.warning("Automatic update check failed: %s", error)
+            return
+        if release is not None:
+            self.prompt_update(release)
 
-        self._status_callback("Starting update download...")
+    # -- prompting -------------------------------------------------------
+    def prompt_update(self, release: ReleaseInfo) -> bool:
+        """Ask the user about ``release``; act on acceptance.
+
+        Returns True when the user accepted.
+        """
+        in_app = self.uses_in_app_update()
+        dialog = self._prompt_dialog_factory(
+            new_version=release.version,
+            current_version=self._app_version,
+            release_notes=release.notes,
+            action_text=IN_APP_ACTION_TEXT if in_app else BROWSER_ACTION_TEXT,
+            parent=self._parent,
+        )
+        if not dialog.exec():
+            return False
+        if in_app:
+            self.start_in_app_update(release)
+        else:
+            self.open_release_page(release)
+        return True
+
+    def open_release_page(self, release: ReleaseInfo) -> None:
+        self._status_callback(f"Opening the download page for {release.version}...")
+        if not self._open_url(QtCore.QUrl(release.page_url)):
+            self._information(
+                self._parent,
+                "Update Available",
+                f"Download version {release.version} from:\n{release.page_url}",
+            )
+
+    # -- in-app (Velopack) updates ------------------------------------------
+    def start_in_app_update(self, release: ReleaseInfo) -> None:
+        """Download the update in the background and show progress."""
+        self._status_callback("Downloading update...")
         self.download_dialog = self._download_dialog_factory(self._parent)
 
         self.update_thread = self._thread_factory()
-        self.worker = self._worker_factory(self.updater)
+        self.worker = self._worker_factory(self.velopack_updater, release.version)
         self.worker.moveToThread(self.update_thread)
 
         self.update_thread.started.connect(self.worker.run)
         self.worker.progress.connect(self.download_dialog.update_progress)
         self.worker.status.connect(self.download_dialog.update_status)
         self.worker.done.connect(self.on_update_done)
-
-        self.worker.finished.connect(self.update_thread.quit)
-        self.worker.finished.connect(self.worker.deleteLater)
+        self.worker.done.connect(self.update_thread.quit)
+        self.worker.done.connect(self.worker.deleteLater)
         self.update_thread.finished.connect(self.update_thread.deleteLater)
-
-        self.worker.error.connect(self.update_thread.quit)
-        self.worker.error.connect(self.worker.deleteLater)
 
         self.update_thread.start()
         self.download_dialog.exec()
 
     def on_update_done(self, success: bool, message: str) -> None:
-        """Handle both successful and failed update downloads."""
+        """Show the result of the download in the progress dialog."""
         if not self.download_dialog:
             return
-
         if success:
             self.download_dialog.show_complete()
-            self.download_dialog.restart_btn.clicked.disconnect()
-            self.download_dialog.restart_btn.clicked.connect(
-                lambda: self.restart_with_update(message)
-            )
+            self.download_dialog.restart_btn.clicked.connect(self.restart_with_update)
         else:
             self.download_dialog.show_error(message)
-            self.download_dialog.close_btn.clicked.disconnect()
-            self.download_dialog.close_btn.clicked.connect(self.download_dialog.close)
 
-    def restart_with_update(self, extracted_path: str) -> None:
-        """Apply an extracted update and close the window shortly after."""
-        if not self.updater:
+    def restart_with_update(self) -> None:
+        """Let Velopack apply the downloaded update, then close the app."""
+        if not self._confirm_close():
+            self._status_callback(
+                "Update downloaded; it will be installed when you restart."
+            )
             return
-
         self.is_updating = True
         self._status_callback("Restarting to apply update...")
-        self.updater.apply_update(extracted_path)
+        try:
+            self.velopack_updater.apply_and_restart()
+        except Exception as error:
+            self.is_updating = False
+            self._warning(self._parent, "Update Failed", str(error))
+            return
         self._timer_single_shot(100, self._close_callback)

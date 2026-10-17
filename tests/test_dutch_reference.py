@@ -9,18 +9,17 @@ import random
 
 import pytest
 
-from gambitpairing.testing.rtg import (
-    RandomTournamentGenerator,
-    RTGConfig,
-    RatingDistribution,
-    ResultPattern,
-)
-
 from gambitpairing.controllers.pairing.bbp_dutch import BBPPairingEngine
 from gambitpairing.controllers.pairing.dutch_swiss import create_dutch_swiss_pairings
 from gambitpairing.controllers.tournament.replay import replay_round
-from gambitpairing.models.player import Player
 from gambitpairing.models.enums import Colour
+from gambitpairing.models.player import Player
+from gambitpairing.testing.rtg import (
+    RandomTournamentGenerator,
+    RatingDistribution,
+    ResultPattern,
+    RTGConfig,
+)
 
 
 @pytest.mark.skipif(
@@ -114,7 +113,9 @@ def test_same_history_matches_bbp(count, seed, scenario):
             seed,
             number,
         )
-        results = [(w.id, b.id, rng.choice([0, 0.5, 1])) for w, b in reference]
+        results: list[tuple[object, ...]] = [
+            (w.id, b.id, rng.choice([0, 0.5, 1])) for w, b in reference
+        ]
         if scenario == "unplayed" and number == 1:
             w, b = reference[0]
             results[0] = (w.id, b.id, 1, 0, True)
