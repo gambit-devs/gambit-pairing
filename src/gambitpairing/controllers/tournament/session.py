@@ -373,6 +373,26 @@ class TournamentSession:
             self.invalidate_tiebreakers()
         return success
 
+    def correct_results(self, round_index: int, results_data: List[tuple]) -> bool:
+        """Replace a completed round's results when no later round is paired.
+
+        A later round's pairings were generated from these results, so they
+        would be stale after a correction.
+        """
+        round_data = self.round_controller.get_round(round_index + 1)
+        if round_data is None or not round_data.is_completed:
+            return False
+        if len(self.rounds) != round_index + 1:
+            return False
+
+        success = self.result_recorder.replace_round_results(
+            round_data, results_data, self.players
+        )
+        if success:
+            self._rebuild_pairing_history()
+            self.invalidate_tiebreakers()
+        return success
+
     def set_pending_results(self, round_index: int, results_data: List[tuple]) -> bool:
         """Persist result-entry progress for an uncompleted round.
 

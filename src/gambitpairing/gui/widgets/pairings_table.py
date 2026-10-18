@@ -190,7 +190,7 @@ class PairingsTable(QtWidgets.QWidget):
                     row, new, previous
                 )
             )
-            selector.activated.connect(lambda row=row: self._activate_result_cell(row))
+            selector.activated.connect(lambda row=row: self.select_result_cell(row))
             selector.key_pressed.connect(
                 lambda key, text, modifiers, row=row: self._handle_selector_key(
                     row, key, text, modifiers
@@ -222,7 +222,6 @@ class PairingsTable(QtWidgets.QWidget):
             self.bye_container.hide()
             if pairings:
                 self.table.setCurrentCell(0, 3)
-                self._update_selected_result_cell()
         elif pairings:
             self.table.setCurrentCell(0, 0)
 
@@ -386,7 +385,8 @@ class PairingsTable(QtWidgets.QWidget):
         self._result_history.append((row, previous, new))
         self.result_changed.emit(row, new, previous)
 
-    def _activate_result_cell(self, row: int) -> None:
+    def select_result_cell(self, row: int) -> None:
+        """Move the selection and keyboard focus to a board's result cell."""
         if 0 <= row < self.table.rowCount() and not self._row_metadata.get(row, {}).get(
             "is_bye"
         ):
@@ -395,7 +395,7 @@ class PairingsTable(QtWidgets.QWidget):
 
     def _on_cell_clicked(self, row: int, column: int) -> None:
         if column == 3 and not self._row_metadata.get(row, {}).get("is_bye"):
-            self._activate_result_cell(row)
+            self.select_result_cell(row)
 
     def _on_current_cell_changed(
         self,
@@ -404,16 +404,9 @@ class PairingsTable(QtWidgets.QWidget):
         _previous_row: int,
         _previous_column: int,
     ) -> None:
-        self._update_selected_result_cell()
         if current_column == 3 and current_row >= 0:
             if not self._row_metadata.get(current_row, {}).get("is_bye"):
                 self.selection_changed.emit(current_row)
-
-    def _update_selected_result_cell(self) -> None:
-        for row in range(self.table.rowCount()):
-            selector = self.table.cellWidget(row, 3)
-            if not isinstance(selector, ResultSelector):
-                continue
 
     def _handle_selector_key(
         self, row: int, key: int, text: str, modifiers: int

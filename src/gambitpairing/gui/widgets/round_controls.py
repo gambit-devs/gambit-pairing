@@ -31,6 +31,7 @@ class RoundControlsWidget(QtWidgets.QWidget):
     start_requested = pyqtSignal()
     prepare_requested = pyqtSignal()
     record_requested = pyqtSignal()
+    finish_corrections_requested = pyqtSignal()
     undo_requested = pyqtSignal()
     view_standings_requested = pyqtSignal()
 
@@ -61,14 +62,14 @@ class RoundControlsWidget(QtWidgets.QWidget):
         self.btn_primary_action.clicked.connect(self._on_primary_action_clicked)
 
         # Internal state to track what the primary button should do
-        self._primary_action_state = "start"  # start, prepare, record
+        self._primary_action_state = "start"  # start, prepare, record, correcting
 
     def update_state(self, state: str) -> None:
         """
         Update the state of the controls based on tournament phase.
 
         Args:
-            state: One of 'start', 'prepare', 'record', 'finished'
+            state: One of 'start', 'prepare', 'record', 'correcting', 'finished'
         """
         self._primary_action_state = state
 
@@ -102,6 +103,18 @@ class RoundControlsWidget(QtWidgets.QWidget):
             )
             self.btn_primary_action.setEnabled(True)
             self.btn_primary_action.setToolTip("Save results and advance to next round")
+        elif state == "correcting":
+            self.btn_primary_action.setText("Done")
+            self.btn_primary_action.setIcon(
+                get_native_icon(
+                    "dialog-ok-apply",
+                    QtWidgets.QStyle.StandardPixmap.SP_DialogApplyButton,
+                )
+            )
+            self.btn_primary_action.setEnabled(True)
+            self.btn_primary_action.setToolTip(
+                "Stop editing results. Pairing the next round is available after this."
+            )
         elif state == "finished":
             self.btn_primary_action.setText("Tournament Finished")
             self.btn_primary_action.setIcon(QtGui.QIcon())  # No icon for finished
@@ -143,5 +156,7 @@ class RoundControlsWidget(QtWidgets.QWidget):
             self.prepare_requested.emit()
         elif self._primary_action_state == "record":
             self.record_requested.emit()
+        elif self._primary_action_state == "correcting":
+            self.finish_corrections_requested.emit()
         elif self._primary_action_state == "finished":
             self.view_standings_requested.emit()

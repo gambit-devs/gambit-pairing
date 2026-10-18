@@ -420,6 +420,17 @@ def format_recorded_result_history_lines(
     return lines
 
 
+def format_corrected_result_history_line(
+    round_number: int, board_number: int, previous: str, corrected: str
+) -> str:
+    """Build the history log line for one corrected board in a completed round."""
+
+    return (
+        f"--- Round {round_number} Board {board_number} Corrected: "
+        f"{previous} -> {corrected} ---"
+    )
+
+
 def build_recorded_round_view_update(
     total_rounds: int, round_index_recorded: int
 ) -> RecordedRoundViewUpdate:

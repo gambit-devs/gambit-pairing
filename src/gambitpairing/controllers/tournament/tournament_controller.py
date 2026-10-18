@@ -439,6 +439,61 @@ class TournamentController:
             logger.exception("Error undoing results:")
             return False, f"Undoing results failed: {e}"
 
+    def correction_blocker(self, round_index: int) -> Optional[str]:
+        """
+        Explain why a round's results cannot be corrected in place.
+
+        Only the most recently completed round can change, and only while the
+        next round has not been paired from its standings.
+
+        Returns
+        -------
+        str or None
+            The reason correction is blocked, or None if it is allowed.
+        """
+        round_data = self.get_round_data(round_index)
+        if round_data is None or not round_data.is_completed:
+            return "Only completed rounds can be corrected."
+        if round_index != self.current_round_index - 1:
+            return "Only the most recently completed round can be corrected."
+        if self.generated_round_count > self.current_round_index:
+            return (
+                f"Round {self.current_round_index + 1} is already paired. "
+                f"Undo Round {round_index + 1} to change its results."
+            )
+        return None
+
+    def correct_round_results(
+        self, round_index: int, results_data: List[tuple]
+    ) -> Tuple[bool, Optional[str]]:
+        """
+        Replace a completed round's results in place.
+
+        Parameters
+        ----------
+        round_index : int
+            The 0-based round index
+        results_data : list
+            List of (white_id, black_id, white_score) tuples covering every board
+
+        Returns
+        -------
+        tuple
+            (success: bool, error_message: str or None)
+        """
+        if not self.tournament:
+            return False, "No tournament loaded."
+        blocker = self.correction_blocker(round_index)
+        if blocker is not None:
+            return False, blocker
+        if not self.tournament.correct_results(round_index, results_data):
+            message = (
+                "The corrected result was rejected. "
+                "Check that every board has a result."
+            )
+            return False, message
+        return True, None
+
     def _revert_player_round_data(self, player: "Player"):
         """
         Remove the last round's data from a player's history.

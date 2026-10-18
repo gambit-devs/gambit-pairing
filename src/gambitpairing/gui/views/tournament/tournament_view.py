@@ -44,6 +44,7 @@ from gambitpairing.gui.views.tournament.tournament_view_workflow import (
     build_round_end_prompt,
     build_round_preparation_messages,
     build_tournament_view_state,
+    format_corrected_result_history_line,
     format_generated_pairing_history_lines,
     format_manual_pairing_history_lines,
     format_recorded_result_history_lines,
@@ -134,6 +135,8 @@ class TournamentView(QtWidgets.QWidget):
         self.tournament = None
         self.displayed_round_index = 0
         self._rendered_round_index: Optional[int] = None
+        # Completed round whose results are being corrected in place, if any.
+        self._correcting_round_index: Optional[int] = None
         self._final_summary_visible = False
         self.show_ratings = False
 
@@ -239,7 +242,7 @@ class TournamentView(QtWidgets.QWidget):
             button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
             button.setAutoRaise(True)
             button.setAccessibleName(label)
-        self.btn_edit_results.clicked.connect(self._edit_selected_completed_round)
+        self.btn_edit_results.clicked.connect(self._toggle_result_corrections)
 
         round_menu = QtWidgets.QMenu(self.round_selector)
         self.round_selector.setMenu(round_menu)
@@ -359,13 +362,15 @@ class TournamentView(QtWidgets.QWidget):
         self.lbl_round_summary.setText(self._round_summary_text(entered, total))
 
         status = self._round_status(index)
-        can_edit_latest = (
-            status.startswith("Complete")
-            and index == self.current_round_index - 1
-            and not self._final_summary_visible
+        can_edit_results = (
+            not self._final_summary_visible
+            and self.controller.correction_blocker(index) is None
         )
-        self.btn_edit_results.setVisible(can_edit_latest)
-        self.btn_edit_results.setEnabled(can_edit_latest)
+        self.btn_edit_results.setVisible(can_edit_results)
+        self.btn_edit_results.setEnabled(can_edit_results)
+        self.btn_edit_results.setText(
+            "Done" if self._correcting_round_index is not None else "Edit Results"
+        )
         self.action_edit_displayed_pairings.setEnabled(
             status == "In Progress" and index == self.current_round_index
         )
@@ -409,12 +414,14 @@ class TournamentView(QtWidgets.QWidget):
 
         existing = resolve_existing_round_pairings(self.tournament, round_index)
         round_data = self.controller.get_round_data(round_index)
-        is_editable = (
+        is_entering = (
             round_index == self.current_round_index
             and round_data is not None
             and not round_data.is_completed
         )
-        results = self.controller.get_round_results(round_index, pending=is_editable)
+        is_correcting = round_index == self._correcting_round_index
+        # Entry edits pending results; a correction edits the finalized ones.
+        results = self.controller.get_round_results(round_index, pending=is_entering)
 
         self.pairings_table.set_show_ratings(self.show_ratings)
         self.pairings_table.show()
@@ -423,7 +430,7 @@ class TournamentView(QtWidgets.QWidget):
             existing.bye_players,
             round_index,
             results=results,
-            editable=is_editable,
+            editable=is_entering or is_correcting,
             bye_type=round_data.bye_type if round_data is not None else "full",
         )
         self.lbl_empty_state.hide()
@@ -450,10 +457,14 @@ class TournamentView(QtWidgets.QWidget):
             )
 
     def _on_result_changed(self, row: int, result: str, previous: str) -> None:
-        if (
-            not self.tournament
-            or self.displayed_round_index != self.current_round_index
-        ):
+        if not self.tournament:
+            return
+        if self._correcting_round_index is not None:
+            self._correct_displayed_result(
+                self._correcting_round_index, row, result, previous
+            )
+            return
+        if self.displayed_round_index != self.current_round_index:
             return
         results_data, _all_entered = self.pairings_table.get_results()
         if results_data is None:
@@ -479,9 +490,96 @@ class TournamentView(QtWidgets.QWidget):
             f"{ResultSelector.formatResult(result) or 'cleared'} · Ctrl+Z to undo"
         )
 
+    def _toggle_result_corrections(self) -> None:
+        """Header button: start editing the latest completed round, or stop."""
+        if self._correcting_round_index is not None:
+            self._finish_result_corrections()
+        else:
+            self._start_result_corrections()
+
+    def _start_result_corrections(self) -> None:
+        if not self.tournament:
+            return
+        blocker = self.controller.correction_blocker(self.displayed_round_index)
+        if blocker is not None:
+            self.status_message.emit(blocker)
+            return
+        self._correcting_round_index = self.displayed_round_index
+        self.status_message.emit(
+            f"Editing Round {self.displayed_round_index + 1} · each change is "
+            "saved as you make it · Ctrl+Z to undo"
+        )
+        self._render_current_round()
+        self.update_ui_state()
+
+    def _finish_result_corrections(self) -> None:
+        """Return the completed round to read-only and re-enable pairing."""
+        self._correcting_round_index = None
+        self.status_message.emit("Finished editing results.")
+        self._render_current_round()
+        self.update_ui_state()
+
+    def _sync_correction_mode(self) -> None:
+        """Leave correction mode when its round is hidden or no longer correctable."""
+        index = self._correcting_round_index
+        if index is None:
+            return
+        if (
+            index != self.displayed_round_index
+            or self.controller.correction_blocker(index) is not None
+        ):
+            self._correcting_round_index = None
+            # Clearing the rendered index forces the table to rebuild read-only.
+            self._rendered_round_index = None
+
+    def _correct_displayed_result(
+        self, round_index: int, row: int, result: str, previous: str
+    ) -> None:
+        """Save one board's edit to a completed round as soon as it is made."""
+        results_data, all_entered = self.pairings_table.get_results()
+        if results_data is None or not all_entered:
+            error = "Every board needs a result while correcting a round."
+        else:
+            _saved, error = self.controller.correct_round_results(
+                round_index, results_data
+            )
+        if error is not None:
+            self.status_message.emit(error)
+            # Deferred: rebuilding the table now would delete the selector that
+            # is still emitting this change.
+            QtCore.QTimer.singleShot(0, lambda: self._redisplay_correcting_round(row))
+            return
+
+        board = row + 1
+        corrected_text = ResultSelector.formatResult(result) or "cleared"
+        previous_text = ResultSelector.formatResult(previous) or "cleared"
+        self.history_message.emit(
+            format_corrected_result_history_line(
+                round_index + 1, board, previous_text, corrected_text
+            )
+        )
+        self.standings_update_requested.emit()
+        self.dirty.emit()
+        self.status_message.emit(
+            f"Round {round_index + 1} · Board {board} corrected to "
+            f"{corrected_text} · Ctrl+Z to undo"
+        )
+        self._update_round_progress()
+        self.update_ui_state()
+
+    def _redisplay_correcting_round(self, row: int) -> None:
+        """Show the round as the model holds it, keeping the board in focus."""
+        self._render_current_round()
+        self.pairings_table.select_result_cell(row)
+
     def _update_round_progress(self) -> None:
         entered, total = self.pairings_table.progress()
-        if total and entered == total:
+        if self._correcting_round_index is not None:
+            progress_text = (
+                f"Editing Round {self._correcting_round_index + 1} · "
+                "changes save as you make them"
+            )
+        elif total and entered == total:
             progress_text = "All results entered"
         elif total:
             result_label = "result" if total == 1 else "results"
@@ -532,6 +630,9 @@ class TournamentView(QtWidgets.QWidget):
         self.round_controls.start_requested.connect(self.start_tournament)
         self.round_controls.prepare_requested.connect(self.prepare_next_round)
         self.round_controls.record_requested.connect(self.record_and_advance)
+        self.round_controls.finish_corrections_requested.connect(
+            self._finish_result_corrections
+        )
         self.round_controls.undo_requested.connect(self.undo_last_results)
         self.round_controls.view_standings_requested.connect(self._view_final_standings)
         self.round_controls.set_keyboard_hints(
@@ -543,6 +644,7 @@ class TournamentView(QtWidgets.QWidget):
         """Set the tournament and update controller."""
         self.tournament = tournament
         self.controller.set_tournament(tournament)
+        self._correcting_round_index = None
         if tournament is None:
             self.current_round_index = 0
             self.displayed_round_index = 0
@@ -831,9 +933,8 @@ class TournamentView(QtWidgets.QWidget):
         if not self.tournament:
             return
 
-        # Results are finalized only for the live/current round. Historical
-        # rounds remain read-only unless the existing last-round undo workflow
-        # is explicitly used.
+        # Results are finalized only for the live/current round. Completed
+        # rounds change through Edit Results, or through Undo to re-open them.
         if self.displayed_round_index != self.current_round_index:
             return
         round_index_to_record = self.current_round_index
@@ -1197,6 +1298,7 @@ class TournamentView(QtWidgets.QWidget):
         self.btn_view.show()
         self.btn_pairing_actions.show()
 
+        self._sync_correction_mode()
         if self._rendered_round_index != self.displayed_round_index or (
             self._final_summary_visible and self._rendered_round_index is not None
         ):
@@ -1205,7 +1307,10 @@ class TournamentView(QtWidgets.QWidget):
         self._update_round_navigation()
         self._update_round_progress()
 
-        if self.current_round_index >= self.tournament.num_rounds:
+        if self._correcting_round_index is not None:
+            # Pairing the next round is held back until editing is finished.
+            self.round_controls.update_state("correcting")
+        elif self.current_round_index >= self.tournament.num_rounds:
             self.round_controls.update_state("finished")
             self.round_controls.set_primary_action(
                 "View Final Standings",
@@ -1317,17 +1422,6 @@ class TournamentView(QtWidgets.QWidget):
     ):
         """Handle manual pairing for a round."""
         self._open_manual_pairing_dialog(display_round_number, round_to_prepare_idx)
-
-    def _edit_selected_completed_round(self) -> None:
-        """Use the existing last-round undo rules to re-open a completed round."""
-        if not self.tournament:
-            return
-        if self.displayed_round_index != self.current_round_index - 1:
-            self.status_message.emit(
-                "Only the most recently completed round can be edited."
-            )
-            return
-        self.undo_last_results()
 
     def _edit_displayed_pairings(self) -> None:
         if not self.tournament:

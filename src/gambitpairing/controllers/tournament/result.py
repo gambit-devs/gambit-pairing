@@ -776,6 +776,46 @@ class ResultRecorder:
         self._notify_state_changed()
         return True
 
+    def replace_round_results(
+        self,
+        round_data: RoundData,
+        results_data: List[tuple],
+        players: Dict[str, Player],
+    ) -> bool:
+        """Swap a completed round's results for corrected ones, all or nothing.
+
+        Replaying the round through the undo and record paths leaves every
+        player's history exactly as if the round had been entered correctly.
+        Callers must make sure no later round was paired from these results.
+
+        Returns:
+            True if the corrected results were recorded. On False the round
+            and player state are left as they were before the call.
+        """
+        if not round_data.is_completed:
+            return False
+
+        snapshots: Dict[str, Dict[str, Any]] = {
+            player_id: deepcopy(dict(player.__dict__))
+            for player_id, player in players.items()
+        }
+        original_results = deepcopy(round_data.results)
+        original_pending_results = deepcopy(round_data.pending_results)
+        original_bye_type = round_data.bye_type
+
+        undone = self.undo_round_results(round_data, players)
+        if undone and self.record_round_results(round_data, results_data, players):
+            # Undo clears the completed flag and recording never sets it.
+            round_data.is_completed = True
+            return True
+
+        self._restore_player_snapshots(players, snapshots)
+        round_data.results[:] = original_results
+        round_data.pending_results[:] = original_pending_results
+        round_data.bye_type = original_bye_type
+        round_data.is_completed = True
+        return False
+
     @staticmethod
     def _history_matches(
         player: Player,
