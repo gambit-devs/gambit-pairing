@@ -1,7 +1,5 @@
-from gambitpairing.controllers.pairing.dutch_swiss import (
-    _assign_colors_fide,
-    create_dutch_swiss_pairings,
-)
+from gambitpairing.controllers.pairing.dutch_rules import _assign_colors_fide
+from gambitpairing.controllers.pairing.dutch_swiss import create_dutch_swiss_pairings
 from gambitpairing.controllers.pairing.round_robin import create_round_robin
 from gambitpairing.models.enums import Colour
 from gambitpairing.models.player import Player

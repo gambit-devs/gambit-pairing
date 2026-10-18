@@ -9,21 +9,20 @@ from itertools import combinations
 from gambitpairing.exceptions import NoPairingAvailableException
 from gambitpairing.models.enums import Colour
 
+from .dutch_rules import (
+    FloatType,
+    _assign_colors_fide,
+    _get_color_imbalance,
+    _get_color_preference,
+    _get_float_type,
+    _has_strong_color_preference,
+    _is_topscorer,
+    _meets_absolute_criteria,
+    _played_colors,
+)
+
 
 def pair_round(players, previous, current_round, total_rounds, initial_color, check):
-    # Imported at invocation to keep the compatibility entrypoint acyclic.
-    from .dutch_swiss import (
-        FloatType,
-        _assign_colors_fide,
-        _get_color_imbalance,
-        _get_color_preference,
-        _get_float_type,
-        _has_strong_color_preference,
-        _is_topscorer,
-        _meets_absolute_criteria,
-        _played_colors,
-    )
-
     ordered = sorted(players, key=lambda p: (-p.score, p.pairing_number))
     edges = {}
     for a, b in combinations(ordered, 2):

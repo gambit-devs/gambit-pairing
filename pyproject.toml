@@ -119,6 +119,9 @@ exclude = [
 ]
 venvPath = "."
 venv = ".venv"
+# Import src/ as a root so each module has one name; without it CI resolves
+# the same file under two names and reports spurious type mismatches.
+extraPaths = ["src"]
 
 # Python settings
 pythonVersion = "3.12"
