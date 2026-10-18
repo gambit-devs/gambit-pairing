@@ -26,6 +26,7 @@ class MainWindowUiState:
     can_undo: bool
     can_save: bool
     can_export_standings: bool
+    can_export_trf: bool
     can_import_players: bool
     can_export_players: bool
     can_add_player: bool
@@ -94,6 +95,7 @@ def build_main_window_ui_state(
         can_undo=can_undo,
         can_save=tournament_exists,
         can_export_standings=tournament_exists and results_recorded > 0,
+        can_export_trf=tournament_exists,
         can_import_players=tournament_exists and not tournament_started,
         can_export_players=tournament_exists and player_count > 0,
         can_add_player=not tournament_started,

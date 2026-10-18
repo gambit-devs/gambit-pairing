@@ -27,11 +27,13 @@ from PyQt6.QtGui import QAction, QCloseEvent
 from PyQt6.QtWidgets import QMessageBox
 
 from gambitpairing import APP_NAME, APP_VERSION, utils
+from gambitpairing.constants import TRF_FILTER
 from gambitpairing.controllers.tournament import (
     TournamentGuiState,
     TournamentPersistenceService,
 )
 from gambitpairing.controllers.tournament.session import TournamentSession as Tournament
+from gambitpairing.representation import build_trf_document
 from gambitpairing.utils import setup_logger
 
 from .dialogs import (
@@ -257,6 +259,36 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             prompt = build_save_error_prompt(e)
             QtWidgets.QMessageBox.critical(self, prompt.title, prompt.message)
             return False
+
+    def export_trf(self) -> None:
+        """Export the loaded tournament as a FIDE TRF-16 file."""
+        if not self.tournament:
+            QtWidgets.QMessageBox.information(
+                self, "Export Error", "No tournament data."
+            )
+            return
+
+        filename, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self, "Export TRF", "", TRF_FILTER
+        )
+        if not filename:
+            return
+
+        try:
+            with open(filename, "w", encoding="utf-8") as f:
+                f.write(build_trf_document(self.tournament))
+        except Exception as e:
+            logging.exception("Error exporting TRF:")
+            QtWidgets.QMessageBox.critical(
+                self, "Export Error", f"Could not save TRF file:\n{e}"
+            )
+            self.statusBar().showMessage("Error exporting TRF.")
+            return
+
+        QtWidgets.QMessageBox.information(
+            self, "Export Successful", f"Tournament exported to {filename}"
+        )
+        self.statusBar().showMessage(f"Tournament exported to {filename}")
 
     def restart_application(self):
         """Restart the application cleanly."""
@@ -515,6 +547,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self.export_standings_action = self._create_action(
             "&Export Standings...", self.standings_tab.export_standings
         )
+        self.export_trf_action = self._create_action("Export &TRF...", self.export_trf)
         self.settings_action = self._create_action(
             "S&ettings...", self.show_settings_dialog
         )
@@ -527,6 +560,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         file_menu.addActions(
             [
                 self.export_standings_action,
+                self.export_trf_action,
             ]
         )
         file_menu.addSeparator()
@@ -640,6 +674,11 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
                 "document-export", QtWidgets.QStyle.StandardPixmap.SP_DialogSaveButton
             )
         )
+        self.export_trf_action.setIcon(
+            get_native_icon(
+                "document-export", QtWidgets.QStyle.StandardPixmap.SP_DialogSaveButton
+            )
+        )
         self.settings_action.setIcon(
             get_native_icon(
                 "configure", QtWidgets.QStyle.StandardPixmap.SP_FileDialogDetailedView
@@ -733,6 +772,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self.save_action.setEnabled(state.can_save)
         self.save_as_action.setEnabled(state.can_save)
         self.export_standings_action.setEnabled(state.can_export_standings)
+        self.export_trf_action.setEnabled(state.can_export_trf)
 
         # Player operations
         self.import_players_action.setEnabled(state.can_import_players)

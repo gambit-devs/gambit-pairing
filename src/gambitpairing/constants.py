@@ -18,6 +18,7 @@
 SAVE_FILE_EXTENSION = ".json"
 SAVE_FILE_FILTER = f"Gambit Pairing Files (*{SAVE_FILE_EXTENSION});;All Files (*)"
 CSV_FILTER = "CSV Files (*.csv);;Text Files (*.txt)"
+TRF_FILTER = "TRF Files (*.trf)"
 
 # Game outcome scores
 WIN_SCORE = 1.0
@@ -51,7 +52,7 @@ OUTCOME_BYE = "bye"  # Pairing-allocated bye
 # Chess Federations
 MODE_USCF = "USCF"
 MODE_FIDE = "FIDE"
-DEFAULT_MODE = MODE_USCF
+DEFAULT_MODE = MODE_FIDE
 
 # Tiebreaker Keys - USCF
 TB_MEDIAN = "median"

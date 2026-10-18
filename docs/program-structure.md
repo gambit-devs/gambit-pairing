@@ -10,8 +10,10 @@
 - `controllers/pairing/matching.py`: exact matching bounds and deterministic
   candidate selection; independent of BBP.
 - `controllers/pairing/bbp_dutch.py`: production BBP adapter and shared discovery.
-- `compatibility/bbp.py`: TRF conversion and pairing-output parsing.
-- `representation/`: validated document loading and reconstruction.
+- `compatibility/bbp.py`: BBP TRF(bx) requests, TRF import and pairing-output
+  parsing.
+- `representation/`: validated document loading and reconstruction, and the
+  FIDE TRF-16 export (`representation/trf.py`).
 - `validation/`: absolute rule checks and explicitly incomplete quality verification.
 - `testing/` and `comparison/`: generators, benchmarks and comparison reports.
 - `gui/`: Qt presentation and interaction; sporting ranks come from the backend.

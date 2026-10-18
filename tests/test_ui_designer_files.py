@@ -11,7 +11,7 @@ from PyQt6.QtCore import Qt
 from importlib_resources import as_file, files
 
 from gambitpairing.constants import (
-    DEFAULT_USCF_TIEBREAK_ORDER,
+    DEFAULT_FIDE_TIEBREAK_ORDER,
     RESULT_BLACK_WIN,
     RESULT_DRAW,
     RESULT_WHITE_WIN,
@@ -143,7 +143,7 @@ def test_designer_backed_dialogs_wire_expected_controls():
     assert new_tournament.get_data() == (
         "My Swiss Tournament",
         5,
-        list(DEFAULT_USCF_TIEBREAK_ORDER),
+        list(DEFAULT_FIDE_TIEBREAK_ORDER),
         "dutch_swiss",
         False,
     )

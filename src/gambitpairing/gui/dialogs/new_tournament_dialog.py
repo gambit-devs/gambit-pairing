@@ -38,7 +38,7 @@ class NewTournamentDialog(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.tournament_mode = DEFAULT_MODE
-        self.current_tiebreak_order = list(DEFAULT_USCF_TIEBREAK_ORDER)
+        self.current_tiebreak_order = list(DEFAULT_FIDE_TIEBREAK_ORDER)
         self.player_count = 5
 
         load_ui_into(self, "new_tournament_dialog.ui")
@@ -49,6 +49,7 @@ class NewTournamentDialog(QtWidgets.QDialog):
         self.mode_combo = required_child(self, QtWidgets.QComboBox, "mode_combo")
         self.mode_combo.addItem("USCF", MODE_USCF)
         self.mode_combo.addItem("FIDE", MODE_FIDE)
+        self.mode_combo.setCurrentIndex(self.mode_combo.findData(DEFAULT_MODE))
         self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
         self.tiebreak_list = required_child(
             self, QtWidgets.QListWidget, "tiebreak_list"

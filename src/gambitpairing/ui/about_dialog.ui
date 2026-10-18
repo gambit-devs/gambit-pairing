@@ -68,7 +68,20 @@
        <item>
         <widget class="QLabel" name="support_label">
          <property name="text">
-          <string>For support, join our &lt;a href='#'&gt;Discord community&lt;/a&gt;</string>
+          <string>For support, join our &lt;a href='https://discord.gg/rNPdxPyMVs'&gt;Discord community&lt;/a&gt;</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+         <property name="openExternalLinks">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="website_label">
+         <property name="text">
+          <string>Website: &lt;a href='https://gambit-devs.org'&gt;gambit-devs.org&lt;/a&gt;</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>
