@@ -202,10 +202,10 @@ This project is open source and available under the GPL-3.0-or-later
 > _Below are some example screenshots of Gambit Pairing in action._
 
 **About Dialog**
-![About Dialog](docs/screenshots/app.png)
+![Gambit Pairing](docs/screenshots/app.png)
 
 **Tournament Control Tab**
-![Main Tournament Control](docs/screenshots/tournament.png)
+![Rounds Tab](docs/screenshots/tournament.png)
 
 **Player Manager Tab**
 ![Player Tab](docs/screenshots/player.png)
