@@ -6,7 +6,7 @@ using the factory pattern.
 """
 
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from gambitpairing.models.player import create_player
 from gambitpairing.utils import setup_logger
@@ -184,90 +184,6 @@ def cfc_api_to_search_result(cfc_data: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def fide_profile_to_player_dict(profile_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Convert FIDE profile page data to player dictionary.
-
-    This is used when get_fide_player_info returns detailed profile data.
-
-    Args:
-        profile_data: Parsed FIDE profile data
-
-    Returns:
-        Dictionary compatible with create_player_from_dict()
-    """
-    # Similar to search results but may have more detailed info
-    return fide_api_to_player_dict(profile_data)
-
-
-def api_response_to_players(
-    api_responses: List[Dict[str, Any]], source: str = "fide"
-) -> List[Any]:  # Returns List[Player]
-    """Convert list of API responses to Player objects.
-
-    Batch conversion with error handling for individual failures.
-
-    Args:
-        api_responses: List of API response dictionaries
-        source: API source ('fide', 'cfc', 'uscf')
-
-    Returns:
-        List of Player objects (may be shorter than input if some fail)
-
-    Example:
-        >>> from gambitpairing.utils.api import search_fide_players
-        >>> api_results = search_fide_players("Carlsen")
-        >>> players = api_response_to_players(api_results, source="fide")
-    """
-    # Import here to avoid circular dependency
-    from gambitpairing.models.player import create_player_from_dict
-
-    # Select appropriate adapter
-    if source.lower() == "fide":
-        adapter = fide_api_to_player_dict
-    elif source.lower() == "cfc":
-        adapter = cfc_api_to_player_dict
-    else:
-        logger.warning("Unknown API source: %s, using FIDE adapter", source)
-        adapter = fide_api_to_player_dict
-
-    players = []
-    for api_data in api_responses:
-        try:
-            player_dict = adapter(api_data)
-            player = create_player_from_dict(player_dict)
-            players.append(player)
-        except Exception as e:
-            logger.warning(
-                "Failed to create player from API data: %s - %s",
-                api_data.get("name", "Unknown"),
-                e,
-            )
-            continue
-
-    return players
-
-
-def create_player_from_fide_search(fide_data: Dict[str, Any]) -> Optional[Any]:
-    """Create a single Player from FIDE search result.
-
-    Convenience function for single player creation.
-
-    Args:
-        fide_data: Single FIDE API search result
-
-    Returns:
-        Player object or None if creation fails
-    """
-    from gambitpairing.models.player import create_player_from_dict
-
-    try:
-        player_dict = fide_api_to_player_dict(fide_data)
-        return create_player_from_dict(player_dict)
-    except Exception as e:
-        logger.error("Failed to create player from FIDE data: %s", e)
-        return None
-
-
 def create_player_from_cfc_data(cfc_data: Dict[str, Any]) -> Optional[Any]:
     """Create a single Player from CFC API response.
 
@@ -294,8 +210,5 @@ __all__ = [
     "fide_api_to_player_dict",
     "cfc_api_to_player_dict",
     "cfc_api_to_search_result",
-    "fide_profile_to_player_dict",
-    "api_response_to_players",
-    "create_player_from_fide_search",
     "create_player_from_cfc_data",
 ]

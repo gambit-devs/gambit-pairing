@@ -39,6 +39,7 @@ from gambitpairing.utils import setup_logger
 from .dialogs import (
     AboutDialog,
     NewTournamentDialog,
+    PlayerListsDialog,
     SettingsDialog,
     UnsavedChangesDialog,
 )
@@ -64,6 +65,7 @@ from .main_window_tournament_flow import (
     project_new_tournament_data,
 )
 from .player_import_workflow import PlayerImportWorkflow
+from .player_list_workflow import player_list_updater
 from .ui_loader import load_ui_into, required_child
 from .update_workflow import UpdateWorkflowController
 from .views.crosstable.crosstable_view import CrosstableView
@@ -105,6 +107,9 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         # Velopack installs any update downloaded earlier during startup, so only
         # the online check remains here.
         QtCore.QTimer.singleShot(1500, self.check_for_updates_auto)
+        # Check the kept player lists once the window is up; this runs in a
+        # background thread and does nothing when no list is selected.
+        QtCore.QTimer.singleShot(3000, player_list_updater().run_scheduled_checks)
 
         logger.info("GambitPairingMainWindow __init__ done.")
 
@@ -363,6 +368,10 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             return should_continue_after_save_prompt("discard", save_succeeded=False)
         return should_continue_after_save_prompt("cancel", save_succeeded=False)
 
+    def show_player_lists_dialog(self) -> None:
+        """Choose which FIDE and CFC player lists are kept locally."""
+        PlayerListsDialog(self).exec()
+
     def show_about_dialog(self):
         """Show the About dialog."""
         dialog = AboutDialog(self)
@@ -603,6 +612,9 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         self.export_players_action = self._create_action(
             "&Export Players to CSV...", self.players_tab.export_players_to_file
         )
+        self.player_lists_action = self._create_action(
+            "Player &Lists...", self.show_player_lists_dialog
+        )
         player_menu.addSeparator()
         player_menu.addActions(
             [
@@ -610,6 +622,8 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
                 self.export_players_action,
             ]
         )
+        player_menu.addSeparator()
+        player_menu.addAction(self.player_lists_action)
 
         # Help Menu
         help_menu = menu_bar.addMenu("&Help")

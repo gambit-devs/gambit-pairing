@@ -314,7 +314,7 @@ def test_winter_fixture_pairs_with_current_player_schema():
     session = tournament_from_dict(json.loads(fixture.read_text(encoding="utf-8")))
     expected = session.to_dict()
 
-    assert session.players["player_016"].phone is None
+    assert session.players["player_016"].phone == "13085550116"
     assert all("tiebreakers" not in player for player in expected["players"])
     result = generate_pairing_document(expected, 0)
 

@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>PlayerListsDialog</class>
+ <widget class="QDialog" name="PlayerListsDialog">
+  <property name="windowTitle">
+   <string>Player Lists</string>
+  </property>
+  <property name="modal">
+   <bool>true</bool>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>560</width>
+    <height>0</height>
+   </size>
+  </property>
+  <layout class="QVBoxLayout" name="main_layout">
+   <item>
+    <widget class="QLabel" name="intro_label">
+     <property name="text">
+      <string>Choose which player lists Gambit Pairing keeps on this computer. Player search uses a kept list instead of the FIDE and CFC websites, so it also works offline. Kept lists are checked for changes at most once a day and downloaded again only when they change.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QTableWidget" name="lists_table">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>240</height>
+      </size>
+     </property>
+     <property name="alternatingRowColors">
+      <bool>true</bool>
+     </property>
+     <property name="selectionMode">
+      <enum>QAbstractItemView::SingleSelection</enum>
+     </property>
+     <property name="selectionBehavior">
+      <enum>QAbstractItemView::SelectRows</enum>
+     </property>
+     <property name="editTriggers">
+      <set>QAbstractItemView::NoEditTriggers</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="details_label">
+     <property name="text">
+      <string>Select a list to see what it contains.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="update_layout">
+     <item>
+      <widget class="QLabel" name="progress_label">
+       <property name="wordWrap">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QProgressBar" name="progress_bar">
+       <property name="visible">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="update_stretch">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeType">
+        <enum>QSizePolicy::Expanding</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btn_update_now">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="toolTip">
+        <string>Check the selected list for changes now and download it if it changed or is missing</string>
+       </property>
+       <property name="text">
+        <string>&amp;Update Now</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="attribution_label">
+     <property name="textFormat">
+      <enum>Qt::RichText</enum>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+     <property name="openExternalLinks">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttons">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

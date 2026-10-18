@@ -163,6 +163,34 @@
             </item>
            </layout>
           </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="cfc_id_label">
+            <property name="text">
+             <string>CFC ID:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <layout class="QHBoxLayout" name="cfc_id_layout">
+            <item>
+             <widget class="QLineEdit" name="cfc_id_edit">
+              <property name="toolTip">
+               <string>Chess Federation of Canada member ID (optional)</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="btn_copy_cfc_id">
+              <property name="toolTip">
+               <string>Copy CFC ID to clipboard</string>
+              </property>
+              <property name="autoRaise">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
          </layout>
         </widget>
        </item>
@@ -457,40 +485,68 @@
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="fide_tab">
+     <widget class="QWidget" name="search_tab">
       <attribute name="title">
-       <string>Import from FIDE</string>
+       <string>Search FIDE / CFC</string>
       </attribute>
-      <layout class="QVBoxLayout" name="fide_tab_layout">
+      <layout class="QVBoxLayout" name="search_tab_layout">
        <item>
-        <widget class="QGroupBox" name="fide_search_group">
+        <widget class="QGroupBox" name="search_group">
          <property name="title">
-          <string>Search FIDE Database</string>
+          <string>Search Players</string>
          </property>
-         <layout class="QVBoxLayout" name="fide_search_layout">
+         <layout class="QVBoxLayout" name="search_layout">
           <item>
-           <layout class="QHBoxLayout" name="fide_search_bar">
+           <layout class="QHBoxLayout" name="search_bar">
             <item>
-             <widget class="QLabel" name="search_label">
+             <widget class="QLabel" name="search_by_label">
               <property name="text">
-               <string>Search:</string>
+               <string>Search &amp;by:</string>
               </property>
+              <property name="buddy">
+               <cstring>search_by_combo</cstring>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="search_by_combo">
+              <property name="toolTip">
+               <string>Choose what the search text is: a name, a FIDE ID or a CFC ID. For an ID, enter the exact number.</string>
+              </property>
+              <item>
+               <property name="text">
+                <string>Name</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>FIDE ID</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>CFC ID</string>
+               </property>
+              </item>
              </widget>
             </item>
             <item>
              <widget class="QLineEdit" name="search_edit">
               <property name="toolTip">
-               <string>Enter player name (e.g., 'Magnus Carlsen') or FIDE ID (e.g., '1503014')</string>
+               <string>Enter a player name (e.g., 'Carlsen, Magnus') or an ID, matching the Search by choice</string>
               </property>
               <property name="placeholderText">
-               <string>Enter player name or FIDE ID...</string>
+               <string>Enter player name...</string>
+              </property>
+              <property name="clearButtonEnabled">
+               <bool>true</bool>
               </property>
              </widget>
             </item>
             <item>
              <widget class="QPushButton" name="btn_search">
               <property name="toolTip">
-               <string>Search by name or FIDE ID (Ctrl+Enter)</string>
+               <string>Search the checked sources (Ctrl+Enter)</string>
               </property>
               <property name="text">
                <string>Search</string>
@@ -519,23 +575,79 @@
            </layout>
           </item>
           <item>
-           <widget class="QLabel" name="fide_instructions">
-            <property name="text">
-             <string>&lt;b&gt;Search Tips:&lt;/b&gt;&lt;br&gt;- &lt;b&gt;Name search:&lt;/b&gt; Try 'Magnus Carlsen', 'Carlsen', or 'Magnus'&lt;br&gt;- &lt;b&gt;FIDE ID search:&lt;/b&gt; Enter exact ID like 1503014&lt;br&gt;- &lt;b&gt;Auto-detection:&lt;/b&gt; Numbers are treated as FIDE IDs, text as names&lt;br&gt;- &lt;b&gt;Right-click&lt;/b&gt; on results for copy options&lt;br&gt;- &lt;b&gt;Double-click&lt;/b&gt; any result to import that player</string>
-            </property>
-           </widget>
+           <layout class="QHBoxLayout" name="sources_bar">
+            <item>
+             <widget class="QLabel" name="sources_label">
+              <property name="text">
+               <string>Sources:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="source_fide_check">
+              <property name="toolTip">
+               <string>Search FIDE players</string>
+              </property>
+              <property name="text">
+               <string>&amp;FIDE</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="source_cfc_check">
+              <property name="toolTip">
+               <string>Search Chess Federation of Canada members</string>
+              </property>
+              <property name="text">
+               <string>&amp;CFC</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="sources_stretch">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeType">
+               <enum>QSizePolicy::Expanding</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>0</width>
+                <height>0</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="QPushButton" name="btn_player_lists">
+              <property name="toolTip">
+               <string>Choose which FIDE and CFC player lists are kept on this computer for offline search</string>
+              </property>
+              <property name="text">
+               <string>Player &amp;lists…</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </item>
          </layout>
         </widget>
        </item>
        <item>
-        <widget class="QGroupBox" name="fide_results_group">
+        <widget class="QGroupBox" name="results_group">
          <property name="title">
           <string>Search Results</string>
          </property>
-         <layout class="QVBoxLayout" name="fide_results_layout">
+         <layout class="QVBoxLayout" name="results_layout">
           <item>
-           <widget class="QTableWidget" name="fide_table">
+           <widget class="QTableWidget" name="results_table">
             <property name="alternatingRowColors">
              <bool>true</bool>
             </property>
@@ -548,9 +660,22 @@
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="results_info_label">
+           <widget class="QLabel" name="search_status_label">
             <property name="text">
              <string>Search for players above to see results here</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="list_status_label">
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
             </property>
            </widget>
           </item>
@@ -558,16 +683,16 @@
         </widget>
        </item>
        <item>
-        <layout class="QHBoxLayout" name="fide_controls_layout">
+        <layout class="QHBoxLayout" name="search_controls_layout">
          <item>
-          <widget class="QProgressBar" name="fide_progress">
+          <widget class="QProgressBar" name="search_progress">
            <property name="visible">
             <bool>false</bool>
            </property>
           </widget>
          </item>
          <item>
-          <spacer name="fide_controls_stretch">
+          <spacer name="search_controls_stretch">
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
            </property>
@@ -588,152 +713,10 @@
             <bool>false</bool>
            </property>
            <property name="toolTip">
-            <string>Import the selected FIDE player data to the Player Details tab</string>
+            <string>Fill the Player Details tab from the selected result</string>
            </property>
            <property name="text">
-            <string>Import Selected Player</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-      </layout>
-     </widget>
-     <widget class="QWidget" name="cfc_tab">
-      <attribute name="title">
-       <string>Import from CFC</string>
-      </attribute>
-      <layout class="QVBoxLayout" name="cfc_tab_layout">
-       <item>
-        <widget class="QGroupBox" name="cfc_search_group">
-         <property name="title">
-          <string>Search CFC Database</string>
-         </property>
-         <layout class="QVBoxLayout" name="cfc_search_layout">
-          <item>
-           <layout class="QHBoxLayout" name="cfc_search_bar">
-            <item>
-             <widget class="QLabel" name="cfc_search_label">
-              <property name="text">
-               <string>Search:</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="cfc_search_edit">
-              <property name="toolTip">
-               <string>Enter player name (e.g., 'Kevin Spraggett') or CFC ID (e.g., '100123')</string>
-              </property>
-              <property name="placeholderText">
-               <string>Enter player name or CFC ID...</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-            <widget class="QPushButton" name="btn_cfc_search">
-              <property name="toolTip">
-               <string>Search by name or CFC ID</string>
-              </property>
-              <property name="text">
-               <string>Search</string>
-              </property>
-              <property name="shortcut">
-               <string>Ctrl+Return</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QPushButton" name="btn_cfc_clear">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="toolTip">
-               <string>Clear search results and start over (Ctrl+R)</string>
-              </property>
-              <property name="text">
-               <string>Clear Results</string>
-              </property>
-              <property name="shortcut">
-               <string>Ctrl+R</string>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item>
-           <widget class="QLabel" name="cfc_instructions">
-            <property name="text">
-             <string>&lt;b&gt;Search Tips:&lt;/b&gt;&lt;br&gt;- &lt;b&gt;Name search:&lt;/b&gt; Try 'Kevin Spraggett', 'Spraggett', or 'Kevin'&lt;br&gt;- &lt;b&gt;CFC ID search:&lt;/b&gt; Enter exact ID like 100123&lt;br&gt;- &lt;b&gt;Auto-detection:&lt;/b&gt; Numbers are treated as CFC IDs, text as names&lt;br&gt;- &lt;b&gt;Province filter:&lt;/b&gt; Narrow results by selecting a specific province&lt;br&gt;- &lt;b&gt;Right-click&lt;/b&gt; on results for copy options&lt;br&gt;- &lt;b&gt;Double-click&lt;/b&gt; any result to import that player</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </widget>
-       </item>
-       <item>
-        <widget class="QGroupBox" name="cfc_results_group">
-         <property name="title">
-          <string>Search Results</string>
-         </property>
-         <layout class="QVBoxLayout" name="cfc_results_layout">
-          <item>
-           <widget class="QTableWidget" name="cfc_table">
-            <property name="alternatingRowColors">
-             <bool>true</bool>
-            </property>
-            <property name="selectionBehavior">
-             <enum>QAbstractItemView::SelectRows</enum>
-            </property>
-            <property name="editTriggers">
-             <set>QAbstractItemView::NoEditTriggers</set>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="cfc_results_info_label">
-            <property name="text">
-             <string>Search for players above to see results here</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </widget>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="cfc_controls_layout">
-         <item>
-          <widget class="QProgressBar" name="cfc_progress">
-           <property name="visible">
-            <bool>false</bool>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <spacer name="cfc_controls_stretch">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeType">
-            <enum>QSizePolicy::Expanding</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>0</width>
-             <height>0</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item>
-          <widget class="QPushButton" name="btn_use_selected_cfc">
-           <property name="enabled">
-            <bool>false</bool>
-           </property>
-           <property name="toolTip">
-            <string>Import the selected CFC player data to the Player Details tab</string>
-           </property>
-           <property name="text">
-            <string>Import Selected Player</string>
+            <string>Use Selected Player</string>
            </property>
           </widget>
          </item>
@@ -815,9 +798,9 @@
               </spacer>
              </item>
              <item>
-              <widget class="QPushButton" name="btn_empty_go_fide">
+              <widget class="QPushButton" name="btn_empty_go_search">
                <property name="text">
-                <string>Import from FIDE</string>
+                <string>Search FIDE / CFC</string>
                </property>
               </widget>
              </item>

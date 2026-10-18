@@ -19,6 +19,7 @@
 from .about_dialog import AboutDialog
 from .manual_pairing_dialog import ManualPairingDialog
 from .new_tournament_dialog import NewTournamentDialog
+from .player_lists_dialog import PlayerListsDialog
 from .player_management_dialog import PlayerManagementDialog
 from .print_options_dialog import PrintOptionsDialog
 from .tournament_settings_dialoug import SettingsDialog
@@ -29,6 +30,7 @@ from .unsaved_changes_dialog import UnsavedChangesDialog
 __all__ = [
     "NewTournamentDialog",
     "PlayerManagementDialog",
+    "PlayerListsDialog",
     "SettingsDialog",
     "ManualPairingDialog",
     "UpdateDownloadDialog",

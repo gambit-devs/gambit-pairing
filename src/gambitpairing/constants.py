@@ -119,6 +119,20 @@ DEFAULT_FIDE_TIEBREAK_ORDER = [
 # Backward compatibility
 DEFAULT_TIEBREAK_SORT_ORDER = DEFAULT_USCF_TIEBREAK_ORDER
 
+# Player lists kept locally for offline search (keys from
+# gambitpairing.player_lists.catalog.PLAYER_LISTS). Users change the selection
+# in the Player Lists dialog; this is the selection before they do.
+# NOTE: confirm FIDE permits the app to download its lists on users' behalf
+# before shipping a default that includes a FIDE list.
+DEFAULT_PLAYER_LISTS: tuple[str, ...] = ("fide_combined",)
+# Automatic checks contact each list's server at most once per interval;
+# "Update now" ignores it.
+PLAYER_LIST_CHECK_INTERVAL_SECONDS = 24 * 60 * 60
+# A new download that reads fewer rows than this, or loses more than this
+# fraction of the previous row count, fails validation.
+PLAYER_LIST_MIN_ROWS = 1000
+PLAYER_LIST_MAX_ROW_DROP = 0.2
+
 UPDATE_URL = "https://api.github.com/repos/gambit-devs/Gambit-Pairing/releases/latest"
 
 # GitHub repository whose releases Velopack reads in-app updates from, and

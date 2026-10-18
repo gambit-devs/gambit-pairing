@@ -236,6 +236,7 @@ def test_trf_start_numbers_follow_pairing_numbers_then_rating():
 
 
 def _run_bbp(trf_path):
+    assert BBP_EXECUTABLE is not None
     return subprocess.run(
         [BBP_EXECUTABLE, "--dutch", str(trf_path), "-p"],
         capture_output=True,

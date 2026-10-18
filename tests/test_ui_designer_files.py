@@ -38,6 +38,7 @@ from gambitpairing.gui.widgets.round_progress_indicator import RoundProgressIndi
 from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 from gambitpairing.models import Player
 from gambitpairing.models.enums import TournamentPhase
+from gambitpairing.player_lists.search import ORIGIN_LIVE, SourceResult, cfc_hit
 
 _APP: QtWidgets.QApplication | None = None
 
@@ -202,7 +203,8 @@ def test_designer_backed_player_management_dialog_preserves_public_api():
 
     create_dialog = PlayerManagementDialog()
     assert create_dialog.windowTitle() == "Player Management"
-    assert create_dialog.tab_widget.count() == 3
+    assert create_dialog.tab_widget.count() == 2
+    assert create_dialog.tab_widget.indexOf(create_dialog.search_tab) == 1
     assert (
         create_dialog.buttons.button(QtWidgets.QDialogButtonBox.StandardButton.Ok)
         is not None
@@ -228,42 +230,43 @@ def test_designer_backed_player_management_dialog_preserves_public_api():
     assert edit_dialog.rating_spin.value() == 1900
     assert not edit_dialog.fide_group.isHidden()
 
-    create_dialog._populate_cfc_results(
-        {
-            "cfc_id": 100124,
-            "name_first": "Grace",
-            "name_last": "Hopper",
-            "regular_rating": 1900,
-            "addr_province": "NY",
-            "addr_city": "New York",
-        },
-        "100124",
-    )
-    assert create_dialog.cfc_table.item(0, 1).text() == "Grace Hopper"
-    assert create_dialog.cfc_table.item(0, 2).text() == "1900"
-
-    create_dialog._populate_cfc_results(
-        [
-            {
-                "cfc_id": "100123",
-                "name": "Ada Lovelace",
-                "rating": 1800,
-                "province": "ON",
-                "city": "Toronto",
-                "expiry_date": "2027-01-01",
-                "status": "Active",
-            }
-        ],
-        "Ada",
-    )
-    assert create_dialog.cfc_table.columnCount() == 7
-    assert create_dialog.cfc_table.cellWidget(0, 0) is None
-    create_dialog.cfc_table.selectRow(0)
-    assert create_dialog.btn_use_selected_cfc.isEnabled()
+    create_dialog._source_results = {
+        "CFC": SourceResult(
+            "CFC",
+            (
+                cfc_hit(
+                    {
+                        "cfc_id": 100124,
+                        "name_first": "Grace",
+                        "name_last": "Hopper",
+                        "regular_rating": 1900,
+                        "addr_province": "NY",
+                        "addr_city": "New York",
+                    }
+                ),
+            ),
+            ORIGIN_LIVE,
+        )
+    }
+    create_dialog._display_search_results()
+    assert create_dialog.results_table.columnCount() == 6
+    assert create_dialog.results_table.item(0, 0).text() == "Grace Hopper"
+    assert create_dialog.results_table.item(0, 1).text() == "CFC"
+    assert create_dialog.results_table.item(0, 3).text() == "100124"
+    assert create_dialog.results_table.item(0, 5).text() == "1900"
+    assert create_dialog.results_table.cellWidget(0, 0) is None
+    create_dialog.results_table.selectRow(0)
+    assert create_dialog.btn_use_selected.isEnabled()
+    assert [
+        create_dialog.search_by_combo.itemText(index)
+        for index in range(create_dialog.search_by_combo.count())
+    ] == ["Name", "FIDE ID", "CFC ID"]
+    assert create_dialog.source_fide_check.isChecked()
+    assert create_dialog.source_cfc_check.isChecked()
 
     tournament = Tournament("City Open", [Player("Ada", 1800)], 5)
     tournament_dialog = PlayerManagementDialog(tournament=tournament)
-    assert tournament_dialog.tab_widget.count() == 4
+    assert tournament_dialog.tab_widget.count() == 3
     assert tournament_dialog.tournament_table.rowCount() == 1
     assert tournament_dialog.btn_edit_tournament_player.text() == "Edit Selected Player"
 

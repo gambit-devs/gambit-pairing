@@ -1,55 +1,59 @@
-"""Integrated Player Management Dialog with tabs for manual editing, FIDE import, and tournament players."""
+"""Integrated Player Management Dialog with tabs for manual editing, FIDE/CFC search, and tournament players."""
 
-from collections.abc import Mapping
-from typing import Any, Callable, Dict, List, Optional, Sequence, TypeAlias
+from typing import Any, Callable, Dict, Optional, Sequence
 
 from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtCore import QObject, Qt, QThread, pyqtSignal
 
+from gambitpairing.gui.dialogs.player_lists_dialog import PlayerListsDialog
 from gambitpairing.gui.dialogs.player_management_data import (
     PlayerFormFields,
     build_player_data_from_fields,
     has_fide_fields,
+    optional_int_from_text,
     project_tournament_player_row,
-    search_result_count_text,
 )
 from gambitpairing.gui.gui_utils import get_native_icon
+from gambitpairing.gui.player_list_workflow import (
+    PlayerListUpdater,
+    player_list_updater,
+)
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
 from gambitpairing.models.player import Player
-from gambitpairing.utils.api import (
-    get_cfc_player_info,
-    get_fide_player_info,
-    search_cfc_players,
-    search_fide_players,
+from gambitpairing.player_lists.catalog import SOURCE_CFC, SOURCE_FIDE
+from gambitpairing.player_lists.search import (
+    SEARCH_MODES,
+    LiveLookups,
+    MergedSearchRow,
+    SearchMode,
+    SearchRequest,
+    SourceResult,
+    SourceState,
+    SourceStatus,
+    format_search_status,
+    merge_search_hits,
+    search_source,
+    selected_sources,
 )
-from gambitpairing.utils.api_adapters import cfc_api_to_search_result
+from gambitpairing.player_lists.updates import CheckOutcome, CheckStatus
 
-FIDE_COLUMNS: tuple[str, ...] = (
+RESULT_COLUMNS: tuple[str, ...] = (
     "Name",
+    "Source",
     "FIDE ID",
-    "Fed",
-    "Title",
-    "Std",
-    "Rapid",
-    "Blitz",
-    "B-Year",
-    "Gender",
-)
-
-CFC_COLUMNS: tuple[str, ...] = (
     "CFC ID",
-    "Name",
-    "Rating",
-    "Province",
-    "City",
-    "Expiry",
-    "Status",
+    "FIDE rating",
+    "CFC rating",
 )
+SEARCH_PLACEHOLDERS: dict[SearchMode, str] = {
+    SearchMode.NAME: "Enter player name...",
+    SearchMode.FIDE_ID: "Enter FIDE ID, e.g. 1503014...",
+    SearchMode.CFC_ID: "Enter CFC ID, e.g. 100123...",
+}
 
 TOURNAMENT_COLUMNS: tuple[str, ...] = ("Name", "Rating", "Age", "Gender")
 
-SearchFinishedCallback: TypeAlias = Callable[[Any, Optional[Exception]], None]
-BusyCallback: TypeAlias = Callable[[bool, str], None]
+DETAILS_TAB_INDEX = 0
 
 
 class _SearchWorker(QObject):
@@ -85,18 +89,28 @@ class _SearchWorker(QObject):
 
 
 class PlayerManagementDialog(QtWidgets.QDialog):
-    """Integrated dialog for player management with tabs for editing, FIDE import, and tournament view."""
+    """Integrated dialog for player management with tabs for editing, FIDE/CFC search, and tournament view."""
 
     def __init__(
-        self, parent=None, player_data: Optional[Dict[str, Any]] = None, tournament=None
+        self,
+        parent=None,
+        player_data: Optional[Dict[str, Any]] = None,
+        tournament=None,
+        updater: Optional[PlayerListUpdater] = None,
+        live_lookups: Optional[LiveLookups] = None,
     ):
         super().__init__(parent)
         self.player_data = player_data or {}
         self.tournament = tournament
-        self._thread: Optional[QThread] = None
-        self._worker: Optional[_SearchWorker] = None
-        self._finished_callback: Optional[SearchFinishedCallback] = None
-        self._busy_callback: Optional[BusyCallback] = None
+        self.updater = updater or player_list_updater()
+        self.live_lookups = live_lookups or LiveLookups()
+        # source -> (thread, worker) for the searches still running
+        self._search_jobs: Dict[str, tuple[QThread, _SearchWorker]] = {}
+        self._source_results: Dict[str, SourceResult] = {}
+        self._source_statuses: Dict[str, SourceStatus] = {}
+        self._result_rows: list[MergedSearchRow] = []
+        self._search_request: Optional[SearchRequest] = None
+        self._search_tab_activated = False
         self._selected_player_data = None
         self._player_data_changed = False  # Track if data has been changed/imported
         self._cleaning_up = False  # Track if we're in cleanup mode
@@ -109,8 +123,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         load_ui_into(self, "player_management_dialog.ui")
         self._bind_ui_controls()
         self._configure_details_tab()
-        self._configure_fide_tab()
-        self._configure_cfc_tab()
+        self._configure_search_tab()
         self._configure_tournament_tab()
 
         self.buttons.accepted.connect(self.accept)
@@ -122,20 +135,23 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         if self.player_data:
             self._populate_details_form()
 
+        # Trigger: opening the dialog checks lists whose daily check is due.
+        self.updater.run_scheduled_checks()
+
     def _bind_ui_controls(self) -> None:
         """Bind required Designer controls to the dialog's public API fields."""
         self.tab_widget = required_child(self, QtWidgets.QTabWidget, "tab_widget")
         self.buttons = required_child(self, QtWidgets.QDialogButtonBox, "buttons")
 
         self.details_tab = required_child(self, QtWidgets.QWidget, "details_tab")
-        self.fide_tab = required_child(self, QtWidgets.QWidget, "fide_tab")
-        self.cfc_tab = required_child(self, QtWidgets.QWidget, "cfc_tab")
+        self.search_tab = required_child(self, QtWidgets.QWidget, "search_tab")
         self.tournament_tab = required_child(self, QtWidgets.QWidget, "tournament_tab")
 
         self.name_edit = required_child(self, QtWidgets.QLineEdit, "name_edit")
         self.rating_spin = required_child(self, QtWidgets.QSpinBox, "rating_spin")
         self.gender_combo = required_child(self, QtWidgets.QComboBox, "gender_combo")
         self.dob_edit = required_child(self, QtWidgets.QDateEdit, "dob_edit")
+        self.cfc_id_edit = required_child(self, QtWidgets.QLineEdit, "cfc_id_edit")
         self.phone_edit = required_child(self, QtWidgets.QLineEdit, "phone_edit")
         self.email_edit = required_child(self, QtWidgets.QLineEdit, "email_edit")
         self.club_edit = required_child(self, QtWidgets.QLineEdit, "club_edit")
@@ -155,36 +171,35 @@ class PlayerManagementDialog(QtWidgets.QDialog):
             self, QtWidgets.QLineEdit, "fide_blitz_edit"
         )
 
+        self.search_by_combo = required_child(
+            self, QtWidgets.QComboBox, "search_by_combo"
+        )
         self.search_edit = required_child(self, QtWidgets.QLineEdit, "search_edit")
         self.btn_search = required_child(self, QtWidgets.QPushButton, "btn_search")
         self.btn_clear = required_child(self, QtWidgets.QPushButton, "btn_clear")
-        self.fide_table = required_child(self, QtWidgets.QTableWidget, "fide_table")
-        self.results_info_label = required_child(
-            self, QtWidgets.QLabel, "results_info_label"
+        self.source_fide_check = required_child(
+            self, QtWidgets.QCheckBox, "source_fide_check"
         )
-        self.fide_progress = required_child(
-            self, QtWidgets.QProgressBar, "fide_progress"
+        self.source_cfc_check = required_child(
+            self, QtWidgets.QCheckBox, "source_cfc_check"
+        )
+        self.btn_player_lists = required_child(
+            self, QtWidgets.QPushButton, "btn_player_lists"
+        )
+        self.results_table = required_child(
+            self, QtWidgets.QTableWidget, "results_table"
+        )
+        self.search_status_label = required_child(
+            self, QtWidgets.QLabel, "search_status_label"
+        )
+        self.list_status_label = required_child(
+            self, QtWidgets.QLabel, "list_status_label"
+        )
+        self.search_progress = required_child(
+            self, QtWidgets.QProgressBar, "search_progress"
         )
         self.btn_use_selected = required_child(
             self, QtWidgets.QPushButton, "btn_use_selected"
-        )
-
-        self.cfc_search_edit = required_child(
-            self, QtWidgets.QLineEdit, "cfc_search_edit"
-        )
-        self.btn_cfc_search = required_child(
-            self, QtWidgets.QPushButton, "btn_cfc_search"
-        )
-        self.btn_cfc_clear = required_child(
-            self, QtWidgets.QPushButton, "btn_cfc_clear"
-        )
-        self.cfc_table = required_child(self, QtWidgets.QTableWidget, "cfc_table")
-        self.cfc_results_info_label = required_child(
-            self, QtWidgets.QLabel, "cfc_results_info_label"
-        )
-        self.cfc_progress = required_child(self, QtWidgets.QProgressBar, "cfc_progress")
-        self.btn_use_selected_cfc = required_child(
-            self, QtWidgets.QPushButton, "btn_use_selected_cfc"
         )
 
         self.tournament_stack = required_child(
@@ -196,8 +211,8 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         self.tournament_table_page = required_child(
             self, QtWidgets.QWidget, "tournament_table_page"
         )
-        self.btn_empty_go_fide = required_child(
-            self, QtWidgets.QPushButton, "btn_empty_go_fide"
+        self.btn_empty_go_search = required_child(
+            self, QtWidgets.QPushButton, "btn_empty_go_search"
         )
         self.btn_empty_go_details = required_child(
             self, QtWidgets.QPushButton, "btn_empty_go_details"
@@ -220,28 +235,17 @@ class PlayerManagementDialog(QtWidgets.QDialog):
                 "edit-clear", QtWidgets.QStyle.StandardPixmap.SP_DialogResetButton
             )
         )
-        self.btn_cfc_search.setIcon(
-            get_native_icon(
-                "system-search",
-                QtWidgets.QStyle.StandardPixmap.SP_FileDialogContentsView,
-            )
-        )
-        self.btn_cfc_clear.setIcon(
-            get_native_icon(
-                "edit-clear", QtWidgets.QStyle.StandardPixmap.SP_DialogResetButton
-            )
-        )
         self.btn_use_selected.setIcon(
             get_native_icon(
                 "dialog-ok-apply", QtWidgets.QStyle.StandardPixmap.SP_DialogApplyButton
             )
         )
-        self.btn_use_selected_cfc.setIcon(
+        self.btn_player_lists.setIcon(
             get_native_icon(
-                "dialog-ok-apply", QtWidgets.QStyle.StandardPixmap.SP_DialogApplyButton
+                "folder-download", QtWidgets.QStyle.StandardPixmap.SP_DriveNetIcon
             )
         )
-        self.btn_empty_go_fide.setIcon(
+        self.btn_empty_go_search.setIcon(
             get_native_icon("go-next", QtWidgets.QStyle.StandardPixmap.SP_ArrowRight)
         )
         self.btn_empty_go_details.setIcon(
@@ -264,6 +268,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         self._configure_copy_button(
             "btn_copy_rating", lambda: str(self.rating_spin.value()), "Rating"
         )
+        self._configure_copy_button("btn_copy_cfc_id", self.cfc_id_edit.text, "CFC ID")
         self._configure_copy_button("btn_copy_phone", self.phone_edit.text, "Phone")
         self._configure_copy_button("btn_copy_email", self.email_edit.text, "Email")
         self._configure_copy_button("btn_copy_club", self.club_edit.text, "Club")
@@ -303,27 +308,37 @@ class PlayerManagementDialog(QtWidgets.QDialog):
             lambda: self._copy_to_clipboard(text_getter(), field_name)
         )
 
-    def _configure_fide_tab(self) -> None:
+    def _configure_search_tab(self) -> None:
         self.search_edit.installEventFilter(self)
         self.btn_search.clicked.connect(self._on_search)
-        self.btn_clear.clicked.connect(self._clear_fide_results)
-        self._configure_results_table(self.fide_table, FIDE_COLUMNS)
-        self.fide_table.itemSelectionChanged.connect(self._on_fide_selection_changed)
-        self.fide_table.itemDoubleClicked.connect(self._use_selected_fide_player)
-        self.fide_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.fide_table.customContextMenuRequested.connect(self._show_fide_context_menu)
-        self.btn_use_selected.clicked.connect(self._use_selected_fide_player)
+        self.btn_clear.clicked.connect(self._clear_search_results)
+        self.search_by_combo.currentIndexChanged.connect(self._on_search_mode_changed)
+        self.source_fide_check.toggled.connect(self._on_sources_changed)
+        self.source_cfc_check.toggled.connect(self._on_sources_changed)
+        self.btn_player_lists.clicked.connect(self.show_player_lists_dialog)
+        self._configure_results_table(self.results_table, RESULT_COLUMNS)
+        source_header = self.results_table.horizontalHeaderItem(
+            RESULT_COLUMNS.index("Source")
+        )
+        source_header.setToolTip(
+            "Players found in both databases share one row, matched on FIDE number"
+        )
+        self.results_table.itemSelectionChanged.connect(
+            self._on_result_selection_changed
+        )
+        self.results_table.itemDoubleClicked.connect(self._use_selected_result)
+        self.results_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.results_table.customContextMenuRequested.connect(
+            self._show_results_context_menu
+        )
+        self.btn_use_selected.clicked.connect(self._use_selected_result)
+        self.tab_widget.currentChanged.connect(self._on_tab_changed)
 
-    def _configure_cfc_tab(self) -> None:
-        self.cfc_search_edit.installEventFilter(self)
-        self.btn_cfc_search.clicked.connect(self._on_cfc_search)
-        self.btn_cfc_clear.clicked.connect(self._clear_cfc_results)
-        self._configure_results_table(self.cfc_table, CFC_COLUMNS)
-        self.cfc_table.itemSelectionChanged.connect(self._on_cfc_selection_changed)
-        self.cfc_table.itemDoubleClicked.connect(self._use_selected_cfc_player)
-        self.cfc_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.cfc_table.customContextMenuRequested.connect(self._show_cfc_context_menu)
-        self.btn_use_selected_cfc.clicked.connect(self._use_selected_cfc_player)
+        self.updater.status.connect(self._on_list_status)
+        self.updater.list_updated.connect(self._on_list_updated)
+        self.updater.busy_changed.connect(self._on_lists_busy_changed)
+        self._on_search_mode_changed()
+        self._on_sources_changed()
 
     def _configure_results_table(
         self, table: QtWidgets.QTableWidget, columns: Sequence[str]
@@ -349,9 +364,6 @@ class PlayerManagementDialog(QtWidgets.QDialog):
                 ),
             )
 
-    def _set_search_status(self, label: QtWidgets.QLabel, text: str) -> None:
-        label.setText(text)
-
     def _configure_tournament_tab(self) -> None:
         if not self.tournament:
             self.tab_widget.removeTab(self.tab_widget.indexOf(self.tournament_tab))
@@ -361,11 +373,11 @@ class PlayerManagementDialog(QtWidgets.QDialog):
             self.tab_widget.indexOf(self.tournament_tab),
             f"Tournament Players ({len(self.tournament.players)})",
         )
-        self.btn_empty_go_fide.clicked.connect(
-            lambda: self.tab_widget.setCurrentIndex(1)
+        self.btn_empty_go_search.clicked.connect(
+            lambda: self.tab_widget.setCurrentWidget(self.search_tab)
         )
         self.btn_empty_go_details.clicked.connect(
-            lambda: self.tab_widget.setCurrentIndex(0)
+            lambda: self.tab_widget.setCurrentIndex(DETAILS_TAB_INDEX)
         )
 
         if len(self.tournament.players) == 0:
@@ -393,227 +405,312 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         clipboard = QtWidgets.QApplication.clipboard()
         clipboard.setText(text.strip())
 
-    # Supporting methods for CFC functionality
-    def _on_cfc_search(self) -> None:
-        """Handle CFC search button click."""
-        search_term = self.cfc_search_edit.text().strip()
-        if not search_term:
-            QtWidgets.QMessageBox.information(
-                self,
-                "Search Required",
-                "Please enter a player name or CFC ID to search.",
+    # --- player lists ----------------------------------------------------------
+
+    def _on_tab_changed(self, index: int) -> None:
+        """Trigger: the first activation of the search tab checks due lists."""
+        if self.tab_widget.widget(index) is self.search_tab:
+            if not self._search_tab_activated:
+                self._search_tab_activated = True
+                self.updater.run_scheduled_checks()
+
+    def show_player_lists_dialog(self) -> None:
+        """Open the Player Lists dialog."""
+        PlayerListsDialog(self, updater=self.updater).exec()
+
+    def _on_list_status(self, _key: str, text: str) -> None:
+        self.list_status_label.setText(text)
+        self.list_status_label.setVisible(True)
+
+    def _on_list_updated(self, outcome: CheckOutcome) -> None:
+        if outcome.status is CheckStatus.FAILED:
+            self.list_status_label.setText(
+                f"Player list update failed: {outcome.message}. "
+                "Search uses the copy already kept, or the FIDE and CFC websites."
             )
-            return
+            self.list_status_label.setVisible(True)
 
-        self._search_cfc_players(search_term)
+    def _on_lists_busy_changed(self, busy: bool) -> None:
+        if not busy and not self.list_status_label.text().startswith(
+            "Player list update failed"
+        ):
+            self.list_status_label.setVisible(False)
 
-    def _search_cfc_players(self, search_term: str) -> None:
-        """Search for CFC players."""
-        self._run_async(
-            lambda: self._query_cfc_database(search_term, search_term.isdigit()),
-            status_text="Searching CFC database...",
-            finished_callback=lambda result, error: self._on_cfc_finished(
-                result, error, search_term
-            ),
-            busy_callback=self._set_cfc_busy,
+    # --- search ----------------------------------------------------------------
+
+    def _search_mode(self) -> SearchMode:
+        index = self.search_by_combo.currentIndex()
+        return (
+            SEARCH_MODES[index] if 0 <= index < len(SEARCH_MODES) else SearchMode.NAME
         )
 
-    def _on_cfc_finished(
-        self, result: Any, error: Optional[Exception], search_term: str
-    ) -> None:
-        """Handle completion of a CFC operation."""
-        if not self._thread or not self._worker or self._cleaning_up:
+    def _on_search_mode_changed(self, _index: int = 0) -> None:
+        self.search_edit.setPlaceholderText(SEARCH_PLACEHOLDERS[self._search_mode()])
+
+    def _on_sources_changed(self, _checked: bool = False) -> None:
+        sources = selected_sources(
+            self.source_fide_check.isChecked(), self.source_cfc_check.isChecked()
+        )
+        self.btn_search.setEnabled(bool(sources) and not self._search_jobs)
+        self.btn_search.setToolTip(
+            "Search the checked sources (Ctrl+Enter)"
+            if sources
+            else "Check FIDE, CFC or both to search"
+        )
+
+    def _on_search(self) -> None:
+        """Search every checked source for the term, as the Search by choice says."""
+        if self._search_jobs:
             return
 
+        request = SearchRequest.from_inputs(
+            self._search_mode(),
+            self.search_edit.text(),
+            self.source_fide_check.isChecked(),
+            self.source_cfc_check.isChecked(),
+        )
+        error = request.validation_error()
         if error:
-            self._set_search_status(
-                self.cfc_results_info_label, f"Search failed: {error}"
-            )
-            QtWidgets.QMessageBox.warning(self, "CFC Search Error", f"Error: {error}")
-        else:
-            self._populate_cfc_results(result, search_term)
+            QtWidgets.QMessageBox.information(self, "Search", error)
+            return
 
-        self._set_cfc_busy(False)
-        self._finalize_thread()
+        self.results_table.setRowCount(0)
+        self._result_rows = []
+        self._search_request = request
+        self._source_results = {}
+        self._source_statuses = {
+            source: SourceStatus(source, SourceState.SEARCHING)
+            for source in request.sources
+        }
+        self._update_search_status()
+        self._set_search_busy(True)
 
-    def _populate_cfc_results(self, results: Any, search_term: str) -> None:
-        """Populate the CFC results table."""
-        if isinstance(results, Mapping):
-            raw_results = [dict(results)]
-        elif results is None:
-            raw_results = []
-        else:
-            raw_results = [
-                dict(result) for result in results if isinstance(result, Mapping)
-            ]
-
-        display_results = [
-            (raw_result, cfc_api_to_search_result(raw_result))
-            for raw_result in raw_results
-        ]
-        self.cfc_table.setRowCount(len(display_results))
-
-        for row, (raw_player, player) in enumerate(display_results):
-            # Player data
-            items = [
-                player.get("cfc_id", ""),
-                player.get("name", ""),
-                str(player.get("rating", "")),
-                player.get("province", ""),
-                player.get("city", ""),
-                player.get("expiry_date", ""),
-                player.get("status", ""),
-            ]
-
-            for col, text in enumerate(items):
-                item = QtWidgets.QTableWidgetItem(str(text))
-                item.setData(Qt.ItemDataRole.UserRole, raw_player)
-                self.cfc_table.setItem(row, col, item)
-
-        # Update results info
-        if display_results:
-            self._set_search_status(
-                self.cfc_results_info_label,
-                f"Found {len(display_results)} player(s) for '{search_term}'",
-            )
-        else:
-            self._set_search_status(
-                self.cfc_results_info_label,
-                f"No players found for '{search_term}'. Try a different search term.",
+        for source in request.sources:
+            self._start_source_search(
+                source,
+                lambda source=source: search_source(
+                    source,
+                    request,
+                    self.updater.store,
+                    self.live_lookups,
+                ),
             )
 
-    def _clear_cfc_results(self):
-        """Clear CFC search results."""
-        self.cfc_table.setRowCount(0)
-        self.cfc_search_edit.clear()
-        self._set_search_status(
-            self.cfc_results_info_label,
-            "Search for players above to see results here",
+    def _start_source_search(self, source: str, fn: Callable[[], Any]) -> None:
+        worker = _SearchWorker(fn)
+        thread = QThread(self)
+        worker.moveToThread(thread)
+        worker.finished.connect(self._dispatch_search_finished)
+        thread.started.connect(worker.run)
+        self._search_jobs[source] = (thread, worker)
+        thread.start()
+
+    @QtCore.pyqtSlot(object, object, object)
+    def _dispatch_search_finished(
+        self, worker: _SearchWorker, result: Any, error: Optional[Exception]
+    ) -> None:
+        """Handle one source's result in the dialog's thread."""
+        if self._cleaning_up:
+            return
+        source = next(
+            (
+                key
+                for key, (_thread, job_worker) in self._search_jobs.items()
+                if job_worker is worker
+            ),
+            None,
         )
-        self.btn_cfc_clear.setEnabled(False)
-        self.btn_use_selected_cfc.setEnabled(False)
+        if source is None:
+            return
+        self._finish_source_job(source)
 
-    def _on_cfc_selection_changed(self):
-        """Handle CFC table selection change."""
-        has_selection = bool(self.cfc_table.selectedItems())
-        self.btn_use_selected_cfc.setEnabled(has_selection)
-
-    def _use_selected_cfc_player(self):
-        """Import the selected CFC player."""
-        current_row = self.cfc_table.currentRow()
-        if current_row < 0:
-            QtWidgets.QMessageBox.information(
-                self, "No Selection", "Please select a player to import."
+        if error is not None:
+            self._source_statuses[source] = SourceStatus(
+                source, SourceState.FAILED, message=str(error) or "search failed"
             )
-            return
+        else:
+            self._source_results[source] = result
+            self._source_statuses[source] = result.status()
+            self._display_search_results()
 
-        # Get player data from the selected row
-        item = self.cfc_table.item(current_row, 0)  # CFC ID column
-        if item:
-            player_data = item.data(Qt.ItemDataRole.UserRole)
-            self._import_cfc_player_data(player_data)
+        self._update_search_status()
+        if not self._search_jobs:
+            self._set_search_busy(False)
 
-    def _import_cfc_player_data(self, player_data: Any) -> None:
-        """Import CFC player data to the Player Details tab."""
-        if not player_data:
-            return
-
+    def _finish_source_job(self, source: str) -> None:
+        thread, worker = self._search_jobs.pop(source)
         try:
-            # Convert CFC API data to standardized player dict using adapter
-            from gambitpairing.utils.api_adapters import cfc_api_to_player_dict
+            worker.finished.disconnect(self._dispatch_search_finished)
+        except (RuntimeError, TypeError):
+            pass
+        thread.quit()
+        if not thread.wait(1500):
+            thread.terminate()
+            thread.wait(200)
+        worker.deleteLater()
+        thread.deleteLater()
 
-            standardized_data = cfc_api_to_player_dict(player_data)
+    def _update_search_status(self) -> None:
+        self.search_status_label.setText(
+            format_search_status(list(self._source_statuses.values()))
+        )
 
-            # Switch to Player Details tab
-            self.tab_widget.setCurrentIndex(0)
+    def _set_search_busy(self, busy: bool) -> None:
+        self.search_progress.setVisible(busy)
+        if busy:
+            self.search_progress.setRange(0, 0)  # Indeterminate
+        for control in (self.search_edit, self.search_by_combo):
+            control.setEnabled(not busy)
+        self._on_sources_changed()
+        self.btn_clear.setEnabled(not busy and bool(self._source_statuses))
 
-            # Populate form fields with standardized data
-            self.name_edit.setText(standardized_data.get("name", ""))
-            self.rating_spin.setValue(standardized_data.get("rating", 1000))
+    def _display_search_results(self) -> None:
+        """Merge the results received so far and show them."""
+        selected = self._selected_result_row()
+        hits = {source: result.hits for source, result in self._source_results.items()}
+        request = self._search_request
+        self._result_rows = merge_search_hits(
+            hits.get(SOURCE_FIDE, ()),
+            hits.get(SOURCE_CFC, ()),
+            term=request.term if request and request.mode is SearchMode.NAME else "",
+        )
 
-            # Set gender
-            gender = standardized_data.get("gender")
-            if gender:
-                gender_text = (
-                    "Male" if gender == "M" else "Female" if gender == "F" else ""
+        self.results_table.setRowCount(0)
+        for row in self._result_rows:
+            self._append_result_row(row)
+        self.results_table.resizeRowsToContents()
+
+        if selected is not None:
+            for index, row in enumerate(self._result_rows):
+                if (row.fide_id, row.cfc_id) == (selected.fide_id, selected.cfc_id):
+                    self.results_table.selectRow(index)
+                    break
+        self._on_result_selection_changed()
+
+    def _append_result_row(self, result: MergedSearchRow) -> None:
+        row = self.results_table.rowCount()
+        self.results_table.insertRow(row)
+        values = (
+            result.name,
+            result.source_label,
+            str(result.fide_id or ""),
+            str(result.cfc_id or ""),
+            result.fide_rating_text,
+            result.cfc_rating_text,
+        )
+        for column, text in enumerate(values):
+            item = QtWidgets.QTableWidgetItem(text)
+            self.results_table.setItem(row, column, item)
+
+    def _clear_search_results(self) -> None:
+        """Clear the search results table."""
+        self._abort_search_jobs()
+        self.results_table.setRowCount(0)
+        self._result_rows = []
+        self._source_results = {}
+        self._source_statuses = {}
+        self.btn_use_selected.setEnabled(False)
+        self.btn_clear.setEnabled(False)
+        self.search_status_label.setText("Search for players above to see results here")
+        self.search_edit.clear()
+
+    def _selected_result_row(self) -> Optional[MergedSearchRow]:
+        selection = self.results_table.selectionModel()
+        rows = selection.selectedRows() if selection else []
+        if not rows:
+            return None
+        index = rows[0].row()
+        return self._result_rows[index] if index < len(self._result_rows) else None
+
+    def _on_result_selection_changed(self) -> None:
+        self.btn_use_selected.setEnabled(self._selected_result_row() is not None)
+
+    def _show_results_context_menu(self, position) -> None:
+        """Show context menu for the search results."""
+        item = self.results_table.itemAt(position)
+        if not item:
+            return
+        result = self._result_rows[item.row()]
+
+        menu = QtWidgets.QMenu(self)
+        use_action = menu.addAction("Use Player")
+        use_action.triggered.connect(self._use_selected_result)
+        menu.addSeparator()
+        for label, value in (
+            ("Name", result.name),
+            ("FIDE ID", str(result.fide_id or "")),
+            ("CFC ID", str(result.cfc_id or "")),
+        ):
+            if value:
+                action = menu.addAction(f"Copy {label}: {value}")
+                action.triggered.connect(
+                    lambda _checked=False, value=value, label=label: (
+                        self._copy_to_clipboard(value, label)
+                    )
                 )
-                if gender_text:
-                    idx = self.gender_combo.findText(gender_text)
-                    if idx >= 0:
-                        self.gender_combo.setCurrentIndex(idx)
+        menu.exec(self.results_table.mapToGlobal(position))
 
-            # Set date of birth if available
-            dob = standardized_data.get("date_of_birth")
-            if dob:
-                birth_date = QtCore.QDate(dob.year, dob.month, dob.day)
-                if birth_date.isValid():
-                    self.dob_edit.setDate(birth_date)
-
-            # Set province/federation
-            self.federation_edit.setText(standardized_data.get("federation", ""))
-
-            # Clear fields not available from CFC
-            self.phone_edit.setText("")
-            self.email_edit.setText("")
-            self.club_edit.setText("")
-
-            # Set CFC ID if the field exists
-            cfc_id = standardized_data.get("cfc_id")
-            if hasattr(self, "cfc_id_edit") and cfc_id:
-                self.cfc_id_edit.setText(str(cfc_id))
-
-            # Store the standardized player data for later use
-            self._selected_player_data = standardized_data
-            self._player_data_changed = True  # Mark that we have new data to save
-
+    def _use_selected_result(self, *_args: Any) -> None:
+        """Fill the details form from the selected result."""
+        result = self._selected_result_row()
+        if result is None:
+            return
+        try:
+            self._apply_player_data(result.player_data(), from_fide=bool(result.fide))
         except Exception as e:
             QtWidgets.QMessageBox.warning(
                 self, "Import Error", f"Failed to import player data:\n{str(e)}"
             )
 
-    def _show_cfc_context_menu(self, position):
-        """Show context menu for CFC results table."""
-        item = self.cfc_table.itemAt(position)
-        if not item:
-            return
+    def _apply_player_data(self, data: Dict[str, Any], from_fide: bool) -> None:
+        """Fill the details form from a standardized player dict.
 
-        menu = QtWidgets.QMenu(self)
+        FIDE rows fill every FIDE field, as the FIDE import always did. IDs are
+        only written when the result has one, so a player's existing FIDE or
+        CFC ID is never replaced with a blank.
+        """
+        self.name_edit.setText(data.get("name", ""))
+        self.rating_spin.setValue(int(data.get("rating") or 0))
 
-        # Copy actions
-        copy_name_action = menu.addAction("Copy Name")
-        copy_cfc_id_action = menu.addAction("Copy CFC ID")
-        copy_rating_action = menu.addAction("Copy Rating")
-        menu.addSeparator()
-        copy_all_action = menu.addAction("Copy All Data")
+        gender = data.get("gender")
+        gender_text = "Male" if gender == "M" else "Female" if gender == "F" else ""
+        if gender_text:
+            idx = self.gender_combo.findText(gender_text)
+            if idx >= 0:
+                self.gender_combo.setCurrentIndex(idx)
 
-        action = menu.exec(self.cfc_table.mapToGlobal(position))
+        dob = data.get("date_of_birth")
+        if dob:
+            birth_date = QtCore.QDate(dob.year, dob.month, dob.day)
+            if birth_date.isValid():
+                self.dob_edit.setDate(birth_date)
 
-        if action:
-            row = item.row()
-            clipboard = QtWidgets.QApplication.clipboard()
+        self.federation_edit.setText(data.get("federation") or "")
 
-            if action == copy_name_action:
-                clipboard.setText(self.cfc_table.item(row, 1).text())  # Name column
-            elif action == copy_cfc_id_action:
-                clipboard.setText(self.cfc_table.item(row, 0).text())  # CFC ID column
-            elif action == copy_rating_action:
-                clipboard.setText(self.cfc_table.item(row, 2).text())  # Rating column
-            elif action == copy_all_action:
-                # Copy all visible data for the row
-                data_parts = []
-                for col in range(self.cfc_table.columnCount()):
-                    header = self.cfc_table.horizontalHeaderItem(col).text()
-                    value = self.cfc_table.item(row, col).text()
-                    data_parts.append(f"{header}: {value}")
-                clipboard.setText(" | ".join(data_parts))
+        # Clear fields neither federation provides
+        self.phone_edit.setText("")
+        self.email_edit.setText("")
+        self.club_edit.setText("")
 
-    def _query_cfc_database(
-        self, search_term: str, is_id_search: bool
-    ) -> List[Dict[str, Any]]:
-        """Return CFC player records for the supplied lookup value."""
-        if is_id_search:
-            return [get_cfc_player_info(search_term)]
-        return search_cfc_players(search_term)
+        if data.get("fide_id"):
+            self.fide_id_edit.setText(str(data["fide_id"]))
+            self.fide_group.setVisible(True)
+        if from_fide:
+            for edit, key in (
+                (self.fide_title_edit, "fide_title"),
+                (self.fide_std_edit, "fide_standard"),
+                (self.fide_rapid_edit, "fide_rapid"),
+                (self.fide_blitz_edit, "fide_blitz"),
+            ):
+                edit.setText(str(data.get(key) or ""))
+        if data.get("cfc_id"):
+            self.cfc_id_edit.setText(str(data["cfc_id"]))
+
+        # Store the standardized player data for later use
+        self._selected_player_data = data
+        self._player_data_changed = True  # Mark that we have new data to save
+
+        self.tab_widget.setCurrentIndex(DETAILS_TAB_INDEX)
 
     def _populate_details_form(self):
         """Populate the details form with player data."""
@@ -656,6 +753,9 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         self.email_edit.setText(self.player_data.get("email", "") or "")
         self.club_edit.setText(self.player_data.get("club", "") or "")
         self.federation_edit.setText(self.player_data.get("federation", "") or "")
+        cfc_id = self.player_data.get("cfc_id")
+        if cfc_id:
+            self.cfc_id_edit.setText(str(cfc_id))
 
         # FIDE information (now editable)
         if any(
@@ -718,376 +818,12 @@ class PlayerManagementDialog(QtWidgets.QDialog):
                 if obj == self.search_edit:
                     self._on_search()
                     return True
-                if obj == self.cfc_search_edit:
-                    self._on_cfc_search()
-                    return True
         return super().eventFilter(obj, event)
-
-    def _set_fide_busy(self, busy: bool, status_text: str = "") -> None:
-        """Set the UI state for FIDE operations with status update."""
-        controls = [
-            self.search_edit,
-            self.btn_search,
-            self.btn_use_selected,
-        ]
-
-        for control in controls:
-            control.setEnabled(not busy)
-
-        self.fide_progress.setVisible(busy)
-        if busy:
-            self.fide_progress.setRange(0, 0)  # Indeterminate
-            if status_text:
-                self._set_search_status(self.results_info_label, status_text)
-        else:
-            self.fide_progress.setVisible(False)
-
-    def _set_cfc_busy(self, busy: bool, status_text: str = "") -> None:
-        """Set the UI state for CFC operations with status update."""
-        for control in (
-            self.cfc_search_edit,
-            self.btn_cfc_search,
-            self.btn_use_selected_cfc,
-        ):
-            control.setEnabled(not busy)
-        self.btn_cfc_clear.setEnabled(not busy)
-
-        self.cfc_progress.setVisible(busy)
-        if busy:
-            self.cfc_progress.setRange(0, 0)
-            if status_text:
-                self._set_search_status(self.cfc_results_info_label, status_text)
-
-    def _on_search(self) -> None:
-        """Unified search for players by name or FIDE ID with auto-detection."""
-        # Prevent overlapping searches
-        if self._thread and self._thread.isRunning():
-            return
-
-        text = self.search_edit.text().strip()
-        if not text:
-            QtWidgets.QMessageBox.information(
-                self,
-                "Search Required",
-                "Please enter a player name or FIDE ID to search.",
-            )
-            return
-
-        # Auto-detect search type: if it's all digits, treat as FIDE ID
-        if text.isdigit():
-            # FIDE ID search
-            try:
-                fid = int(text)
-                if fid <= 0:
-                    raise ValueError("FIDE ID must be positive")
-            except ValueError:
-                QtWidgets.QMessageBox.warning(
-                    self,
-                    "Invalid FIDE ID",
-                    "Please enter a valid FIDE ID (positive number only).\n"
-                    "Example: 1503014 for Magnus Carlsen",
-                )
-                return
-
-            def _fetch_one() -> List[Dict[str, Any]]:
-                info = get_fide_player_info(str(fid))
-                return [info] if info else []
-
-            # Set cancellation flag for uniformity
-            self._current_search_cancel_flag = {"cancelled": False}
-            self._run_async(_fetch_one, status_text=f"Looking up FIDE ID {fid}...")
-        else:
-            # Name search
-            if len(text) < 2:
-                QtWidgets.QMessageBox.information(
-                    self,
-                    "Search Too Short",
-                    "Please enter at least 2 characters for name search.",
-                )
-                return
-
-            # Prepare cooperative cancellation flag
-            self._current_search_cancel_flag = {"cancelled": False}
-
-            def is_cancelled():
-                return self._current_search_cancel_flag["cancelled"]
-
-            self._run_async(
-                lambda: search_fide_players(name=text, is_cancelled=is_cancelled),
-                status_text=f"Searching FIDE database for '{text}'...",
-            )
-
-    def _clear_fide_results(self) -> None:
-        """Clear the FIDE search results table."""
-        self.fide_table.setRowCount(0)
-        self.btn_use_selected.setEnabled(False)
-        self.btn_clear.setEnabled(False)
-        self.fide_group.setVisible(False)
-
-        # Reset info label
-        self._set_search_status(
-            self.results_info_label,
-            "Search for players above to see results here",
-        )
-
-        # Clear search field
-        self.search_edit.clear()
-
-    def _run_async(
-        self,
-        fn: Callable[..., Any],
-        status_text: str = "Processing...",
-        finished_callback: Optional[SearchFinishedCallback] = None,
-        busy_callback: Optional[BusyCallback] = None,
-    ) -> None:
-        """Run function in background thread with proper cleanup of previous jobs."""
-        # Always abort any existing job before starting a new one
-        self._abort_current_job()
-
-        self._finished_callback = finished_callback or self._on_fide_finished
-        self._busy_callback = busy_callback or self._set_fide_busy
-        self._busy_callback(True, status_text)
-
-        # Create new worker and thread
-        self._worker = _SearchWorker(fn)
-        self._thread = QThread()
-        self._worker.moveToThread(self._thread)
-
-        # Connect signals with unique connection to prevent multiple connections
-        self._worker.finished.connect(
-            self._dispatch_search_finished,
-        )
-        self._thread.started.connect(self._worker.run)
-        self._thread.setParent(self)  # ensure dialog owns lifetime
-
-        # Start the thread
-        self._thread.start()
-
-    @QtCore.pyqtSlot(object, object, object)
-    def _dispatch_search_finished(
-        self, worker: _SearchWorker, result: Any, error: Optional[Exception]
-    ) -> None:
-        """Dispatch worker completion to the dialog's thread."""
-        if worker is not self._worker or self._cleaning_up:
-            return
-        if self._finished_callback:
-            self._finished_callback(result, error)
-
-    def _on_fide_finished(self, result: Any, error: Optional[Exception]) -> None:
-        """Handle completion of FIDE operation."""
-        # Check if we've already cleaned up (aborted) - ignore late signals
-        if not self._thread or not self._worker or self._cleaning_up:
-            return
-
-        if error:
-            self._set_search_status(self.results_info_label, f"Search failed: {error}")
-            QtWidgets.QMessageBox.warning(self, "FIDE Search Error", f"Error: {error}")
-        elif result:
-            self._display_fide_results(result)
-        else:
-            self._set_search_status(
-                self.results_info_label,
-                "No players found. Try a different search term.",
-            )
-            QtWidgets.QMessageBox.information(self, "No Results", "No players found.")
-
-        if self._busy_callback:
-            self._busy_callback(False, "")
-        # Gracefully finalize thread post-finish
-        self._finalize_thread()
-
-    def _finalize_thread(self) -> None:
-        thread = self._thread
-        worker = self._worker
-        if not thread:
-            return
-        if worker:
-            try:
-                worker.finished.disconnect(self._dispatch_search_finished)
-            except (RuntimeError, TypeError):
-                pass
-        if thread.isRunning():
-            thread.quit()
-            if not thread.wait(1500):
-                thread.terminate()
-                thread.wait(200)
-        if worker:
-            worker.deleteLater()
-        self._thread = None
-        self._worker = None
-        self._finished_callback = None
-        self._busy_callback = None
-
-    def _display_fide_results(self, players: List[Dict[str, Any]]) -> None:
-        self.fide_table.setRowCount(0)
-        for p in players:
-            self._append_fide_row(p)
-        self.fide_table.resizeRowsToContents()
-
-        # Update info label and enable clear button
-        player_count = len(players)
-        self._set_search_status(
-            self.results_info_label, search_result_count_text(player_count)
-        )
-        self.btn_clear.setEnabled(player_count > 0)
-
-    def _append_fide_row(self, p: Dict[str, Any]) -> None:
-        row = self.fide_table.rowCount()
-        self.fide_table.insertRow(row)
-
-        # Name
-        name_item = QtWidgets.QTableWidgetItem(str(p.get("name") or ""))
-        name_item.setData(Qt.ItemDataRole.UserRole, p)  # Store full player data
-        self.fide_table.setItem(row, 0, name_item)
-
-        # Other columns
-        self.fide_table.setItem(
-            row, 1, QtWidgets.QTableWidgetItem(str(p.get("fide_id") or ""))
-        )
-        self.fide_table.setItem(
-            row, 2, QtWidgets.QTableWidgetItem(str(p.get("federation") or ""))
-        )
-        self.fide_table.setItem(
-            row, 3, QtWidgets.QTableWidgetItem(str(p.get("title") or ""))
-        )
-
-        def fmt_rating(val):
-            return "" if val in (None, 0) else str(val)
-
-        self.fide_table.setItem(
-            row, 4, QtWidgets.QTableWidgetItem(fmt_rating(p.get("standard_rating")))
-        )
-        self.fide_table.setItem(
-            row, 5, QtWidgets.QTableWidgetItem(fmt_rating(p.get("rapid_rating")))
-        )
-        self.fide_table.setItem(
-            row, 6, QtWidgets.QTableWidgetItem(fmt_rating(p.get("blitz_rating")))
-        )
-        self.fide_table.setItem(
-            row, 7, QtWidgets.QTableWidgetItem(str(p.get("birth_year") or ""))
-        )
-
-        # Convert gender for display
-        gender = p.get("gender")
-        if not gender and str(p.get("title") or "").upper().startswith("W"):
-            gender = "F"
-        gender_display = ""
-        if gender == "M":
-            gender_display = "Male"
-        elif gender == "F":
-            gender_display = "Female"
-        self.fide_table.setItem(row, 8, QtWidgets.QTableWidgetItem(gender_display))
-
-    def _show_fide_context_menu(self, position):
-        """Show context menu for FIDE search results."""
-        item = self.fide_table.itemAt(position)
-        if not item:
-            return
-
-        menu = QtWidgets.QMenu()
-
-        # Import action
-        import_action = menu.addAction("Import Player")
-        import_action.setEnabled(True)
-        import_action.triggered.connect(self._use_selected_fide_player)
-
-        # Copy actions for various fields
-        menu.addSeparator()
-
-        row = item.row()
-        name_item = self.fide_table.item(row, 0)
-        if name_item and name_item.text().strip():
-            copy_name_action = menu.addAction(f"Copy Name: {name_item.text()}")
-            copy_name_action.triggered.connect(
-                lambda: self._copy_to_clipboard(name_item.text(), "Name")
-            )
-
-        fide_id_item = self.fide_table.item(row, 1)
-        if fide_id_item and fide_id_item.text().strip():
-            copy_id_action = menu.addAction(f"Copy FIDE ID: {fide_id_item.text()}")
-            copy_id_action.triggered.connect(
-                lambda: self._copy_to_clipboard(fide_id_item.text(), "FIDE ID")
-            )
-
-        # Show menu
-        if menu.actions():
-            menu.exec(self.fide_table.mapToGlobal(position))
-
-    def _on_fide_selection_changed(self):
-        """Handle FIDE table selection change."""
-        selected_rows = self.fide_table.selectionModel().selectedRows()
-        self.btn_use_selected.setEnabled(len(selected_rows) > 0)
 
     def _on_tournament_selection_changed(self):
         """Handle tournament table selection change."""
         selected_rows = self.tournament_table.selectionModel().selectedRows()
         self.btn_edit_tournament_player.setEnabled(len(selected_rows) > 0)
-
-    def _use_selected_fide_player(self):
-        """Use the selected FIDE player data in the details form."""
-        selected_rows = self.fide_table.selectionModel().selectedRows()
-        if not selected_rows:
-            return
-
-        # Get the first selected player
-        row = selected_rows[0].row()
-        name_item = self.fide_table.item(row, 0)
-        if not name_item:
-            return
-
-        player_data = name_item.data(Qt.ItemDataRole.UserRole)
-        if not player_data:
-            return
-
-        # Convert FIDE API data to standardized player dict using adapter
-        from gambitpairing.utils.api_adapters import fide_api_to_player_dict
-
-        standardized_data = fide_api_to_player_dict(player_data)
-
-        # Update details form with standardized data
-        self.name_edit.setText(standardized_data.get("name", ""))
-        self.rating_spin.setValue(standardized_data.get("rating", 1000))
-
-        # Set gender
-        gender = standardized_data.get("gender")
-        if gender:
-            gender_text = "Male" if gender == "M" else "Female" if gender == "F" else ""
-            if gender_text:
-                idx = self.gender_combo.findText(gender_text)
-                if idx >= 0:
-                    self.gender_combo.setCurrentIndex(idx)
-
-        self.federation_edit.setText(standardized_data.get("federation", ""))
-
-        # Set date of birth if available
-        dob = standardized_data.get("date_of_birth")
-        if dob:
-            birth_date = QtCore.QDate(dob.year, dob.month, dob.day)
-            if birth_date.isValid():
-                self.dob_edit.setDate(birth_date)
-
-        # Clear other fields that might not be available from FIDE
-        self.phone_edit.setText("")
-        self.email_edit.setText("")
-        self.club_edit.setText("")
-
-        # Show FIDE info (now editable)
-        self.fide_id_edit.setText(str(standardized_data.get("fide_id", "") or ""))
-        self.fide_title_edit.setText(str(standardized_data.get("fide_title", "") or ""))
-        self.fide_std_edit.setText(
-            str(standardized_data.get("fide_standard", "") or "")
-        )
-        self.fide_rapid_edit.setText(str(standardized_data.get("fide_rapid", "") or ""))
-        self.fide_blitz_edit.setText(str(standardized_data.get("fide_blitz", "") or ""))
-
-        self.fide_group.setVisible(True)
-
-        # Store the standardized player data for later use
-        self._selected_player_data = standardized_data
-        self._player_data_changed = True  # Mark that we have new data to save
-
-        # Switch to details tab
-        self.tab_widget.setCurrentIndex(0)
 
     def _edit_selected_tournament_player(self):
         """Edit the selected tournament player."""
@@ -1118,6 +854,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
             "email": player.email or "",
             "club": player.club or "",
             "federation": player.federation or "",
+            "cfc_id": getattr(player, "cfc_id", None),
             "fide_id": getattr(player, "fide_id", None),
             "fide_title": getattr(player, "fide_title", None),
             "fide_standard": getattr(player, "fide_standard", None),
@@ -1223,6 +960,17 @@ class PlayerManagementDialog(QtWidgets.QDialog):
                     self.fide_id_edit.setFocus()
                     return
 
+            # Validate CFC ID if provided
+            cfc_id_text = self.cfc_id_edit.text().strip()
+            if cfc_id_text and optional_int_from_text(cfc_id_text) in (None, 0):
+                if current_tab != 0:
+                    self.tab_widget.setCurrentIndex(0)
+                QtWidgets.QMessageBox.warning(
+                    self, "Validation Error", "CFC ID must be a positive number."
+                )
+                self.cfc_id_edit.setFocus()
+                return
+
         elif current_tab != 0 and not has_player_data:
             # If we're on other tabs and no data has been imported/entered, ask user to go to details tab
             result = QtWidgets.QMessageBox.question(
@@ -1241,13 +989,8 @@ class PlayerManagementDialog(QtWidgets.QDialog):
 
     def closeEvent(self, event) -> None:
         """Ensure proper cleanup when dialog is closed."""
-        self._abort_current_job()
+        self._abort_search_jobs()
         super().closeEvent(event)
-
-    def reject(self) -> None:
-        """Ensure proper cleanup when dialog is cancelled."""
-        self._abort_current_job()
-        super().reject()
 
     def get_player_data(self) -> Dict[str, Any]:
         """Get the player data from the form."""
@@ -1282,7 +1025,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
             include_fide_fields=bool(self._selected_player_data)
             or has_fide_fields(fields),
             selected_birth_year=selected_birth_year,
-            cfc_id=(self._selected_player_data or self.player_data or {}).get("cfc_id"),
+            cfc_id=optional_int_from_text(self.cfc_id_edit.text()),
         )
 
     def get_editing_player_id(self) -> Optional[str]:
@@ -1293,44 +1036,42 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         """
         return self._editing_player_id
 
-    def _abort_current_job(self) -> None:
-        """Cooperatively cancel and cleanup the current background job."""
-        if not self._thread or self._cleaning_up:
+    def _abort_search_jobs(self) -> None:
+        """Cooperatively cancel and clean up the running searches."""
+        if not self._search_jobs or self._cleaning_up:
             return
 
         self._cleaning_up = True
         try:
-            # Signal cancellation to search logic if active
-            if hasattr(self, "_current_search_cancel_flag"):
-                self._current_search_cancel_flag["cancelled"] = True
-
-            # Interrupt worker (prevents emitting results afterwards)
-            if self._worker:
-                self._worker.interrupt()
-
-            # Give the thread a chance to finish gracefully
-            if self._thread.isRunning():
-                if not self._thread.wait(500):  # wait 0.5s first
-                    if not self._thread.wait(1500):  # total ~2s
-                        self._thread.terminate()
-                        self._thread.wait(200)
-
-            # Disconnect signal if still connected
-            if self._worker:
+            for source in list(self._search_jobs):
+                thread, worker = self._search_jobs[source]
+                # Interrupt worker (prevents emitting results afterwards)
+                worker.interrupt()
                 try:
-                    self._worker.finished.disconnect()
+                    worker.finished.disconnect()
                 except (RuntimeError, TypeError):
                     pass
-                self._worker.deleteLater()
-
-            # Clear busy UI
-            if self._busy_callback:
-                self._busy_callback(False, "")
+                # Give the thread a chance to finish gracefully
+                thread.quit()
+                if not thread.wait(2000):
+                    thread.terminate()
+                    thread.wait(200)
+                worker.deleteLater()
+                del self._search_jobs[source]
+            self._set_search_busy(False)
         finally:
-            self._thread = None
-            self._worker = None
-            self._finished_callback = None
-            self._busy_callback = None
             self._cleaning_up = False
-            if hasattr(self, "_current_search_cancel_flag"):
-                del self._current_search_cancel_flag
+
+    def done(self, result: int) -> None:
+        """Stop searches and stop listening to the app-wide list updater."""
+        self._abort_search_jobs()
+        for signal, slot in (
+            (self.updater.status, self._on_list_status),
+            (self.updater.list_updated, self._on_list_updated),
+            (self.updater.busy_changed, self._on_lists_busy_changed),
+        ):
+            try:
+                signal.disconnect(slot)
+            except (RuntimeError, TypeError):
+                pass
+        super().done(result)

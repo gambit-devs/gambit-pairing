@@ -1,5 +1,5 @@
 import os
-from typing import cast
+from typing import Any, cast
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -61,7 +61,7 @@ def test_export_trf_action_follows_export_standings_in_file_menu():
 
 
 def test_export_trf_ui_state_requires_a_tournament():
-    common = dict(
+    common: dict[str, Any] = dict(
         current_round_index=0,
         last_recorded_results_data=[],
         dirty=False,

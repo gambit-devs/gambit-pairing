@@ -1,0 +1,16 @@
+"CFC#","Expiry","Last","First","Prov","City","Rating","High","Active Rtg","Active High","FIDE Number","FIDE Rating"
+191362,2025-12-18,"---","---","ON",Scarborough",0,0,1092,1,,0
+171117,2027-08-20," Tremblay","Marc","QC",Montréal",1991,1991,1898,1806,2600001,1950
+165306,2017-10-15," Ngo","Ethan","AB",Calgary",0,0,208,4,,0
+144493,2006-07-01,".","Joey","ON",Toronto",1066,10,1066,1,,0
+186438,,"186438","Anonymous","ON",Kitchener",0,0,1263,2,,0
+112292,2000-04-01,"Amigues","Emmanuel","FO",Marseille, FRANCE",2107,2107,2107,10,,0
+126469,2000-02-01,"Tomecek","P","",",1086,1,986,1,,0
+174892,,"Anand","Aditi","US",San Ramon",0,0,450,-1,,0
+182731,,"Kichian","Alina","ON",x",0,0,1000,-1,,0
+100200,2026-05-01,"Lovelace","Ada","ON",Toronto",abc,0,0,0,,0
+100201,2026-05-01,"Short"
+ABC123,2026-05-01,"Bad","Id","ON",Toronto",0,0,0,0,,0
+171117,2027-08-20,"Tremblay","Marc","QC",Montréal",1991,1991,1898,1806,2600001,1950
+100300,2027-01-01,"Carlsen","Magnus","FO",Oslo",2800,2800,0,0,1503014,2823
+100301,2026-11-30,"Côté","Félix","QC",Sainte-Adèle",1500,1550,1480,1490,,0

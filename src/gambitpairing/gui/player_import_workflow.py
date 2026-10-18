@@ -29,7 +29,7 @@ class PlayerImportWorkflow:
             parent=self.main_window,
             tournament=self.main_window.tournament,
         )
-        dialog.tab_widget.setCurrentIndex(1)
+        dialog.tab_widget.setCurrentWidget(dialog.search_tab)
         if dialog.exec():
             self.main_window.players_tab.refresh_player_list()
             self.main_window.players_tab.update_ui_state()
