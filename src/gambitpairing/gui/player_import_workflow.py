@@ -28,6 +28,7 @@ class PlayerImportWorkflow:
         dialog = PlayerManagementDialog(
             parent=self.main_window,
             tournament=self.main_window.tournament,
+            on_add_players=self.main_window.players_tab.add_registrations_from_search,
         )
         dialog.tab_widget.setCurrentWidget(dialog.search_tab)
         if dialog.exec():

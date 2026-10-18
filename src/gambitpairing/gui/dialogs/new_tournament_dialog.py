@@ -29,8 +29,10 @@ from gambitpairing.constants import (
     MODE_USCF,
     TIEBREAK_NAMES,
 )
+from gambitpairing.gui.dialogs.event_details_page import EventDetailsPage
 from gambitpairing.gui.gui_utils import get_native_icon
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
+from gambitpairing.models.tournament import EventDetails
 from gambitpairing.utils.utility_functions import resize_list_to_show_all_items
 
 
@@ -85,6 +87,12 @@ class NewTournamentDialog(QtWidgets.QDialog):
             )
         )
         self.buttons = required_child(self, QtWidgets.QDialogButtonBox, "buttons")
+        self.setup_tabs = required_child(self, QtWidgets.QTabWidget, "setup_tabs")
+        self.event_tab = required_child(self, QtWidgets.QWidget, "event_tab")
+        self.event_page = EventDetailsPage(self)
+        required_child(self, QtWidgets.QVBoxLayout, "event_tab_layout").addWidget(
+            self.event_page
+        )
 
         self.populate_tiebreak_list()
         resize_list_to_show_all_items(self.tiebreak_list)
@@ -128,8 +136,17 @@ class NewTournamentDialog(QtWidgets.QDialog):
         ]
 
     def accept(self) -> None:
+        error = self.event_page.validation_error()
+        if error:
+            self.setup_tabs.setCurrentWidget(self.event_tab)
+            QtWidgets.QMessageBox.warning(self, "Event details", error)
+            return
         self.update_order_from_list()
         super().accept()
+
+    def event_details(self) -> EventDetails:
+        """Return the event details entered on the Event details tab."""
+        return self.event_page.event_details()
 
     def show_pairing_info(self) -> None:
         """show pairing system information"""

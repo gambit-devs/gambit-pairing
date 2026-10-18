@@ -16,6 +16,7 @@ UI_REFACTOR_BOUNDARY_RULES: tuple[str, ...] = (
 DESIGNER_BACKED_UI_FILES: tuple[str, ...] = (
     "about_dialog.ui",
     "crosstable_view.ui",
+    "event_details_page.ui",
     "history_view.ui",
     "main_window.ui",
     "manual_pairing_dialog.ui",

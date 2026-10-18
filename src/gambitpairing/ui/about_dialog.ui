@@ -68,7 +68,7 @@
        <item>
         <widget class="QLabel" name="support_label">
          <property name="text">
-          <string>For support, join our &lt;a href='https://discord.gg/rNPdxPyMVs'&gt;Discord community&lt;/a&gt;</string>
+          <string>For support, join our &lt;a href='https://discord.gg/yBrzH97hd6'&gt;Discord community&lt;/a&gt;</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>

@@ -7,12 +7,14 @@ from typing import Any, Iterable, Mapping, Optional, Sequence
 
 from gambitpairing.constants import (
     DRAW_SCORE,
+    MODE_USCF,
     OUTCOME_DOUBLE_FORFEIT,
     OUTCOME_FORFEIT_LOSS,
     OUTCOME_FORFEIT_WIN,
     WIN_SCORE,
 )
 from gambitpairing.models.enums import Colour
+from gambitpairing.models.tournament.event_details import EventDetails
 
 TRF_NAME_WIDTH = 33
 # A round the player was not paired in. Blank records survive trailing
@@ -22,8 +24,8 @@ TOURNAMENT_TYPES = {
     "dutch_swiss": "Individual: Swiss-System (Dutch)",
     "round_robin": "Individual: Round-Robin",
 }
-# TRF-16 header records, in order. Codes Gambit has no data for (city,
-# federation, dates, teams, arbiters, time control, round dates) stay blank.
+# TRF-16 header records, in order. Codes with no value stay blank; team
+# codes and round dates are not used by Gambit.
 HEADER_CODES = (
     "012",
     "022",
@@ -80,15 +82,81 @@ def _header_lines(tournament: Any, players: Sequence[Any]) -> list[str]:
     tournament_type = TOURNAMENT_TYPES.get(
         tournament.pairing_system, tournament.pairing_system
     )
+    event = _event_of(tournament)
     values = {
         "012": _single_line(tournament.name),
+        "022": _single_line(event.city),
+        "032": _single_line(event.federation),
+        "042": _trf_date(event.start_date),
+        "052": _trf_date(event.end_date),
         "062": str(len(players)),
         "072": str(rated_count),
         "092": tournament_type,
+        "102": _single_line(event.chief_arbiter),
+        "112": _single_line(event.deputy_arbiter),
+        "122": _single_line(event.time_control),
     }
     return [
-        f"{code} {values[code]}" if code in values else code for code in HEADER_CODES
+        f"{code} {values[code]}" if values.get(code) else code for code in HEADER_CODES
     ]
+
+
+def _event_of(tournament: Any) -> EventDetails:
+    config = getattr(tournament, "config", None)
+    return getattr(config, "event", None) or EventDetails()
+
+
+def _trf_date(value: Optional[date]) -> str:
+    return value.strftime("%Y/%m/%d") if value else ""
+
+
+def trf_problems(tournament: Any) -> list[str]:
+    """List what a FIDE submission of this tournament still needs.
+
+    The file can still be written with these problems; the list tells the
+    tournament director what to fix first. Federation codes are checked for
+    shape only, so a well-formed code that is not a FIDE code is not caught.
+    """
+    event = _event_of(tournament)
+    problems: list[str] = []
+    if not event.city:
+        problems.append("City is not set (TRF record 022 is mandatory).")
+    if not event.federation:
+        problems.append("Country is not set (TRF record 032 is mandatory).")
+    elif not _is_three_letter_code(event.federation):
+        problems.append(
+            f"Country '{event.federation}' is not a three-letter code such as USA "
+            "or CAN."
+        )
+    if not event.chief_arbiter:
+        problems.append("Chief arbiter is not set (TRF record 102 is mandatory).")
+    if event.start_date and event.end_date and event.end_date < event.start_date:
+        problems.append("The end date is before the start date.")
+
+    players = list(tournament.players.values())
+    without_fide = sum(1 for player in players if not getattr(player, "fide_id", None))
+    if without_fide:
+        problems.append(
+            f"{without_fide} player(s) have no FIDE number; FIDE rating needs one."
+        )
+    without_order = sum(1 for player in players if "," not in player.name)
+    if without_order:
+        problems.append(
+            f"{without_order} player name(s) are not in 'Last, First' order."
+        )
+    if (
+        getattr(getattr(tournament, "config", None), "tournament_mode", None)
+        == MODE_USCF
+    ):
+        problems.append(
+            "This tournament uses USCF ratings; a FIDE rating submission needs "
+            "FIDE ratings in the rating column."
+        )
+    return problems
+
+
+def _is_three_letter_code(code: str) -> bool:
+    return len(code) == 3 and code.isascii() and code.isalpha() and code.isupper()
 
 
 def _player_record(

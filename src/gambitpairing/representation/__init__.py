@@ -11,7 +11,7 @@ from .tournament import (
     tournament_from_dict,
     tournament_to_dict,
 )
-from .trf import build_trf_document
+from .trf import build_trf_document, trf_problems
 
 __all__ = [
     "load_tournament_document",
@@ -22,4 +22,5 @@ __all__ = [
     "build_pairings_export_data",
     "parse_pairings_import_data",
     "build_trf_document",
+    "trf_problems",
 ]

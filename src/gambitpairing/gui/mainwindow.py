@@ -33,7 +33,9 @@ from gambitpairing.controllers.tournament import (
     TournamentPersistenceService,
 )
 from gambitpairing.controllers.tournament.session import TournamentSession as Tournament
-from gambitpairing.representation import build_trf_document
+from gambitpairing.player_lists.catalog import get_player_list
+from gambitpairing.player_lists.updates import CheckOutcome, CheckStatus
+from gambitpairing.representation import build_trf_document, trf_problems
 from gambitpairing.utils import setup_logger
 
 from .dialogs import (
@@ -109,7 +111,10 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
         QtCore.QTimer.singleShot(1500, self.check_for_updates_auto)
         # Check the kept player lists once the window is up; this runs in a
         # background thread and does nothing when no list is selected.
-        QtCore.QTimer.singleShot(3000, player_list_updater().run_scheduled_checks)
+        player_lists = player_list_updater()
+        player_lists.status.connect(self._on_player_list_status)
+        player_lists.list_updated.connect(self._on_player_list_updated)
+        QtCore.QTimer.singleShot(3000, player_lists.run_scheduled_checks)
 
         logger.info("GambitPairingMainWindow __init__ done.")
 
@@ -164,6 +169,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
                     use_experimental_dutch=projection.use_experimental_dutch,
                     tournament_mode=projection.tournament_mode,
                 )
+                self.tournament.config.event = dialog.event_details()
                 self.pairing_system = projection.pairing_system
                 self.update_history_log(build_new_tournament_history(projection))
                 self.mark_dirty()
@@ -180,6 +186,7 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             self.tournament.tiebreak_order,
             self.tournament.config.tournament_mode,
             self,
+            event=self.tournament.config.event,
         )
         tournament_started = len(self.tournament.rounds_pairings_ids) > 0
         dialog.configure_round_count_controls(
@@ -196,6 +203,10 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             except ValueError as error:
                 QtWidgets.QMessageBox.warning(self, "Invalid settings", str(error))
                 return False
+            event = dialog.get_event_details()
+            if event != self.tournament.config.event:
+                self.tournament.config.event = event
+                self.mark_dirty()
             for message in messages:
                 self.update_history_log(message)
             if messages:
@@ -272,6 +283,20 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
                 self, "Export Error", "No tournament data."
             )
             return
+
+        problems = trf_problems(self.tournament)
+        if problems:
+            answer = QtWidgets.QMessageBox.question(
+                self,
+                "Check before exporting",
+                "The file will be written, but these need attention first:\n\n"
+                + "\n".join(f"- {problem}" for problem in problems)
+                + "\n\nExport anyway?",
+                QtWidgets.QMessageBox.StandardButton.Yes
+                | QtWidgets.QMessageBox.StandardButton.Cancel,
+            )
+            if answer != QtWidgets.QMessageBox.StandardButton.Yes:
+                return
 
         filename, _ = QtWidgets.QFileDialog.getSaveFileName(
             self, "Export TRF", "", TRF_FILTER
@@ -351,6 +376,14 @@ class GambitPairingMainWindow(QtWidgets.QMainWindow):
             )
         else:
             self.rounds_tab.reset_display()
+
+    def _on_player_list_status(self, _key: str, text: str) -> None:
+        self.statusBar().showMessage(text)
+
+    def _on_player_list_updated(self, outcome: CheckOutcome) -> None:
+        spec = get_player_list(outcome.key)
+        separator = ": error: " if outcome.status is CheckStatus.FAILED else ": "
+        self.statusBar().showMessage(f"{spec.name}{separator}{outcome.message}", 10000)
 
     def check_save(self) -> bool:
         """Check if progress is saved before proceeding, if not prompt user."""

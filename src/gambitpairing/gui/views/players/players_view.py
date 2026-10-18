@@ -19,7 +19,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Dict, Sequence
 
 from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtCore import Qt, pyqtSignal
@@ -42,6 +42,10 @@ from gambitpairing.gui.views.players.players_view_workflow import (
 )
 from gambitpairing.gui.widgets import NumericTableWidgetItem, TabHeader
 from gambitpairing.gui.widgets.player_placeholder import PlayerPlaceholder
+from gambitpairing.player_lists.registration import (
+    RegistrationResult,
+    add_registrations,
+)
 from gambitpairing.gui.widgets.tournament_placeholder import TournamentPlaceholder
 from gambitpairing.models.player import (
     Player,
@@ -345,6 +349,28 @@ class PlayersView(QtWidgets.QWidget):
                 self.standings_update_requested.emit()
         self.update_ui_state()
 
+    def add_registrations_from_search(
+        self, search_results: Sequence[Dict[str, Any]]
+    ) -> RegistrationResult:
+        """Add search results to the tournament, several at a time.
+
+        Players already in the tournament are skipped. Returns what was added
+        and what was skipped, so the caller can report it.
+        """
+        if not self.tournament:
+            return RegistrationResult()
+        result = add_registrations(self.tournament, search_results)
+        for player in result.added:
+            self.add_player_to_table(player)
+        if result.added:
+            self.dirty.emit()
+            self.status_message.emit(result.describe())
+            self.history_message.emit(
+                f"Added {len(result.added)} player(s) from search."
+            )
+        self.update_ui_state()
+        return result
+
     def add_player_detailed(self) -> None:
         """Open the player management dialog to add or edit a player.
 
@@ -374,8 +400,16 @@ class PlayersView(QtWidgets.QWidget):
             )
             return
 
-        dialog = PlayerManagementDialog(self, tournament=self.tournament)
+        dialog = PlayerManagementDialog(
+            self,
+            tournament=self.tournament,
+            on_add_players=self.add_registrations_from_search,
+        )
         if dialog.exec():
+            # Players added from search were saved as they were selected, so an
+            # empty form is not an error.
+            if not dialog.has_form_player():
+                return
             data = dialog.get_player_data()
             if not data["name"]:
                 QtWidgets.QMessageBox.warning(

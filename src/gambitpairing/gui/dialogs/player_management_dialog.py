@@ -21,6 +21,10 @@ from gambitpairing.gui.player_list_workflow import (
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
 from gambitpairing.models.player import Player
 from gambitpairing.player_lists.catalog import SOURCE_CFC, SOURCE_FIDE
+from gambitpairing.player_lists.registration import (
+    RegistrationResult,
+    registered_reason,
+)
 from gambitpairing.player_lists.search import (
     SEARCH_MODES,
     LiveLookups,
@@ -98,10 +102,16 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         tournament=None,
         updater: Optional[PlayerListUpdater] = None,
         live_lookups: Optional[LiveLookups] = None,
+        on_add_players: Optional[
+            Callable[[Sequence[Dict[str, Any]]], RegistrationResult]
+        ] = None,
     ):
         super().__init__(parent)
         self.player_data = player_data or {}
         self.tournament = tournament
+        # Adds the given search results to the tournament; the caller owns the
+        # tournament, so the dialog only reports what it added.
+        self._on_add_players = on_add_players
         self.updater = updater or player_list_updater()
         self.live_lookups = live_lookups or LiveLookups()
         # source -> (thread, worker) for the searches still running
@@ -197,6 +207,9 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         )
         self.search_progress = required_child(
             self, QtWidgets.QProgressBar, "search_progress"
+        )
+        self.btn_add_selected = required_child(
+            self, QtWidgets.QPushButton, "btn_add_selected"
         )
         self.btn_use_selected = required_child(
             self, QtWidgets.QPushButton, "btn_use_selected"
@@ -317,6 +330,12 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         self.source_cfc_check.toggled.connect(self._on_sources_changed)
         self.btn_player_lists.clicked.connect(self.show_player_lists_dialog)
         self._configure_results_table(self.results_table, RESULT_COLUMNS)
+        # Several results can be selected at once, to add them in one go.
+        self.results_table.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
+        )
+        self.btn_add_selected.clicked.connect(self._add_selected_results)
+        self.btn_add_selected.setVisible(self._on_add_players is not None)
         source_header = self.results_table.horizontalHeaderItem(
             RESULT_COLUMNS.index("Source")
         )
@@ -591,7 +610,7 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         row = self.results_table.rowCount()
         self.results_table.insertRow(row)
         values = (
-            result.name,
+            self._result_name_text(result),
             result.source_label,
             str(result.fide_id or ""),
             str(result.cfc_id or ""),
@@ -610,20 +629,65 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         self._source_results = {}
         self._source_statuses = {}
         self.btn_use_selected.setEnabled(False)
+        self.btn_add_selected.setEnabled(False)
         self.btn_clear.setEnabled(False)
         self.search_status_label.setText("Search for players above to see results here")
         self.search_edit.clear()
 
-    def _selected_result_row(self) -> Optional[MergedSearchRow]:
+    def _selected_result_rows(self) -> list[MergedSearchRow]:
         selection = self.results_table.selectionModel()
-        rows = selection.selectedRows() if selection else []
-        if not rows:
-            return None
-        index = rows[0].row()
-        return self._result_rows[index] if index < len(self._result_rows) else None
+        indexes = selection.selectedRows() if selection else []
+        return [
+            self._result_rows[index.row()]
+            for index in sorted(indexes, key=lambda index: index.row())
+            if index.row() < len(self._result_rows)
+        ]
+
+    def _selected_result_row(self) -> Optional[MergedSearchRow]:
+        """Return the selected result when exactly one row is selected."""
+        rows = self._selected_result_rows()
+        return rows[0] if len(rows) == 1 else None
 
     def _on_result_selection_changed(self) -> None:
         self.btn_use_selected.setEnabled(self._selected_result_row() is not None)
+        self.btn_add_selected.setEnabled(
+            bool(self._selected_result_rows()) and self._on_add_players is not None
+        )
+
+    def _tournament_players(self) -> list[Any]:
+        return list(self.tournament.players.values()) if self.tournament else []
+
+    def _registration_reason(self, result: MergedSearchRow) -> Optional[str]:
+        return registered_reason(self._tournament_players(), result.player_data())
+
+    def _result_name_text(self, result: MergedSearchRow) -> str:
+        if self._registration_reason(result):
+            return f"{result.name} (in tournament)"
+        return result.name
+
+    def _refresh_registration_marks(self) -> None:
+        for index, result in enumerate(self._result_rows):
+            item = self.results_table.item(index, 0)
+            if item is not None:
+                item.setText(self._result_name_text(result))
+
+    def _add_selected_results(self) -> None:
+        """Add the selected results that are not in the tournament yet."""
+        rows = self._selected_result_rows()
+        if self._on_add_players is None or not rows:
+            return
+        new = [row for row in rows if self._registration_reason(row) is None]
+        result = (
+            self._on_add_players([row.player_data() for row in new])
+            if new
+            else RegistrationResult()
+        )
+        text = f"Added {len(result.added)} of {len(rows)} selected."
+        if len(result.added) < len(rows):
+            text += " The others are already in the tournament or invalid."
+        self.search_status_label.setText(text)
+        self._refresh_registration_marks()
+        self._on_result_selection_changed()
 
     def _show_results_context_menu(self, position) -> None:
         """Show context menu for the search results."""
@@ -991,6 +1055,10 @@ class PlayerManagementDialog(QtWidgets.QDialog):
         """Ensure proper cleanup when dialog is closed."""
         self._abort_search_jobs()
         super().closeEvent(event)
+
+    def has_form_player(self) -> bool:
+        """Return True when the Player Details form holds a name to save."""
+        return bool(self.name_edit.text().strip())
 
     def get_player_data(self) -> Dict[str, Any]:
         """Get the player data from the form."""

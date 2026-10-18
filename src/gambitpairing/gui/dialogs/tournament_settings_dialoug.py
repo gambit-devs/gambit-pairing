@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
@@ -11,8 +11,10 @@ from gambitpairing.constants import (
     MODE_USCF,
     TIEBREAK_NAMES,
 )
+from gambitpairing.gui.dialogs.event_details_page import EventDetailsPage
 from gambitpairing.gui.gui_utils import get_native_icon
 from gambitpairing.gui.ui_loader import load_ui_into, required_child
+from gambitpairing.models.tournament import EventDetails
 from gambitpairing.utils.utility_functions import resize_list_to_show_all_items
 
 
@@ -23,6 +25,7 @@ class SettingsDialog(QtWidgets.QDialog):
         tiebreak_order: List[str],
         tournament_mode: str = DEFAULT_MODE,
         parent=None,
+        event: Optional[EventDetails] = None,
     ):
         super().__init__(parent)
         self.current_tiebreak_order = list(tiebreak_order)
@@ -67,6 +70,12 @@ class SettingsDialog(QtWidgets.QDialog):
         self.btn_tiebreak_down.clicked.connect(self.move_tiebreak_down)
 
         self.buttons = required_child(self, QtWidgets.QDialogButtonBox, "buttons")
+        self.setup_tabs = required_child(self, QtWidgets.QTabWidget, "setup_tabs")
+        self.event_tab = required_child(self, QtWidgets.QWidget, "event_tab")
+        self.event_page = EventDetailsPage(self, event=event)
+        required_child(self, QtWidgets.QVBoxLayout, "event_tab_layout").addWidget(
+            self.event_page
+        )
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
 
@@ -131,8 +140,17 @@ class SettingsDialog(QtWidgets.QDialog):
         ]
 
     def accept(self):
+        error = self.event_page.validation_error()
+        if error:
+            self.setup_tabs.setCurrentWidget(self.event_tab)
+            QtWidgets.QMessageBox.warning(self, "Event details", error)
+            return
         self.update_order_from_list()
         super().accept()
+
+    def get_event_details(self) -> EventDetails:
+        """Return the event details as entered on the Event details tab."""
+        return self.event_page.event_details()
 
     def get_settings(self) -> Tuple[int, List[str], str]:
         return (

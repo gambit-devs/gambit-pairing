@@ -7,180 +7,197 @@
   </property>
   <layout class="QVBoxLayout" name="main_layout">
    <item>
-    <widget class="QGroupBox" name="general_group">
-     <property name="title">
-      <string>General</string>
-     </property>
-     <layout class="QFormLayout" name="general_form_layout">
-      <item row="0" column="0">
-       <widget class="QLabel" name="name_label">
-        <property name="text">
-         <string>Tournament Name:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QLineEdit" name="name_edit">
-        <property name="text">
-         <string>My Swiss Tournament</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="rounds_label">
-        <property name="text">
-         <string>Number of Rounds:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QSpinBox" name="rounds_spin">
-        <property name="minimum">
-         <number>1</number>
-        </property>
-        <property name="maximum">
-         <number>50</number>
-        </property>
-        <property name="value">
-         <number>5</number>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item>
-    <widget class="QGroupBox" name="mode_group">
-     <property name="title">
-      <string>Chess Federation</string>
-     </property>
-     <layout class="QHBoxLayout" name="mode_layout">
-      <item>
-       <widget class="QComboBox" name="mode_combo">
-        <property name="toolTip">
-         <string>Select USCF or FIDE tiebreak rules.</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item>
-    <widget class="QGroupBox" name="tiebreak_group">
-     <property name="title">
-      <string>Tiebreak Order</string>
-     </property>
-     <layout class="QHBoxLayout" name="tiebreak_layout">
-      <item>
-       <widget class="QListWidget" name="tiebreak_list">
-        <property name="toolTip">
-         <string>Order in which tiebreaks are applied (higher is better). Drag to reorder.</string>
-        </property>
-        <property name="dragDropMode">
-         <enum>QAbstractItemView::InternalMove</enum>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <layout class="QVBoxLayout" name="move_button_layout">
-        <item>
-        <spacer name="move_top_spacer">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
+    <widget class="QTabWidget" name="setup_tabs">
+     <widget class="QWidget" name="tournament_tab">
+      <attribute name="title">
+       <string>Tournament</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="tournament_tab_layout">
+       <item>
+        <widget class="QGroupBox" name="general_group">
+         <property name="title">
+          <string>General</string>
          </property>
-         <property name="sizeType">
-          <enum>QSizePolicy::Expanding</enum>
+         <layout class="QFormLayout" name="general_form_layout">
+          <item row="0" column="0">
+           <widget class="QLabel" name="name_label">
+            <property name="text">
+             <string>Tournament Name:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="name_edit">
+            <property name="text">
+             <string>My Swiss Tournament</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="rounds_label">
+            <property name="text">
+             <string>Number of Rounds:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QSpinBox" name="rounds_spin">
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>50</number>
+            </property>
+            <property name="value">
+             <number>5</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="mode_group">
+         <property name="title">
+          <string>Chess Federation</string>
          </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>0</width>
-           <height>0</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item>
-         <widget class="QPushButton" name="btn_tiebreak_up">
-          <property name="text">
-           <string>Up</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="btn_tiebreak_down">
-          <property name="text">
-           <string>Down</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-        <spacer name="move_bottom_spacer">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
+         <layout class="QHBoxLayout" name="mode_layout">
+          <item>
+           <widget class="QComboBox" name="mode_combo">
+            <property name="toolTip">
+             <string>Select USCF or FIDE tiebreak rules.</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="tiebreak_group">
+         <property name="title">
+          <string>Tiebreak Order</string>
          </property>
-         <property name="sizeType">
-          <enum>QSizePolicy::Expanding</enum>
+         <layout class="QHBoxLayout" name="tiebreak_layout">
+          <item>
+           <widget class="QListWidget" name="tiebreak_list">
+            <property name="toolTip">
+             <string>Order in which tiebreaks are applied (higher is better). Drag to reorder.</string>
+            </property>
+            <property name="dragDropMode">
+             <enum>QAbstractItemView::InternalMove</enum>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <layout class="QVBoxLayout" name="move_button_layout">
+            <item>
+             <spacer name="move_top_spacer">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeType">
+               <enum>QSizePolicy::Expanding</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>0</width>
+                <height>0</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="QPushButton" name="btn_tiebreak_up">
+              <property name="text">
+               <string>Up</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="btn_tiebreak_down">
+              <property name="text">
+               <string>Down</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="move_bottom_spacer">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeType">
+               <enum>QSizePolicy::Expanding</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>0</width>
+                <height>0</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="pairing_group">
+         <property name="title">
+          <string>Pairing System</string>
          </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>0</width>
-           <height>0</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-       </layout>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item>
-    <widget class="QGroupBox" name="pairing_group">
-     <property name="title">
-      <string>Pairing System</string>
-     </property>
-     <layout class="QHBoxLayout" name="pairing_layout">
-      <item>
-       <layout class="QVBoxLayout" name="pairing_selection_layout">
-        <item>
-         <widget class="QComboBox" name="pairing_combo">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="toolTip">
-           <string>Select the pairing system for this tournament.</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QCheckBox" name="experimental_dutch_check">
-          <property name="toolTip">
-           <string>Use Gambit's native Dutch engine instead of BBP Pairings. This mode is experimental.</string>
-          </property>
-          <property name="text">
-           <string>Use Gambit Dutch (Experimental)</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <widget class="QPushButton" name="btn_pairing_info">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="text">
-         <string>About Pairing Systems</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
+         <layout class="QHBoxLayout" name="pairing_layout">
+          <item>
+           <layout class="QVBoxLayout" name="pairing_selection_layout">
+            <item>
+             <widget class="QComboBox" name="pairing_combo">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="toolTip">
+               <string>Select the pairing system for this tournament.</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="experimental_dutch_check">
+              <property name="toolTip">
+               <string>Use Gambit's native Dutch engine instead of BBP Pairings. This mode is experimental.</string>
+              </property>
+              <property name="text">
+               <string>Use Gambit Dutch (Experimental)</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btn_pairing_info">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string>About Pairing Systems</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="event_tab">
+      <attribute name="title">
+       <string>Event details</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="event_tab_layout" />
+     </widget>
     </widget>
    </item>
    <item>
@@ -198,6 +215,6 @@
    </item>
   </layout>
  </widget>
- <resources/>
- <connections/>
+ <resources />
+ <connections />
 </ui>

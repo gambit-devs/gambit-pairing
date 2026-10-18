@@ -707,7 +707,20 @@
            </property>
           </spacer>
          </item>
-         <item>
+                  <item>
+          <widget class="QPushButton" name="btn_add_selected">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="toolTip">
+            <string>Add every selected result to the tournament. Players already in the tournament are skipped.</string>
+           </property>
+           <property name="text">
+            <string>Add Selected to Tournament</string>
+           </property>
+          </widget>
+         </item>
+<item>
           <widget class="QPushButton" name="btn_use_selected">
            <property name="enabled">
             <bool>false</bool>

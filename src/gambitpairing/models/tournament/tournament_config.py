@@ -16,8 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
+
+from .event_details import EventDetails
 
 from gambitpairing.constants import (
     DEFAULT_FIDE_TIEBREAK_ORDER,
@@ -64,6 +66,7 @@ class TournamentConfig:
     use_experimental_dutch: bool = False
     rules_version: str = "2026"
     unresolved_ties: str = "shared"
+    event: EventDetails = field(default_factory=EventDetails)
 
     def __post_init__(self) -> None:
         """Choose federation defaults without sharing mutable lists."""
@@ -128,6 +131,7 @@ class TournamentConfig:
             "tournament_over": self.tournament_over,
             "rules_version": self.rules_version,
             "unresolved_ties": self.unresolved_ties,
+            "event": self.event.to_dict(),
         }
 
     @classmethod
@@ -160,6 +164,7 @@ class TournamentConfig:
             tournament_over=data.get("tournament_over", False),
             rules_version=data.get("rules_version", "legacy-unspecified"),
             unresolved_ties=data.get("unresolved_ties", "shared"),
+            event=EventDetails.from_dict(data.get("event")),
         )
 
 

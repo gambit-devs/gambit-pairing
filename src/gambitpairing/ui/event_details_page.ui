@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>EventDetailsPage</class>
+ <widget class="QWidget" name="EventDetailsPage">
+  <layout class="QVBoxLayout" name="event_page_layout">
+   <item>
+    <widget class="QGroupBox" name="event_group">
+     <property name="title">
+      <string>Event</string>
+     </property>
+     <layout class="QFormLayout" name="event_form_layout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="city_label">
+        <property name="text">
+         <string>City:</string>
+        </property>
+        <property name="buddy">
+         <cstring>city_edit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLineEdit" name="city_edit">
+        <property name="placeholderText">
+         <string>Where the event is held</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="federation_label">
+        <property name="text">
+         <string>Country:</string>
+        </property>
+        <property name="buddy">
+         <cstring>federation_edit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="federation_edit">
+        <property name="maxLength">
+         <number>3</number>
+        </property>
+        <property name="placeholderText">
+         <string>Three-letter code, such as USA or CAN</string>
+        </property>
+        <property name="toolTip">
+         <string>Three-letter country code of the organising federation</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="start_date_label">
+        <property name="text">
+         <string>Start date:</string>
+        </property>
+        <property name="buddy">
+         <cstring>start_date_edit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QDateEdit" name="start_date_edit">
+        <property name="calendarPopup">
+         <bool>true</bool>
+        </property>
+        <property name="displayFormat">
+         <string>yyyy/MM/dd</string>
+        </property>
+        <property name="minimumDate">
+         <date>
+          <year>1900</year>
+          <month>1</month>
+          <day>1</day>
+         </date>
+        </property>
+        <property name="specialValueText">
+         <string>Not set</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="end_date_label">
+        <property name="text">
+         <string>End date:</string>
+        </property>
+        <property name="buddy">
+         <cstring>end_date_edit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QDateEdit" name="end_date_edit">
+        <property name="calendarPopup">
+         <bool>true</bool>
+        </property>
+        <property name="displayFormat">
+         <string>yyyy/MM/dd</string>
+        </property>
+        <property name="minimumDate">
+         <date>
+          <year>1900</year>
+          <month>1</month>
+          <day>1</day>
+         </date>
+        </property>
+        <property name="specialValueText">
+         <string>Not set</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="chief_arbiter_label">
+        <property name="text">
+         <string>Chief arbiter:</string>
+        </property>
+        <property name="buddy">
+         <cstring>chief_arbiter_edit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QLineEdit" name="chief_arbiter_edit">
+        <property name="placeholderText">
+         <string>Name of the chief arbiter</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="0">
+       <widget class="QLabel" name="deputy_arbiter_label">
+        <property name="text">
+         <string>Deputy arbiter:</string>
+        </property>
+        <property name="buddy">
+         <cstring>deputy_arbiter_edit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="1">
+       <widget class="QLineEdit" name="deputy_arbiter_edit">
+        <property name="placeholderText">
+         <string>Optional</string>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="0">
+       <widget class="QLabel" name="time_control_label">
+        <property name="text">
+         <string>Time control:</string>
+        </property>
+        <property name="buddy">
+         <cstring>time_control_edit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="1">
+       <widget class="QLineEdit" name="time_control_edit">
+        <property name="placeholderText">
+         <string>For example 90 min + 30 s per move</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <spacer name="event_bottom_spacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

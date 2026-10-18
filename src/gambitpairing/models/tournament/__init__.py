@@ -1,3 +1,4 @@
+from .event_details import EventDetails
 from .match_result import MatchResult
 from .pairing_history import PairingHistory
 from .round_data import RoundData

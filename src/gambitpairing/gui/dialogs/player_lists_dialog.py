@@ -34,6 +34,7 @@ from gambitpairing.player_lists.catalog import (
     FIDE_ATTRIBUTION,
     PLAYER_LISTS,
     PlayerListSpec,
+    get_player_list,
 )
 from gambitpairing.player_lists.store import ListState
 from gambitpairing.player_lists.updates import CheckOutcome
@@ -229,6 +230,13 @@ class PlayerListsDialog(QtWidgets.QDialog):
             if answer != QtWidgets.QMessageBox.StandardButton.Yes:
                 return
         self.store.save_selection(keys)
+        # Download the selected lists that are not kept yet now, rather than
+        # at the next trigger. The progress shows in the window that opened
+        # this dialog.
+        missing = [
+            key for key in keys if not self.store.has_data_file(get_player_list(key))
+        ]
+        self.updater.update_now(missing)
         super().accept()
 
     def done(self, result: int) -> None:

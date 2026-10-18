@@ -31,6 +31,15 @@ def _file_menu_actions(window):
     return file_menu.actions()
 
 
+def _export_anyway(monkeypatch):
+    """Answer "Export anyway?" so these tests cover writing, not the prompt."""
+    monkeypatch.setattr(
+        QtWidgets.QMessageBox,
+        "question",
+        lambda *args: QtWidgets.QMessageBox.StandardButton.Yes,
+    )
+
+
 def _record_messages(monkeypatch):
     messages = []
     for name in ("information", "critical"):
@@ -95,6 +104,7 @@ def test_export_trf_writes_selected_file(monkeypatch, tmp_path):
     _app()
     window = GambitPairingMainWindow()
     messages = _record_messages(monkeypatch)
+    _export_anyway(monkeypatch)
     target = tmp_path / "city-open.trf"
     dialog_calls = []
 
@@ -127,6 +137,7 @@ def test_export_trf_cancelled_dialog_writes_nothing(monkeypatch, tmp_path):
     _app()
     window = GambitPairingMainWindow()
     messages = _record_messages(monkeypatch)
+    _export_anyway(monkeypatch)
     monkeypatch.setattr(
         QtWidgets.QFileDialog, "getSaveFileName", lambda *args: ("", "")
     )
@@ -143,6 +154,7 @@ def test_export_trf_write_failure_shows_error(monkeypatch, tmp_path):
     _app()
     window = GambitPairingMainWindow()
     messages = _record_messages(monkeypatch)
+    _export_anyway(monkeypatch)
     target = tmp_path / "missing-directory" / "city-open.trf"
     monkeypatch.setattr(
         QtWidgets.QFileDialog,

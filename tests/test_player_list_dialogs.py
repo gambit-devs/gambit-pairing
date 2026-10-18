@@ -11,13 +11,15 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import httpx
 from PyQt6 import QtWidgets
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QItemSelectionModel, Qt
 import pytest
 
 from gambitpairing.gui.dialogs.player_lists_dialog import PlayerListsDialog
 from gambitpairing.gui.dialogs.player_management_dialog import PlayerManagementDialog
 from gambitpairing.gui.player_list_workflow import PlayerListUpdater
 from gambitpairing.player_lists.catalog import PLAYER_LISTS, get_player_list
+from gambitpairing.controllers.tournament.session import TournamentSession as Tournament
+from gambitpairing.player_lists.registration import add_registrations
 from gambitpairing.player_lists.search import LiveLookups, SearchMode
 from gambitpairing.player_lists.store import (
     ListMetadata,
@@ -261,7 +263,10 @@ def test_player_lists_dialog_shows_lists_states_and_updates_now(tmp_path, server
     table.item(4, 0).setCheckState(Qt.CheckState.Checked)
     dialog.accept()
     assert store.selected_keys() == ("fide_combined", "cfc_members")
-    assert [request.method for request in server.requests] == ["GET"]
+    # OK downloads the newly selected FIDE list; the CFC list was already kept.
+    _wait_until(lambda: not updater.is_busy)
+    assert store.has_data_file(FIDE)
+    assert [request.method for request in server.requests] == ["GET", "GET"]
 
 
 def test_scheduled_checks_respect_selection_and_daily_throttle(tmp_path, server):
@@ -307,4 +312,52 @@ def test_dialog_triggers_checks_on_open_and_first_search_tab_activation(
     assert calls == ["check", "check"]
     # The second trigger found the list checked moments ago: no new request.
     assert [request.method for request in server.requests] == ["GET"]
+    dialog.close()
+
+
+def test_selected_results_are_added_together_and_marked(tmp_path, server):
+    _app()
+    updater = _updater(tmp_path, server, [FIDE.key, CFC.key])
+    _download_all(updater)
+    tournament = Tournament("City Open", [], 5)
+    batches = []
+
+    def add_players(results):
+        batches.append(len(results))
+        return add_registrations(tournament, results)
+
+    dialog = PlayerManagementDialog(
+        updater=updater,
+        live_lookups=NoLive().lookups(),
+        tournament=tournament,
+        on_add_players=add_players,
+    )
+    _search(dialog, SearchMode.NAME, "Tremblay")
+    table = dialog.results_table
+    assert table.rowCount() == 2
+
+    table.selectRow(0)
+    selection = table.selectionModel()
+    selection.select(
+        table.model().index(1, 0),
+        QItemSelectionModel.SelectionFlag.Select
+        | QItemSelectionModel.SelectionFlag.Rows,
+    )
+    assert dialog.btn_add_selected.isEnabled()
+    dialog.btn_add_selected.click()
+
+    assert batches == [2]
+    assert sorted(player.name for player in tournament.players.values()) == [
+        "Tremblay, Marc",
+        "Tremblay, Sophie",
+    ]
+    assert dialog.search_status_label.text() == "Added 2 of 2 selected."
+    assert table.item(0, 0).text() == "Tremblay, Marc (in tournament)"
+    assert table.item(1, 0).text() == "Tremblay, Sophie (in tournament)"
+
+    dialog.btn_add_selected.click()
+    assert batches == [2]
+    assert dialog.search_status_label.text() == (
+        "Added 0 of 2 selected. The others are already in the tournament or invalid."
+    )
     dialog.close()
