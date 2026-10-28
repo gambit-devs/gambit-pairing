@@ -341,13 +341,19 @@ class BBPPairingEngine:
         players: List[Player],
         current_round: int,
         total_rounds: int,
+        all_players: Optional[List[Player]] = None,
     ) -> Tuple[List[Tuple[Player, Player]], Optional[Player]]:
+        # Absent and withdrawn players stay in the TRF with a future bye.
+        active_ids = {player.id for player in players}
+        roster = list(all_players) if all_players is not None else list(players)
         trf_content = build_bbp_pairing_trf(
-            players,
+            roster,
             total_rounds=total_rounds,
             current_round=current_round,
             initial_color=self.config.bbp_initial_color,
+            inactive_players=[p for p in roster if p.id not in active_ids],
         )
+        players = roster
 
         workdir = Path(self.config.bbp_workdir) if self.config.bbp_workdir else None
         if self.config.bbp_keep_files and workdir:
@@ -538,12 +544,6 @@ class RandomTournamentGenerator:
             if player.is_active and player.id not in excluded_ids
         ]
 
-        if self.config.pairing_system in {"bbp_dutch", "dual"} and excluded_ids:
-            logger.warning(
-                "Scheduled byes are not represented in BBP pairing input; "
-                "results may diverge"
-            )
-
         gambit_pairings = None
         gambit_bye = None
         bbp_pairings = None
@@ -563,6 +563,7 @@ class RandomTournamentGenerator:
                 total_rounds=self.config.num_rounds,
                 initial_color=self.config.initial_color or WHITE,
                 fide_strict=self.config.fide_strict,
+                all_players=players,
             )
             gambit_time_ms = (time.perf_counter() - start_time) * 1000
 
@@ -577,6 +578,7 @@ class RandomTournamentGenerator:
                     active_players,
                     round_number,
                     self.config.num_rounds,
+                    all_players=players,
                 )
                 bbp_time_ms = (time.perf_counter() - start_time) * 1000
             except RuntimeError as exc:

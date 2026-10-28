@@ -7,8 +7,9 @@ These helpers depend on nothing else in the Dutch modules, so both
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional, Set, Tuple
+from typing import Dict, Iterable, Optional, Set, Tuple
 
+from gambitpairing.constants import BYE_SCORE
 from gambitpairing.models.enums import Colour
 from gambitpairing.models.player import Player
 
@@ -17,6 +18,39 @@ WHITE = Colour.WHITE
 
 def _pairing_number(player: Player) -> int:
     return player.pairing_number or 0
+
+
+def _has_participated_in_pairing(player: Player) -> bool:
+    """Whether the player was paired, or given the pairing-allocated bye.
+
+    Scheduled half/zero-point byes and skipped rounds are not participation.
+    """
+    results = player.results
+    return any(
+        opponent_id is not None or (i < len(results) and results[i] == BYE_SCORE)
+        for i, opponent_id in enumerate(player.opponent_ids)
+    )
+
+
+def effective_pairing_numbers(
+    active_players: Iterable[Player], roster: Iterable[Player]
+) -> Dict[str, int]:
+    """Number players for Article 5.2.5 as if late entries had not arrived.
+
+    C.04.2 Article 2.4 gives a late entry a TPN only once they arrive, so a
+    player who has never been paired and is absent this round does not yet
+    occupy a TPN. The remaining roster keeps TPN order (as BBP does).
+    """
+    active_ids = {player.id for player in active_players}
+    counted = sorted(
+        (
+            player
+            for player in roster
+            if player.id in active_ids or _has_participated_in_pairing(player)
+        ),
+        key=_pairing_number,
+    )
+    return {player.id: number for number, player in enumerate(counted, 1)}
 
 
 def _is_topscorer(player: Player, current_round: int, total_rounds: int) -> bool:
@@ -71,6 +105,7 @@ def _assign_colors_fide(
     p2: Player,
     current_round: int,
     initial_color: str = WHITE,
+    pairing_numbers: Optional[Dict[str, int]] = None,
 ) -> Tuple[Player, Player]:
     """
     Assign colors according to FIDE Article 5 rules (descending priority).
@@ -167,7 +202,10 @@ def _assign_colors_fide(
 
     # 5.2.5: Use pairing number parity with initial-colour
     # Higher ranked player: odd pairing number = initial-colour (W), even = opposite (B)
-    if _pairing_number(higher_ranked) % 2 == 1:
+    number = (pairing_numbers or {}).get(
+        higher_ranked.id, _pairing_number(higher_ranked)
+    )
+    if number % 2 == 1:
         return (
             (higher_ranked, lower_ranked)
             if initial_color == WHITE

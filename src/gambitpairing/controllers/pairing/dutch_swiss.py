@@ -33,6 +33,7 @@ from .dutch_rules import (
     WHITE,
     _pairing_number,
     _played_colors,
+    effective_pairing_numbers,
 )
 
 BLACK = Colour.BLACK
@@ -87,6 +88,7 @@ def create_dutch_swiss_pairings(
     initial_color: str = WHITE,
     fide_strict: bool = False,
     max_computation_time: Optional[float] = None,
+    all_players: Optional[List[Player]] = None,
 ) -> Tuple[
     List[Tuple[Player, Player]], Optional[Player], List[Tuple[str, str]], Optional[str]
 ]:
@@ -99,6 +101,9 @@ def create_dutch_swiss_pairings(
     - previous_matches: set of frozenset({player1.id, player2.id}) for all previous matches
     - get_eligible_bye_player: A function to select a player to receive a bye.
     - allow_repeat_pairing_callback: function(player1, player2) -> bool, called if a repeat pairing is needed
+    - all_players: complete roster, including absent and withdrawn players. Late
+      entries who have not yet been paired are then skipped when colours fall
+      back to pairing-number parity (Article 5.2.5).
     Returns: (pairings, bye_player, round_pairings_ids, bye_player_id)
     """
     # Retain the argument for saved-document/API compatibility, but never
@@ -146,6 +151,11 @@ def create_dutch_swiss_pairings(
                 used_numbers.add(missing_number)
 
         sorted_players = _sort_players_for_pairing(active_players)
+        pairing_numbers = (
+            effective_pairing_numbers(active_players, all_players)
+            if all_players is not None
+            else None
+        )
 
         from .strict_dutch import pair_round
 
@@ -156,6 +166,7 @@ def create_dutch_swiss_pairings(
             total_rounds,
             initial_color,
             _check_pairing_deadline,
+            pairing_numbers,
         )
     except _PairingDeadlineExceeded:
         _restore_pairing_state(active_players, pairing_state)

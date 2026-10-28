@@ -183,6 +183,7 @@ class RoundController:
                     round_number,
                     bye_callback,
                     repeat_pairing_callback,
+                    all_players=list(players.values()),
                 )
             else:
                 pairings, bye_player = self._create_bbp_pairings(
@@ -231,6 +232,7 @@ class RoundController:
         round_number: int,
         bye_callback: Optional[Callable],
         repeat_pairing_callback: Optional[Callable],
+        all_players: Optional[List[Player]] = None,
     ) -> Tuple[List[Tuple[Player, Player]], Optional[Player]]:
         """Create pairings using Gambit's experimental Dutch implementation."""
         return self._create_native_swiss_pairings(
@@ -238,6 +240,7 @@ class RoundController:
             round_number,
             bye_callback,
             repeat_pairing_callback,
+            all_players,
         )
 
     def _create_bbp_pairings(
@@ -277,6 +280,7 @@ class RoundController:
             round_number,
             bye_callback,
             repeat_pairing_callback,
+            all_players,
         )
 
     def _create_native_swiss_pairings(
@@ -285,6 +289,7 @@ class RoundController:
         round_number: int,
         bye_callback: Optional[Callable],
         repeat_pairing_callback: Optional[Callable],
+        all_players: Optional[List[Player]] = None,
     ) -> Tuple[List[Tuple[Player, Player]], Optional[Player]]:
         """Create pairings using Gambit's native Dutch implementation."""
         self.last_engine = "Gambit Dutch (Experimental)"
@@ -296,6 +301,7 @@ class RoundController:
             repeat_pairing_callback,
             self.num_rounds,
             fide_strict=self.fide_strict,
+            all_players=all_players,
         )
         return pairings, bye_player
 

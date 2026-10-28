@@ -76,7 +76,7 @@ def test_former_round_two_timeout_matches_bbp(count):
 )
 @pytest.mark.parametrize("count", [8, 9, 10, 12, 15, 16, 20])
 @pytest.mark.parametrize("seed", range(3))
-@pytest.mark.parametrize("scenario", ["normal", "unplayed", "black"])
+@pytest.mark.parametrize("scenario", ["normal", "unplayed", "black", "absent"])
 def test_same_history_matches_bbp(count, seed, scenario):
     bbp = BBPPairingEngine(
         os.environ["GAMBIT_REFERENCE_BBP"],
@@ -95,6 +95,9 @@ def test_same_history_matches_bbp(count, seed, scenario):
 
     for number in range(1, 6):
         scheduled = [players[0]] if scenario == "unplayed" and number == 2 else []
+        if scenario == "absent" and number <= 2:
+            # Late arrivals in round 1, then one of them stays away again.
+            scheduled = players[1:4] if number == 1 else players[1:2]
         active = [p for p in players if p not in scheduled]
         native, native_bye, _, _ = create_dutch_swiss_pairings(
             active,
@@ -104,6 +107,7 @@ def test_same_history_matches_bbp(count, seed, scenario):
             total_rounds=5,
             max_computation_time=10,
             initial_color=Colour.BLACK if scenario == "black" else Colour.WHITE,
+            all_players=players,
         )
         reference, reference_bye = bbp.generate_pairings(
             active, number, 5, all_players=players

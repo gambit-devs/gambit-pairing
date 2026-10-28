@@ -32,11 +32,18 @@ restores input state; it never returns a heuristic pairing or switches to BBP.
 The legacy `fide_strict` flag cannot disable these guarantees. Exhaustive search
 can time out on difficult fields; no universal performance guarantee is made.
 
-Homogeneous brackets/remainders with zero or one downfloater use independent
-NetworkX minimum-weight matching to optimize colour costs. Exact completion
-costs preserve the first Dutch resident exchange/transposition among optimal
-candidates. With one downfloater, each candidate is still passed to downstream
-bracket evaluation; the graph optimizer does not replace C5-C8 look-ahead.
+Article 5.2.5 colour parity skips late entries: a player who has never been
+paired (or allocated the bye) and is absent this round does not yet hold a
+TPN (C.04.2 Article 2.4), so later players move up for parity. This matches
+BBP. Callers pass the full roster as `all_players`; without it, raw TPNs are used.
+
+Homogeneous brackets/remainders of ten or more players use independent
+NetworkX minimum-weight matching to optimize colour costs, for any number of
+downfloaters. Exact completion costs preserve the first Dutch resident
+exchange/transposition among optimal candidates. Each possible downfloater set
+is still passed to downstream bracket evaluation; the graph optimizer does not
+replace C5-C8 look-ahead. A direct S1/S2 pairing that reaches the optimum is
+accepted without a solver call, and costs are cached per round.
 Unavoidable colour-preference counts provide additional proven lower bounds.
 Repeat-downfloat score differences include MDPs left in limbo, using an artificial
 opponent score below the resident score; omitting them incorrectly rewarded

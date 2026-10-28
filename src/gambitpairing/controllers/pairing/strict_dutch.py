@@ -22,13 +22,21 @@ from .dutch_rules import (
 )
 
 
-def pair_round(players, previous, current_round, total_rounds, initial_color, check):
+def pair_round(
+    players,
+    previous,
+    current_round,
+    total_rounds,
+    initial_color,
+    check,
+    pairing_numbers=None,
+):
     ordered = sorted(players, key=lambda p: (-p.score, p.pairing_number))
     edges = {}
     for a, b in combinations(ordered, 2):
         check()
         edges[frozenset((a, b))] = (
-            _assign_colors_fide(a, b, current_round, initial_color)
+            _assign_colors_fide(a, b, current_round, initial_color, pairing_numbers)
             if _meets_absolute_criteria(a, b, previous, current_round, total_rounds)
             else None
         )
@@ -37,6 +45,18 @@ def pair_round(players, previous, current_round, total_rounds, initial_color, ch
         if not groups or groups[-1][0].score != player.score:
             groups.append([])
         groups[-1].append(player)
+    matching_caches = {}
+    # Player histories are fixed during the search; evaluate rules once.
+    preference = {p: _get_color_preference(p) for p in ordered}
+    strong = {p: _has_strong_color_preference(p) for p in ordered}
+    imbalance = {p: _get_color_imbalance(p) for p in ordered}
+    last_two = {p: _played_colors(p)[-2:] for p in ordered}
+    topscorer = {p: _is_topscorer(p, current_round, total_rounds) for p in ordered}
+    floats = {
+        (p, back): _get_float_type(p, back, current_round)
+        for p in ordered
+        for back in (1, 2)
+    }
 
     def unplayed(player, index):
         outcomes = player.outcome_types
@@ -74,22 +94,30 @@ def pair_round(players, previous, current_round, total_rounds, initial_color, ch
                 ]
 
     def homogeneous(pool, count):
-        if len(pool) >= 10 and len(pool) - 2 * count in (0, 1):
-            from .matching import optimal_homogeneous, optimal_with_one_down
+        if len(pool) >= 10:
+            from .matching import optimal_homogeneous, optimal_with_downs
 
             # With each downfloater fixed, only C10-C13 vary within a
             # homogeneous bracket/remainder. Exact weights have no carries.
+            # Weights depend only on the pair and base, so matching costs
+            # are shared by every pool of the same size in this round.
             base = len(pool) + 1
-            weights = {}
+            weights, costs = matching_caches.setdefault(base, ({}, {}))
             for a, b in combinations(pool, 2):
                 edge = frozenset((a, b))
-                if edges[edge] is not None:
+                if edges[edge] is not None and edge not in weights:
                     value = 0
                     for metric in quality([edges[edge]], [], pool, None)[1:5]:
                         value = value * base + metric
                     weights[edge] = value
-            optimize = optimal_with_one_down if len(pool) % 2 else optimal_homogeneous
-            yield from optimize(pool, edges, weights, splits, check)
+            if len(pool) == 2 * count:
+                yield from optimal_homogeneous(
+                    pool, edges, weights, splits, check, costs
+                )
+            else:
+                yield from optimal_with_downs(
+                    pool, count, edges, weights, splits, check, costs
+                )
             return
         seen = set()
         for first, second in splits(pool, count):
@@ -113,14 +141,25 @@ def pair_round(players, previous, current_round, total_rounds, initial_color, ch
             for tail, rest in pair_prefix(first[1:], pool[:i] + pool[i + 1 :]):
                 yield [pair] + tail, rest
 
-    def candidates(residents, mdps, pair_count):
+    def candidates(residents, mdps, pair_count, dominated=lambda head: False):
         if not mdps:
             yield from homogeneous(residents, pair_count)
             return
+        # Residents share one score below every MDP, so the limbo alone fixes
+        # the C6/C7 head of every candidate built from this choice.
+        down_count = len(mdps) + len(residents) - 2 * pair_count
         for moved_count in range(min(len(mdps), len(residents), pair_count), -1, -1):
             for chosen in combinations(mdps, moved_count):
                 check()
                 limbo = [p for p in mdps if p not in chosen]
+                limbo_scores = sorted((p.score for p in limbo), reverse=True)
+                head = (
+                    down_count,
+                    tuple(limbo_scores)
+                    + (residents[0].score,) * (down_count - len(limbo)),
+                )
+                if dominated(head):
+                    continue
                 for pairs, remainder in pair_prefix(chosen, residents):
                     if 2 * (pair_count - moved_count) > len(remainder):
                         continue
@@ -136,23 +175,18 @@ def pair_round(players, previous, current_round, total_rounds, initial_color, ch
         top_pairs = [
             (p, color)
             for w, b in pairs
-            if _is_topscorer(w, current_round, total_rounds)
-            or _is_topscorer(b, current_round, total_rounds)
+            if topscorer[w] or topscorer[b]
             for p, color in ((w, Colour.WHITE), (b, Colour.BLACK))
         ]
         c10 = sum(
-            abs(_get_color_imbalance(p) + (1 if color == Colour.WHITE else -1)) > 2
+            abs(imbalance[p] + (1 if color == Colour.WHITE else -1)) > 2
             for p, color in top_pairs
         )
-        c11 = sum(_played_colors(p)[-2:] == [color, color] for p, color in top_pairs)
+        c11 = sum(last_two[p] == [color, color] for p, color in top_pairs)
         c12 = sum(
-            bool(_get_color_preference(p)) and _get_color_preference(p) != color
-            for p, color in assignments
+            bool(preference[p]) and preference[p] != color for p, color in assignments
         )
-        c13 = sum(
-            _has_strong_color_preference(p) and _get_color_preference(p) != color
-            for p, color in assignments
-        )
+        c13 = sum(strong[p] and preference[p] != color for p, color in assignments)
         mixed = [
             (a, b) if a.score > b.score else (b, a)
             for a, b in pairs
@@ -163,14 +197,11 @@ def pair_round(players, previous, current_round, total_rounds, initial_color, ch
             counts.extend(
                 (
                     sum(
-                        p in residents
-                        and _get_float_type(p, back, current_round)
-                        == FloatType.FLOAT_DOWN
+                        p in residents and floats[p, back] == FloatType.FLOAT_DOWN
                         for p in down
                     ),
                     sum(
-                        _get_float_type(low, back, current_round) == FloatType.FLOAT_UP
-                        for _, low in mixed
+                        floats[low, back] == FloatType.FLOAT_UP for _, low in mixed
                     ),
                 )
             )
@@ -181,15 +212,13 @@ def pair_round(players, previous, current_round, total_rounds, initial_color, ch
                             [
                                 high.score - low.score
                                 for high, low in mixed
-                                if _get_float_type(high, back, current_round)
-                                == FloatType.FLOAT_DOWN
+                                if floats[high, back] == FloatType.FLOAT_DOWN
                             ]
                             + [
                                 p.score - residents[0].score + 1
                                 for p in down
                                 if p not in residents
-                                and _get_float_type(p, back, current_round)
-                                == FloatType.FLOAT_DOWN
+                                and floats[p, back] == FloatType.FLOAT_DOWN
                             ],
                             reverse=True,
                         )
@@ -199,8 +228,7 @@ def pair_round(players, previous, current_round, total_rounds, initial_color, ch
                             (
                                 high.score - low.score
                                 for high, low in mixed
-                                if _get_float_type(low, back, current_round)
-                                == FloatType.FLOAT_UP
+                                if floats[low, back] == FloatType.FLOAT_UP
                             ),
                             reverse=True,
                         )
@@ -270,17 +298,21 @@ def pair_round(players, previous, current_round, total_rounds, initial_color, ch
             minimum_down,
             tuple(p.score for p in bracket[-minimum_down:]) if minimum_down else (),
         )
+
+        def dominated(head):
+            return (
+                best_key is not None
+                and best is not None
+                and best_key[0] == lowest_bye
+                and head > best[2]
+            )
+
         for pair_count in range(maximum, -1, -1):
-            for pairs, down in candidates(residents, mdps, pair_count):
+            for pairs, down in candidates(residents, mdps, pair_count, dominated):
                 check()
                 down = sorted(down, key=lambda p: (-p.score, p.pairing_number))
                 head = (len(down), tuple(p.score for p in down))
-                if (
-                    best_key is not None
-                    and best is not None
-                    and best_key[0] == lowest_bye
-                    and head > best[2]
-                ):
+                if dominated(head):
                     continue
                 child = solve(index + 1, down)
                 if child is None:
@@ -315,9 +347,9 @@ def pair_round(players, previous, current_round, total_rounds, initial_color, ch
                 # not a relaxed acceptance criterion or a heuristic cutoff.
                 def preference_bound(strong_only=False):
                     preferences = [
-                        _get_color_preference(p)
+                        preference[p]
                         for p in bracket
-                        if not strong_only or _has_strong_color_preference(p)
+                        if not strong_only or strong[p]
                     ]
                     return max(
                         0,

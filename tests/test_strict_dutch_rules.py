@@ -107,3 +107,36 @@ def test_limbo_repeat_downfloat_keeps_its_score_difference():
         (14, 12),
         (15, 16),
     }
+
+
+def test_late_entries_do_not_occupy_a_colour_parity_number():
+    # C.04.2 Article 2.4: TPNs 2-4 have not arrived, so 5 ranks second.
+    roster = players(7)
+    active = [roster[0], *roster[4:]]
+    pairs, _, _, _ = create_dutch_swiss_pairings(
+        active, 1, set(), None, total_rounds=5, all_players=roster
+    )
+    assert sorted((w.pairing_number, b.pairing_number) for w, b in pairs) == [
+        (1, 6),
+        (7, 5),
+    ]
+    legacy, _, _, _ = create_dutch_swiss_pairings(
+        active, 1, set(), None, total_rounds=5
+    )
+    assert sorted((w.pairing_number, b.pairing_number) for w, b in legacy) == [
+        (1, 6),
+        (5, 7),
+    ]
+
+
+def test_effective_pairing_numbers_keep_players_who_were_paired():
+    from gambitpairing.controllers.pairing.dutch_rules import (
+        effective_pairing_numbers,
+    )
+
+    first, played, half_bye, allocated_bye, last = roster = players(5)
+    played.opponent_ids, played.results = [last.id], [0.0]
+    half_bye.opponent_ids, half_bye.results = [None], [0.5]
+    allocated_bye.opponent_ids, allocated_bye.results = [None], [1.0]
+    numbers = effective_pairing_numbers([first, last], roster)
+    assert numbers == {first.id: 1, played.id: 2, allocated_bye.id: 3, last.id: 4}
